@@ -25,6 +25,11 @@ const storeSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    city: {
+  type: String,
+  trim: true,
+  default: null,
+},
   },
   { timestamps: true }
 );

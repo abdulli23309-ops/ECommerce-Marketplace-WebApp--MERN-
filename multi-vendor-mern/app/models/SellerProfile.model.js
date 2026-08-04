@@ -17,6 +17,11 @@ const sellerProfileSchema = new mongoose.Schema(
       default: false,
     },
 
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
     // When the seller was approved
     approvedAt: {
       type: Date,
