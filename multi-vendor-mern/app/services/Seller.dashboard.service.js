@@ -41,12 +41,38 @@ export const getDashboard = async (userId) => {
   };
 };
 
+
 export const getSellerOrders = async (userId) => {
   const { store } = await getStoreId(userId);
-  return SellerOrder.find({ store: store._id })
-    .populate('parentOrder', 'orderStatus totalAmount')
+  const sellerOrders = await SellerOrder.find({ store: store._id })
+    .populate('parentOrder', 'orderStatus totalAmount createdAt')
     .populate('items.product', 'name')
-    .sort({ createdAt: -1 });
+    .populate('shipment')
+    .lean();
+
+  // Group by parentOrder._id to match the frontend structure
+  const grouped = new Map();
+  for (const so of sellerOrders) {
+    const pid = so.parentOrder._id.toString();
+    if (!grouped.has(pid)) {
+      grouped.set(pid, {
+        _id: so.parentOrder._id,
+        orderStatus: so.parentOrder.orderStatus,
+        totalAmount: so.parentOrder.totalAmount,
+        createdAt: so.parentOrder.createdAt,
+        sellerOrders: [],
+      });
+    }
+    grouped.get(pid).sellerOrders.push({
+      _id: so._id,
+      store: so.store,
+      status: so.status,
+      subTotal: so.subTotal,
+      items: so.items,
+      shipment: so.shipment || null,
+    });
+  }
+  return Array.from(grouped.values());
 };
 
 export const getSellerReviews = async (userId) => {

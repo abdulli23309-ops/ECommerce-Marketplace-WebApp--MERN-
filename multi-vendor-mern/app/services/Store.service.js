@@ -2,47 +2,49 @@ import * as storeRepo from '../repositories/Store.repository.js';
 import * as sellerProfileRepo from '../repositories/SellerProfile.repository.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
+const ALLOWED_UPDATE_FIELDS = ['name', 'description', 'logo', 'city'];
+
+// Used by read/update/delete – requires an approved seller
 const resolveSellerProfile = async (userId) => {
   const profile = await sellerProfileRepo.findByUser(userId);
   if (!profile) throw new ApiError(404, 'Seller profile not found');
-  if (!profile.isApproved) throw new ApiError(403, 'Your seller account is not yet approved');
+  if (profile.status !== 'Approved') throw new ApiError(403, 'Your seller account is not approved');
   return profile;
 };
 
-const ALLOWED_UPDATE_FIELDS = ['name', 'description', 'logo', 'city'];
+// Create a store during onboarding – only needs a seller profile, not approval
+export const createStore = async (userId, data) => {
+  const profile = await sellerProfileRepo.findByUser(userId);
+  if (!profile) throw new ApiError(404, 'Seller profile not found');
+  // No approval check – the seller is still in the application phase
 
-export const createStore = async (userId, data, userPermissions) => {
-  const profile = await resolveSellerProfile(userId);
   const existing = await storeRepo.findBySeller(profile._id);
-  if (existing && !userPermissions.includes('Store.CreateMultiple')) {
-    throw new ApiError(403, 'You already own a store');
-  }
+  if (existing) throw new ApiError(403, 'You already own a store');
+
   return storeRepo.create({ ...data, sellerProfile: profile._id });
 };
 
-export const getMyStores = async (userId) => {
+export const getMyStore = async (userId) => {
   const profile = await resolveSellerProfile(userId);
-  return storeRepo.findAllBySeller(profile._id);
+  const store = await storeRepo.findBySeller(profile._id);
+  if (!store) throw new ApiError(404, 'Store not found');
+  return store;
 };
 
-export const updateStore = async (userId, storeId, data) => {
+export const updateMyStore = async (userId, data) => {
   const profile = await resolveSellerProfile(userId);
-  const store = await storeRepo.findById(storeId);
-  if (!store || store.sellerProfile.toString() !== profile._id.toString()) {
-    throw new ApiError(404, 'Store not found');
-  }
+  const store = await storeRepo.findBySeller(profile._id);
+  if (!store) throw new ApiError(404, 'Store not found');
   const safeUpdate = {};
   for (const key of ALLOWED_UPDATE_FIELDS) {
     if (data[key] !== undefined) safeUpdate[key] = data[key];
   }
-  return storeRepo.updateById(storeId, safeUpdate);
+  return storeRepo.updateById(store._id, safeUpdate);
 };
 
-export const deleteStore = async (userId, storeId) => {
+export const deleteMyStore = async (userId) => {
   const profile = await resolveSellerProfile(userId);
-  const store = await storeRepo.findById(storeId);
-  if (!store || store.sellerProfile.toString() !== profile._id.toString()) {
-    throw new ApiError(404, 'Store not found');
-  }
-  return storeRepo.updateById(storeId, { isActive: false }); // soft deactivation
+  const store = await storeRepo.findBySeller(profile._id);
+  if (!store) throw new ApiError(404, 'Store not found');
+  return storeRepo.updateById(store._id, { isActive: false });
 };

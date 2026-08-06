@@ -17,7 +17,13 @@ import {
 
 const getAuthorization = (user) => {
   const roles = user.roles.map((role) => role.name);
-  const permissions = [...new Set(user.roles.flatMap((role) => role.permissions.map((permission) => permission.name)))];
+  const permissions = [...new Set(
+    user.roles.flatMap((role) =>
+      (role.permissionGroups || []).flatMap((g) =>
+        (g.permissions || []).map((p) => p.code)
+      )
+    )
+  )];
   return { roles, permissions };
 };
 

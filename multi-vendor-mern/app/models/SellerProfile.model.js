@@ -11,11 +11,11 @@ const sellerProfileSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Approval status
-    isApproved: {
-      type: Boolean,
-      default: false,
-    },
+   status: {
+  type: String,
+  enum: ['Pending', 'Approved', 'Rejected'],
+  default: 'Pending',
+},
 
     rejectionReason: {
       type: String,

@@ -50,10 +50,11 @@ const productSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
+    status: {
+  type: String,
+  enum: ['PendingApproval', 'Approved', 'Rejected', 'Suspended', 'Archived'],
+  default: 'PendingApproval',
+},
     isDeleted: {
       type: Boolean,
       default: false,

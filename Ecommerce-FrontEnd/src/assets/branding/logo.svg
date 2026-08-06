@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 100">
+  <defs>
+    <style> .text { font-family: 'Inter', system-ui, sans-serif; font-weight: 800; fill: #0E1B3A; } </style>
+  </defs>
+  <path d="M11 74 L47 26 L65 44 L54 44 L54 85 L37 85 L37 44 L28 44 Z" fill="#000" />
+  <path d="M47 26 L93 -18 L110 -1 L80 40 L68 40 L68 90 L52 90 L52 40 L42 40 Z" transform="translate(0, 16)" fill="#000" />
+  <text class="text" x="125" y="68" font-size="44">VendorVerse</text>
+</svg>

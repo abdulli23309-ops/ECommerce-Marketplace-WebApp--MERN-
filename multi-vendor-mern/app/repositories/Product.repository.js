@@ -15,10 +15,10 @@ export const softDelete = (id) =>
   Product.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
 
 export const findPublic = (query = {}) =>
-  Product.find({ ...query, isDeleted: false, isActive: true });
+  Product.find({ ...query, isDeleted: false, status: 'Approved' });
 
 export const findPublicById = (id) =>
-  Product.findOne({ _id: id, isDeleted: false, isActive: true });
+  Product.findOne({ _id: id, isDeleted: false, status: 'Approved' });
 
 export const findPublicWithFilters = async (filters = {}) => {
   // get stores belonging to approved sellers and active
@@ -38,7 +38,7 @@ export const findPublicWithFilters = async (filters = {}) => {
 
   const query = {
     isDeleted: false,
-    isActive: true,
+    status: 'Approved',
     store: { $in: allowedStoreIds },
   };
 

@@ -5,8 +5,26 @@ import { ApiError } from '../utils/ApiError.util.js';
 
 // Groups
 export const getGroups = () => PermissionGroup.find();
-export const createGroup = (name) => PermissionGroup.create({ name });
-export const updateGroup = (id, name) => PermissionGroup.findByIdAndUpdate(id, { name }, { new: true });
+export const createGroup = (data) => {
+  const { name, description, permissionIds } = data;
+  return PermissionGroup.create({
+    name,
+    description,
+    permissions: permissionIds || [],
+  });
+};
+export const updateGroup = async (id, data) => {
+  const update = {
+    name: data.name,
+  };
+  // Only update permissions if permissionIds array is provided
+  if (data.permissionIds) {
+    update.permissions = data.permissionIds;
+  }
+  const group = await PermissionGroup.findByIdAndUpdate(id, update, { new: true });
+  if (!group) throw new ApiError(404, 'Permission group not found');
+  return group;
+};
 export const deleteGroup = async (id) => {
   // remove group from permissions and roles
   await Permission.updateMany({ group: id }, { $unset: { group: '' } });

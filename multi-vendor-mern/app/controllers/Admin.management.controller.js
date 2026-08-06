@@ -36,7 +36,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   new ApiResponse(200, products, 'Products retrieved').send(res);
 });
 export const updateProductStatus = asyncHandler(async (req, res) => {
-  const product = await adminManagementService.updateProductStatus(req.params.id, req.body.isActive);
+  const product = await adminManagementService.updateProductStatus(req.params.id, req.body.status);
   new ApiResponse(200, product, 'Product status updated').send(res);
 });
 

@@ -7,11 +7,11 @@ export const getGroups = asyncHandler(async (req, res) => {
   new ApiResponse(200, groups, 'Groups retrieved').send(res);
 });
 export const createGroup = asyncHandler(async (req, res) => {
-  const group = await adminPermService.createGroup(req.body.name);
+  const group = await adminPermService.createGroup(req.body);
   new ApiResponse(201, group, 'Group created').send(res);
 });
 export const updateGroup = asyncHandler(async (req, res) => {
-  const group = await adminPermService.updateGroup(req.params.id, req.body.name);
+  const group = await adminPermService.updateGroup(req.params.id, req.body);
   new ApiResponse(200, group, 'Group updated').send(res);
 });
 export const deleteGroup = asyncHandler(async (req, res) => {

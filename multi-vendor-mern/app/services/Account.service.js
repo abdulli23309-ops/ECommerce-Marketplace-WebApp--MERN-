@@ -24,10 +24,25 @@ export const getMyPermissions = async (userId) => {
   const user = await User.findById(userId)
     .populate({
       path: 'roles',
-      populate: { path: 'permissions', select: 'name' },
+      populate: [
+        { path: 'permissions', select: 'code' },
+        {
+          path: 'permissionGroups',
+          select: 'permissions',
+          populate: { path: 'permissions', select: 'code' }
+        }
+      ]
     })
     .lean();
-  const permissions = user.roles.flatMap(r => r.permissions.map(p => p.name));
-  const unique = [...new Set(permissions)];
-  return { roles: user.roles.map(r => r.name), permissions: unique };
+
+  if (!user) throw new ApiError(404, 'User not found');
+
+  const roles = user.roles.map(r => r.name);
+  const directCodes = user.roles.flatMap(r => (r.permissions || []).map(p => p.code));
+  const groupCodes = user.roles.flatMap(r =>
+    (r.permissionGroups || []).flatMap(g => (g.permissions || []).map(p => p.code))
+  );
+  const allCodes = [...new Set([...directCodes, ...groupCodes])];
+
+  return { roles, permissions: allCodes };
 };

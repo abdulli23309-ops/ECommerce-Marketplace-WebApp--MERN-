@@ -17,7 +17,14 @@ const consumeRefreshToken = (tokenHash) => (
 
 const findUserAuthorization = (userId) => User.findById(userId)
   .select('name email roles isActive')
-  .populate({ path: 'roles', select: 'name permissions', populate: { path: 'permissions', select: 'name' } })
+  .populate({
+    path: 'roles',
+    select: 'name permissionGroups',          // ← we need permissionGroups, not permissions
+    populate: {
+      path: 'permissionGroups',
+      select: 'permissions',
+      populate: { path: 'permissions', select: 'code' }
+    }
+  })
   .lean();
-
 export { consumeRefreshToken, createRefreshToken, createUser, findRoleByName, findUserAuthorization, findUserByEmail };

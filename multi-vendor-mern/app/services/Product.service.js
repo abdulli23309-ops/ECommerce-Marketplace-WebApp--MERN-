@@ -6,7 +6,7 @@ import { ApiError } from '../utils/ApiError.util.js';
 const resolveStore = async (userId) => {
   const profile = await sellerProfileRepo.findByUser(userId);
   if (!profile) throw new ApiError(404, 'Seller profile not found');
-  if (!profile.isApproved) throw new ApiError(403, 'Your seller account is not yet approved');
+  if (profile.status !== 'Approved') throw new ApiError(403, 'Your seller account is not approved');
   const store = await storeRepo.findBySeller(profile._id);
   if (!store) throw new ApiError(404, 'Store not found');
   return store;
@@ -28,6 +28,7 @@ export const updateMyProduct = async (userId, productId, data) => {
   if (!product || product.store.toString() !== store._id.toString()) {
     throw new ApiError(404, 'Product not found');
   }
+  delete data.status; // sellers cannot change product status
   return productRepo.updateById(productId, data);
 };
 

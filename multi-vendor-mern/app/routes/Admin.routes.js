@@ -7,6 +7,7 @@ import { authenticate, requireRole } from '../middleware/Auth.middleware.js';
 const router = Router();
 router.use(authenticate, requireRole('Admin'));
 
+// Dashboard
 router.get('/stats', adminController.getStats);
 
 // Users
@@ -39,20 +40,27 @@ router.get('/returns', adminManagementController.getAllReturns);
 // Refunds
 router.get('/refunds', adminManagementController.getAllRefunds);
 
-// Permission Groups
+// Permission Groups CRUD
 router.get('/permission-groups', adminPermissionController.getGroups);
 router.post('/permission-groups', adminPermissionController.createGroup);
 router.put('/permission-groups/:id', adminPermissionController.updateGroup);
 router.delete('/permission-groups/:id', adminPermissionController.deleteGroup);
 
-// Permissions
+// Permissions CRUD
 router.get('/permissions', adminPermissionController.getPermissions);
 router.post('/permissions', adminPermissionController.createPermission);
 router.put('/permissions/:id', adminPermissionController.updatePermission);
 router.delete('/permissions/:id', adminPermissionController.deletePermission);
 
-// Role-Group assignments
-router.put('/roles/:roleId/groups/:groupId', adminPermissionController.assignGroupToRole);
-router.delete('/roles/:roleId/groups/:groupId', adminPermissionController.removeGroupFromRole);
+// Permission Group – get its permissions
+router.get('/permission-groups/:id/permissions', adminController.getGroupPermissions);
+
+// Roles
+router.get('/roles', adminController.getRoles);
+router.get('/roles/:id', adminController.getRoleById);
+
+// Role – assign / remove permission group
+router.put('/roles/:roleId/groups/:groupId', adminController.assignGroupToRole);
+router.delete('/roles/:roleId/groups/:groupId', adminController.removeGroupFromRole);
 
 export default router;

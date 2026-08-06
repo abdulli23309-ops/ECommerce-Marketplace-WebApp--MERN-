@@ -32,10 +32,10 @@ export const createProductValidation = [
     .optional()
     .isURL()
     .withMessage('Each image must be a valid URL'),
-  body('isActive')
-    .optional()
-    .isBoolean()
-    .withMessage('isActive must be a boolean'),
+  body('status')
+  .optional()
+  .isIn(['PendingApproval', 'Approved', 'Rejected', 'Suspended', 'Archived'])
+  .withMessage('Invalid product status'),
 ];
 
 export const updateProductValidation = [
@@ -75,8 +75,8 @@ export const updateProductValidation = [
     .optional()
     .isURL()
     .withMessage('Each image must be a valid URL'),
-  body('isActive')
-    .optional()
-    .isBoolean()
-    .withMessage('isActive must be a boolean'),
+ body('status')
+  .optional()
+  .isIn(['PendingApproval', 'Approved', 'Rejected', 'Suspended', 'Archived'])
+  .withMessage('Invalid product status'),
 ];

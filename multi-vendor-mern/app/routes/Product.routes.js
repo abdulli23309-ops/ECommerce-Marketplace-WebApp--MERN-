@@ -1,19 +1,42 @@
 import { Router } from 'express';
 import * as productController from '../controllers/Product.controller.js';
-import { authenticate, requireRole } from '../middleware/Auth.middleware.js';
+import { authenticate, requireRole, requirePermission } from '../middleware/Auth.middleware.js';
 import { createProductValidation, updateProductValidation } from '../validations/Product.validation.js';
 import { validateRequest } from '../middleware/Validation.middleware.js';
 import { uploadProductImages } from '../helpers/FileUpload.helper.js';
 
 const router = Router();
 
+// All routes require authentication + Seller role
 router.use(authenticate, requireRole('Seller'));
 
-// Multer handles multipart/form-data, then validation, then controller
-router.post('/', uploadProductImages, createProductValidation, validateRequest, productController.createProduct);
-router.put('/:id', uploadProductImages, updateProductValidation, validateRequest, productController.updateMyProduct);
+// Create product – also require the fine‑grained permission
+router.post(
+  '/',
+  requirePermission('Seller.Products.Create'),
+  uploadProductImages,
+  createProductValidation,
+  validateRequest,
+  productController.createProduct
+);
+
+// Update product – require edit permission
+router.put(
+  '/:id',
+  requirePermission('Seller.Products.Edit'),
+  uploadProductImages,
+  updateProductValidation,
+  validateRequest,
+  productController.updateMyProduct
+);
 
 router.get('/', productController.getMyProducts);
-router.delete('/:id', productController.deleteMyProduct);
+
+// Delete product – require delete permission
+router.delete(
+  '/:id',
+  requirePermission('Seller.Products.Delete'),
+  productController.deleteMyProduct
+);
 
 export default router;

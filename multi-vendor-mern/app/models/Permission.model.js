@@ -3,9 +3,11 @@ import mongoose from 'mongoose';
 const permissionSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
+    code: { type: String, required: true, unique: true, trim: true },
+    description: { type: String, default: '' },
     group: { type: mongoose.Schema.Types.ObjectId, ref: 'PermissionGroup', default: null },
   },
-  { timestamps: true, versionKey: false }
+  { timestamps: true }
 );
 
 const Permission = mongoose.model('Permission', permissionSchema);

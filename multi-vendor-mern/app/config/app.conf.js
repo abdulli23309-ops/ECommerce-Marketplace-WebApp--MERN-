@@ -3,7 +3,7 @@
 export default {
   ...appKeys,
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
-    credentials: true,
-  },
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+},
 };
