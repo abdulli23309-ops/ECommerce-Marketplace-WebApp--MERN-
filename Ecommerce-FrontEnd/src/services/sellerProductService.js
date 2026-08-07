@@ -1,43 +1,69 @@
 import axiosInstance from "./axiosInstance";
 
-// Helper to unwrap MERN response and map product fields
+// ---------- Mapper (includes populated names, createdAt) ----------
 const mapProduct = (p) => ({
-  ...p,
   id: p._id,
+  _id: p._id,
+  name: p.name,
+  description: p.description,
+  images: p.images,
+  price: p.price,
   basePrice: p.price,
+  stock: p.stock,
   stockQuantity: p.stock,
+  status: p.status,
+  category: p.category?.name || p.category,
+  categoryId: p.category?._id || p.category,          // for selects
+  subCategory: p.subCategory?.name || p.subCategory,
+  subCategoryId: p.subCategory?._id || p.subCategory,
+  brand: p.brand?.name || p.brand,
+  brandId: p.brand?._id || p.brand,
+  store: p.store,
+  createdAt: p.createdAt,
+  updatedAt: p.updatedAt,
 });
 
-export const fetchSellerProducts = async () => {
-  const response = await axiosInstance.get("/products");
-  const products = response.data?.data ?? [];
-  return products.map(mapProduct);
+// ---------- Paginated fetch for seller's own products ----------
+export const fetchSellerProducts = async ({ page = 1, pageSize = 12 } = {}) => {
+  const { data } = await axiosInstance.get("/products", { params: { page, pageSize } });
+  const body = data.data;   // { products, total, page, totalPages }
+  return {
+    items: (body.products || []).map(mapProduct),
+    total: body.total,
+    page: body.page,
+    totalPages: body.totalPages,
+  };
 };
 
-export const createProduct = async (productData) => {
-  const response = await axiosInstance.post("/products", productData);
-  return mapProduct(response.data?.data);
+// ---------- Fetch single product (for editing) ----------
+export const fetchProductById = async (productId) => {
+  const { data } = await axiosInstance.get(`/products/public/${productId}`);
+  return mapProduct(data.data);
 };
 
-export const updateProduct = async (productId, productData) => {
-  const response = await axiosInstance.put(`/products/${productId}`, productData);
-  return mapProduct(response.data?.data);
-};
-
-export const deleteProduct = async (productId) => {
-  await axiosInstance.delete(`/products/${productId}`);
-};
-
-export const uploadProductImage = async (productId, file) => {
-  const formData = new FormData();
-  formData.append("images", file);
-  const response = await axiosInstance.put(`/products/${productId}`, formData, {
+// ---------- Create a new product (multipart for images) ----------
+export const createProduct = async (formData) => {
+  const { data } = await axiosInstance.post("/products", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
-  return response.data?.data?.images ?? [];
+  return mapProduct(data.data);
 };
 
-export const deleteProductImage = async (productId, imageUrl) => {
-  // MERN doesn't have individual image delete yet – we can omit or send a PUT with filtered images
-  console.warn("deleteProductImage not implemented on MERN backend");
+// ---------- Update an existing product ----------
+export const updateProduct = async (productId, formData) => {
+  const { data } = await axiosInstance.put(`/products/${productId}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return mapProduct(data.data);
+};
+
+// ---------- Delete a product ----------
+export const deleteProduct = async (productId) => {
+  const { data } = await axiosInstance.delete(`/products/${productId}`);
+  return data.data;
+};
+// Fetch RAW product (with populated objects) for editing
+export const fetchRawProductById = async (productId) => {
+  const { data } = await axiosInstance.get(`/products/${productId}`);
+  return data.data;  // returns full object with category: { _id, name }, etc.
 };

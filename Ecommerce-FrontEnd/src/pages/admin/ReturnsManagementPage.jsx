@@ -4,20 +4,25 @@ import { getReturns, approveReturn, rejectReturn } from "../../services/adminSer
 const ReturnsManagementPage = () => {
   const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const loadReturns = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const data = await getReturns();
-      setReturns(data || []);
+      const res = await getReturns();           // { items, total, ... }
+      setReturns(res.items || []);
     } catch (err) {
       console.error("Failed to load returns", err);
+      setError("Could not load returns.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadReturns(); }, []);
+  useEffect(() => {
+    loadReturns();
+  }, []);
 
   const handleAction = async (returnId, action) => {
     try {
@@ -33,13 +38,15 @@ const ReturnsManagementPage = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading returns...</div>;
-
   return (
     <div>
       <h2 className="section-title">Returns Management</h2>
 
-      {returns.length === 0 ? (
+      {loading ? (
+        <p style={{ color: "#666" }}>Loading returns...</p>
+      ) : error ? (
+        <p className="error-text">{error}</p>
+      ) : returns.length === 0 ? (
         <div className="empty-state">No return requests.</div>
       ) : (
         <table className="product-table">
@@ -66,8 +73,12 @@ const ReturnsManagementPage = () => {
                 <td>
                   {ret.status === "Requested" && (
                     <>
-                      <button className="btn-edit" onClick={() => handleAction(ret.id, "approve")}>Approve</button>
-                      <button className="btn-delete" onClick={() => handleAction(ret.id, "reject")}>Reject</button>
+                      <button className="btn-edit" onClick={() => handleAction(ret.id, "approve")}>
+                        Approve
+                      </button>
+                      <button className="btn-delete" onClick={() => handleAction(ret.id, "reject")}>
+                        Reject
+                      </button>
                     </>
                   )}
                   {ret.status !== "Requested" && <span style={{ color: "#999" }}>—</span>}

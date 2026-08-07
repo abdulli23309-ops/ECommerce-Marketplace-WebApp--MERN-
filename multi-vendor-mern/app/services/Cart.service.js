@@ -2,15 +2,17 @@ import * as cartRepo from '../repositories/Cart.repository.js';
 import * as productRepo from '../repositories/Product.repository.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
-const ensureCart = async (userId) => {
-  let cart = await cartRepo.findByUser(userId);
+// Always return the cart with product details populated
+const getPopulatedCart = (userId) => cartRepo.findByUser(userId);
+
+export const getCart = async (userId) => {
+  let cart = await getPopulatedCart(userId);
   if (!cart) {
     cart = await cartRepo.create(userId);
+    cart = await getPopulatedCart(userId);
   }
   return cart;
 };
-
-export const getCart = (userId) => ensureCart(userId);
 
 export const addItem = async (userId, productId, quantity) => {
   const product = await productRepo.findPublicById(productId);
@@ -19,18 +21,19 @@ export const addItem = async (userId, productId, quantity) => {
 
   let cart = await cartRepo.findByUser(userId);
   if (!cart) {
-    cart = await cartRepo.create(userId, [{ product: productId, quantity, price: product.price }]);
-    return cart;
+    await cartRepo.create(userId, [{ product: productId, quantity, price: product.price }]);
+  } else {
+    const existingItem = cart.items.find((i) => i.product.toString() === productId);
+    if (existingItem) {
+      existingItem.quantity += quantity;
+      existingItem.price = product.price;
+    } else {
+      cart.items.push({ product: productId, quantity, price: product.price });
+    }
+    await cart.save();
   }
 
-  const existingItem = cart.items.find((i) => i.product.toString() === productId);
-  if (existingItem) {
-    existingItem.quantity += quantity;
-    existingItem.price = product.price; // refresh price
-  } else {
-    cart.items.push({ product: productId, quantity, price: product.price });
-  }
-  return cart.save();
+  return getPopulatedCart(userId);
 };
 
 export const updateItemQuantity = async (userId, productId, quantity) => {
@@ -40,17 +43,18 @@ export const updateItemQuantity = async (userId, productId, quantity) => {
 
   const cart = await cartRepo.updateItemQuantity(userId, productId, quantity);
   if (!cart) throw new ApiError(404, 'Cart or item not found');
-  return cart;
+
+  return getPopulatedCart(userId);
 };
 
 export const removeItem = async (userId, productId) => {
   const cart = await cartRepo.removeItem(userId, productId);
   if (!cart) throw new ApiError(404, 'Cart or item not found');
-  return cart;
+  return getPopulatedCart(userId);
 };
 
 export const clearCart = async (userId) => {
   const cart = await cartRepo.clearCart(userId);
   if (!cart) throw new ApiError(404, 'Cart not found');
-  return cart;
+  return getPopulatedCart(userId);
 };

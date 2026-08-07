@@ -45,7 +45,10 @@ export const approveSeller = async (id) => {
 };
 
 // Product Management
-export const getAllProducts = () => Product.find({ isDeleted: false });
+export const getAllProducts = () =>
+  Product.find({ isDeleted: false })
+    .populate('store', 'name')
+    .lean();
 export const updateProductStatus = (id, status) =>
   Product.findByIdAndUpdate(id, { status }, { new: true });
 

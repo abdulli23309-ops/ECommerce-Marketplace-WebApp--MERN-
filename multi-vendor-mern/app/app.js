@@ -20,19 +20,19 @@ import refundRoutes from './routes/Refund.routes.js';
 import adminRoutes from './routes/Admin.routes.js';
 import accountRoutes from './routes/Account.routes.js';
 import sellerRoutes from './routes/Seller.routes.js';
-
-
-
-
-
+import adminProductRoutes from './routes/AdminProduct.routes.js';
 
 const app = express();
 
 setupAppMiddleware(app);
 
+// Serve uploaded files
+app.use('/uploads', express.static('app/uploads'));
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is running' });
 });
+
 app.use('/api/v1/stores', storeRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/test', authorizationTestRoutes);
@@ -50,12 +50,10 @@ app.use('/api/v1/shipments', shipmentRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/returns', returnRoutes);
 app.use('/api/v1/refunds', refundRoutes);
+app.use('/api/v1/admin/products', adminProductRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/account', accountRoutes);
 app.use('/api/v1/seller', sellerRoutes);
-
-
-
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });

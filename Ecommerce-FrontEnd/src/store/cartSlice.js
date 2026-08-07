@@ -1,29 +1,30 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axiosInstance from "../services/axiosInstance";
+import {
+  fetchCart,
+  addToCart,
+  updateCartItemQuantity,
+  removeCartItem,
+  clearCart as clearCartService,
+} from "../services/cartService";
 
 export const loadCart = createAsyncThunk("cart/loadCart", async () => {
-  const { data } = await axiosInstance.get("/cart");
-  return data.data; // cart object
+  return await fetchCart();            // returns transformed cart with unitPrice
 });
 
 export const addItemToCart = createAsyncThunk("cart/addItem", async ({ productId, quantity }) => {
-  const { data } = await axiosInstance.post("/cart/items", { productId, quantity });
-  return data.data; // updated cart
+  return await addToCart(productId, quantity);
 });
 
 export const updateQuantity = createAsyncThunk("cart/updateQuantity", async ({ productId, quantity }) => {
-  const { data } = await axiosInstance.put("/cart/items", { productId, quantity });
-  return data.data;
+  return await updateCartItemQuantity(productId, quantity);
 });
 
 export const removeFromCart = createAsyncThunk("cart/removeFromCart", async (productId) => {
-  const { data } = await axiosInstance.delete("/cart/items", { data: { productId } });
-  return data.data;
+  return await removeCartItem(productId);
 });
 
 export const emptyCart = createAsyncThunk("cart/emptyCart", async () => {
-  const { data } = await axiosInstance.delete("/cart");
-  return data.data;
+  return await clearCartService();
 });
 
 const cartSlice = createSlice({

@@ -4,6 +4,7 @@ import { getAdminShipments } from "../../services/adminService";
 const AdminShipmentsPage = () => {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
@@ -11,18 +12,22 @@ const AdminShipmentsPage = () => {
 
   const fetchShipments = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const data = await getAdminShipments({ page, pageSize: 10, search, status: statusFilter });
-      setShipments(data || []);
-      setTotalPages(data.totalPages || 1);
+      const res = await getAdminShipments({ page, pageSize: 10, search, status: statusFilter });
+      setShipments(res.items || []);
+      setTotalPages(res.totalPages || 1);
     } catch (err) {
       console.error("Failed to load shipments", err);
+      setError("Could not load shipments.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchShipments(); }, [page, search, statusFilter]);
+  useEffect(() => {
+    fetchShipments();
+  }, [page, search, statusFilter]);
 
   return (
     <div>
@@ -41,15 +46,33 @@ const AdminShipmentsPage = () => {
         </select>
       </div>
 
-      {loading ? <p style={{ color: "#666" }}>Loading...</p> :
-        shipments.length === 0 ? <div className="empty-state">No shipments found.</div> :
+      {loading ? (
+        <p style={{ color: "#666" }}>Loading...</p>
+      ) : error ? (
+        <p className="error-text">{error}</p>
+      ) : shipments.length === 0 ? (
+        <div className="empty-state">No shipments found.</div>
+      ) : (
         <table className="product-table">
-          <thead><tr><th>Shipment ID</th><th>Order ID</th><th>Carrier</th><th>Tracking</th><th>Status</th><th>Created</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Shipment ID</th>
+              <th>Order ID</th>
+              <th>Carrier</th>
+              <th>Tracking</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
           <tbody>
-            {shipments.map(s => (
+            {shipments.map((s) => (
               <tr key={s.id}>
                 <td>{s.id?.toString().slice(0, 8).toUpperCase()}</td>
-                <td>{(typeof s.sellerOrderId === 'string') ? s.sellerOrderId.slice(0, 8).toUpperCase() : (s.sellerOrderId && typeof s.sellerOrderId === 'object' && s.sellerOrderId._id ? s.sellerOrderId._id.slice(0,8).toUpperCase() : "N/A")}</td>
+                <td>
+                  {(typeof s.sellerOrderId === 'string')
+                    ? s.sellerOrderId.slice(0, 8).toUpperCase()
+                    : (s.sellerOrderId?._id ? s.sellerOrderId._id.slice(0, 8).toUpperCase() : "N/A")}
+                </td>
                 <td>{s.carrier || "N/A"}</td>
                 <td>{s.trackingNumber || "N/A"}</td>
                 <td>{s.status}</td>
@@ -58,7 +81,7 @@ const AdminShipmentsPage = () => {
             ))}
           </tbody>
         </table>
-      }
+      )}
 
       {totalPages > 1 && (
         <div className="pagination">

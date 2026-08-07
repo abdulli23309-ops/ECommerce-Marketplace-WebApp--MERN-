@@ -1,29 +1,24 @@
 import Store from '../models/Store.model.js';
 import mongoose from 'mongoose';
 
-export const findBySeller = (sellerProfileId) => {
-  return Store.findOne({ sellerProfile: sellerProfileId });
-};
+export const findBySeller = (sellerProfileId) =>
+  Store.findOne({ sellerProfile: sellerProfileId });
 
-export const create = (data) => {
-  return Store.create(data);
-};
+export const create = (data) => Store.create(data);
 
-export const findById = (id) => {
-  return Store.findById(id);
-};
+// Single findById with populate and lean
+export const findById = (storeId) =>
+  Store.findById(storeId).populate('sellerProfile', 'user').lean();
 
-export const updateById = (id, data) => {
-  return Store.findByIdAndUpdate(id, data, { new: true, runValidators: true });
-};
+export const updateById = (id, data) =>
+  Store.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 
 export const findAllBySeller = (sellerProfileId) =>
   Store.find({ sellerProfile: sellerProfileId });
 
-// Get IDs of stores belonging to approved sellers
 export const getActiveStoreIdsForApprovedSellers = async () => {
   const approvedSellerIds = await mongoose.model('SellerProfile')
-    .find({ isApproved: true })
+    .find({ status: 'Approved' })
     .distinct('_id');
   const activeStores = await Store.find({
     sellerProfile: { $in: approvedSellerIds },

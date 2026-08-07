@@ -11,6 +11,10 @@ export const createStore = asyncHandler(async (req, res) => {
   const store = await storeService.createStore(req.user.id, data);
   new ApiResponse(201, store, 'Store created').send(res);
 });
+export const getPublicStore = asyncHandler(async (req, res) => {
+  const store = await storeService.getPublicStore(req.params.id);
+  new ApiResponse(200, store, 'Store retrieved').send(res);
+});
 
 export const getMyStore = asyncHandler(async (req, res) => {
   const store = await storeService.getMyStore(req.user.id);

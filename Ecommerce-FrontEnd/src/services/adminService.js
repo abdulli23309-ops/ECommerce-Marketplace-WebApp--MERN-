@@ -1,16 +1,33 @@
 import axiosInstance from "./axiosInstance";
 
+// Helper to normalize backend paginated response
+const extractItems = (responseData) => {
+  // Backend returns { success, data: { items, ... } } or { success, data: [...] }
+  if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
+    return responseData.items || responseData; // { items: [...] } => [...]
+  }
+  return Array.isArray(responseData) ? responseData : [];
+};
+
+// ---------- Sellers ----------
 export const getSellers = async () => {
   const { data } = await axiosInstance.get("/admin/sellers");
-  return (data.data || []).map((s) => ({
-    id: s._id,
-    businessName: s.businessName,
-    fullName: s.user?.name || "",
-    email: s.user?.email || "",
-    storeName: "", // not populated – can add later
-    storeLogoUrl: "",
-    status: s.status,
-  }));
+  // data.data is { items, total, ... }
+  const sellers = extractItems(data.data);
+  return {
+    items: sellers.map(s => ({
+      id: s._id,
+      businessName: s.businessName,
+      fullName: s.user?.name || "",
+      email: s.user?.email || "",
+      storeName: "", // optional
+      storeLogoUrl: "",
+      status: s.status,
+    })),
+    total: sellers.length, // not paginated in frontend, but keep shape
+    page: 1,
+    totalPages: 1,
+  };
 };
 
 export const approveSeller = async (sellerId) => {
@@ -19,97 +36,134 @@ export const approveSeller = async (sellerId) => {
 };
 
 export const rejectSeller = async (sellerId, reason) => {
-  const { data } = await axiosInstance.put(`/admin/sellers/${sellerId}/reject`, {
-    rejectionReason: reason,
-  });
+  const { data } = await axiosInstance.put(`/admin/sellers/${sellerId}/reject`, { reason });
   return data.data;
 };
 
+// ---------- Products (admin) ----------
+// This uses separate service file now, keep for backward compat if needed
 export const getProducts = async () => {
   const { data } = await axiosInstance.get("/admin/products");
-  return (data.data || []).map((p) => ({
-    id: p._id,
-    name: p.name,
-    storeName: p.store?.name || "N/A",
-    basePrice: p.price,
-    stockQuantity: p.stock,
-    status: p.status,
-  }));
+  const products = extractItems(data.data);
+  return {
+    items: products.map(p => ({
+      id: p._id,
+      name: p.name,
+      storeName: p.store?.name || "N/A",
+      basePrice: p.price,
+      stockQuantity: p.stock,
+      status: p.status,
+    })),
+    total: products.length,
+    page: 1,
+    totalPages: 1,
+  };
 };
 
 export const updateProductStatus = async (productId, status) => {
-  const { data } = await axiosInstance.put(`/admin/products/${productId}/status`, {
-    status,
-  });
+  const { data } = await axiosInstance.put(`/admin/products/${productId}/status`, { status });
   return data.data;
 };
 
+// ---------- Returns ----------
 export const getReturns = async () => {
   const { data } = await axiosInstance.get("/admin/returns");
-  return (data.data || []).map((r) => ({
-    id: r._id,
-    customerEmail: r.customer?.email || "",
-    productName: r.product?.name || "",
-    reason: r.reason,
-    status: r.status,
-  }));
+  const returns = extractItems(data.data);
+  return {
+    items: returns.map(r => ({
+      id: r._id,
+      customerEmail: r.customer?.email || "",
+      productName: r.product?.name || "",
+      reason: r.reason,
+      status: r.status,
+    })),
+    total: returns.length,
+    page: 1,
+    totalPages: 1,
+  };
 };
 
 export const approveReturn = async (returnId) => {
-  const { data } = await axiosInstance.put(`/returns/${returnId}/process`, {
-    status: "Approved",
-  });
+  const { data } = await axiosInstance.put(`/returns/${returnId}/process`, { status: "Approved" });
   return data.data;
 };
 
 export const rejectReturn = async (returnId) => {
-  const { data } = await axiosInstance.put(`/returns/${returnId}/process`, {
-    status: "Rejected",
-  });
+  const { data } = await axiosInstance.put(`/returns/${returnId}/process`, { status: "Rejected" });
   return data.data;
 };
 
+// ---------- Refunds ----------
 export const createRefund = async (returnRequestId) => {
   const { data } = await axiosInstance.post("/refunds", { returnRequestId });
   return data.data;
 };
 
-export const getPayments = async () => {
-  const { data } = await axiosInstance.get("/admin/payments");
-  return (data.data || []).map((p) => ({
-    paymentId: p._id,
-    orderId: p.parentOrder,
-    method: p.method,
-    amount: p.amount,
-    status: p.status,
-    createdAt: p.createdAt,
-  }));
+// ---------- Payments ----------
+export const getPayments = async (params = {}) => {
+  const { data } = await axiosInstance.get("/admin/payments", { params });
+  const payments = extractItems(data.data);
+  return {
+    items: payments.map(p => ({
+      paymentId: p._id,
+      orderId: p.parentOrder,
+      method: p.method,
+      amount: p.amount,
+      status: p.status,
+      createdAt: p.createdAt,
+    })),
+    total: payments.length,
+    page: 1,
+    totalPages: 1,
+  };
 };
 
-export const getAdminStats = async () => {
-  const { data } = await axiosInstance.get("/admin/stats");
-  return data.data;
-};
-
+// ---------- Admin Orders ----------
 export const getAdminOrders = async (params = {}) => {
   const { data } = await axiosInstance.get("/admin/orders", { params });
-  return data.data; // array of parent orders
+  const items = extractItems(data.data);
+  // items are already full objects, no mapping needed
+  return {
+    items,
+    total: items.length,
+    page: 1,
+    totalPages: 1,
+  };
 };
 
+// ---------- Admin Shipments ----------
 export const getAdminShipments = async (params = {}) => {
   const { data } = await axiosInstance.get("/admin/shipments", { params });
-  return (data.data || []).map((s) => ({
-    id: s._id,
-    // ensure sellerOrderId is a plain id string when possible
-    sellerOrderId: s.sellerOrder && (typeof s.sellerOrder === "string" ? s.sellerOrder : (s.sellerOrder._id || null)),
-    carrier: s.carrier,
-    trackingNumber: s.trackingNumber,
-    status: s.status,
-    createdAt: s.createdAt,
-  }));
+  const items = extractItems(data.data);
+  return {
+    items: items.map(s => ({
+      id: s._id,
+      sellerOrderId: s.sellerOrder?._id || s.sellerOrder,
+      carrier: s.carrier,
+      trackingNumber: s.trackingNumber,
+      status: s.status,
+      createdAt: s.createdAt,
+    })),
+    total: items.length,
+    page: 1,
+    totalPages: 1,
+  };
 };
 
+// ---------- Admin Users ----------
 export const getAdminUsers = async (params = {}) => {
   const { data } = await axiosInstance.get("/admin/users", { params });
-  return data.data; // array of user objects (with _id, name, email, roles, isActive)
+  const items = extractItems(data.data);
+  return {
+    items, // already have _id, name, email, roles, isActive
+    total: items.length,
+    page: 1,
+    totalPages: 1,
+  };
+};
+
+// ---------- Admin Stats ----------
+export const getAdminStats = async () => {
+  const { data } = await axiosInstance.get("/admin/stats");
+  return data.data; // single object
 };

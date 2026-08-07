@@ -9,7 +9,7 @@ const router = Router();
 
 // All routes require authentication + Seller role
 router.use(authenticate, requireRole('Seller'));
-
+router.post('/upload-image', uploadProductImages, productController.uploadImage);
 // Create product – also require the fine‑grained permission
 router.post(
   '/',

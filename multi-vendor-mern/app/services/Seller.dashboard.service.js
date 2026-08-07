@@ -10,7 +10,6 @@ import { ApiError } from '../utils/ApiError.util.js';
 const getStoreId = async (userId) => {
   const profile = await sellerProfileRepo.findByUser(userId);
   if (!profile) throw new ApiError(404, 'Seller profile not found');
-  // assume one store; get its ID
   const store = await Store.findOne({ sellerProfile: profile._id });
   if (!store) throw new ApiError(404, 'Store not found');
   return { profile, store };
@@ -24,7 +23,6 @@ export const getDashboard = async (userId) => {
     sellerOrder: { $in: (await SellerOrder.find({ store: store._id }).select('_id')) },
     status: 'Pending',
   });
-  // average rating
   const productIds = (await Product.find({ store: store._id }).select('_id')).map(p => p._id);
   const avgResult = await Review.aggregate([
     { $match: { product: { $in: productIds } } },
@@ -32,30 +30,24 @@ export const getDashboard = async (userId) => {
   ]);
   const averageRating = avgResult[0]?.avg || 0;
   const totalReviews = avgResult[0]?.count || 0;
-  return {
-    totalProducts,
-    totalOrders,
-    pendingShipments,
-    averageRating: Math.round(averageRating * 10) / 10,
-    totalReviews,
-  };
+  return { totalProducts, totalOrders, pendingShipments, averageRating: Math.round(averageRating * 10) / 10, totalReviews };
 };
 
-
-export const getSellerOrders = async (userId) => {
+export const getSellerOrders = async (userId, { page = 1, pageSize = 10 } = {}) => {
   const { store } = await getStoreId(userId);
-  const sellerOrders = await SellerOrder.find({ store: store._id })
+
+  // 1. Get all seller orders for this store
+  const allSellerOrders = await SellerOrder.find({ store: store._id })
     .populate('parentOrder', 'orderStatus totalAmount createdAt')
     .populate('items.product', 'name')
-    .populate('shipment')
     .lean();
 
-  // Group by parentOrder._id to match the frontend structure
-  const grouped = new Map();
-  for (const so of sellerOrders) {
+  // 2. Group by parentOrder to get distinct parent orders
+  const groupedMap = new Map();
+  for (const so of allSellerOrders) {
     const pid = so.parentOrder._id.toString();
-    if (!grouped.has(pid)) {
-      grouped.set(pid, {
+    if (!groupedMap.has(pid)) {
+      groupedMap.set(pid, {
         _id: so.parentOrder._id,
         orderStatus: so.parentOrder.orderStatus,
         totalAmount: so.parentOrder.totalAmount,
@@ -63,23 +55,67 @@ export const getSellerOrders = async (userId) => {
         sellerOrders: [],
       });
     }
-    grouped.get(pid).sellerOrders.push({
+    groupedMap.get(pid).sellerOrders.push({
       _id: so._id,
       store: so.store,
       status: so.status,
       subTotal: so.subTotal,
       items: so.items,
-      shipment: so.shipment || null,
     });
   }
-  return Array.from(grouped.values());
+
+  const allGroups = Array.from(groupedMap.values());
+
+  // 3. Apply pagination on the parent orders
+  const total = allGroups.length;
+  const skip = (Number(page) - 1) * Number(pageSize);
+  const paginatedGroups = allGroups.slice(skip, skip + Number(pageSize));
+
+  // 4. Fetch shipments for the seller orders in this page
+  const sellerOrderIds = paginatedGroups.flatMap(g => g.sellerOrders.map(so => so._id));
+  const shipments = await Shipment.find({ sellerOrder: { $in: sellerOrderIds } }).lean();
+  const shipmentMap = new Map();
+  shipments.forEach(s => shipmentMap.set(s.sellerOrder.toString(), s));
+
+  // 5. Attach shipments to each seller order
+  for (const group of paginatedGroups) {
+    for (const so of group.sellerOrders) {
+      so.shipment = shipmentMap.get(so._id.toString()) || null;
+    }
+  }
+
+  return {
+    items: paginatedGroups,
+    total,
+    page: Number(page),
+    pageSize: Number(pageSize),
+    totalPages: Math.ceil(total / Number(pageSize)),
+  };
 };
 
-export const getSellerReviews = async (userId) => {
+export const getSellerReviews = async (userId, { page = 1, pageSize = 10 } = {}) => {
   const { store } = await getStoreId(userId);
   const productIds = (await Product.find({ store: store._id }).select('_id')).map(p => p._id);
-  return Review.find({ product: { $in: productIds } })
-    .populate('customer', 'name')
-    .populate('product', 'name')
-    .sort({ createdAt: -1 });
+
+  const skip = (Number(page) - 1) * Number(pageSize);
+  const limit = Number(pageSize);
+
+  const [reviews, total] = await Promise.all([
+    Review.find({ product: { $in: productIds } })
+      .populate('customer', 'name')
+      .populate('product', 'name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Review.countDocuments({ product: { $in: productIds } }),
+  ]);
+
+  return {
+    items: reviews,
+    total,
+    page: Number(page),
+    pageSize: limit,
+    totalPages: Math.ceil(total / limit),
+  };
 };

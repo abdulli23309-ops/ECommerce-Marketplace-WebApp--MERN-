@@ -24,6 +24,12 @@ export const createStore = async (userId, data) => {
   return storeRepo.create({ ...data, sellerProfile: profile._id });
 };
 
+export const getPublicStore = async (storeId) => {
+  const store = await storeRepo.findById(storeId);
+  if (!store) throw new ApiError(404, 'Store not found');
+  return store;
+};
+
 export const getMyStore = async (userId) => {
   const profile = await resolveSellerProfile(userId);
   const store = await storeRepo.findBySeller(profile._id);

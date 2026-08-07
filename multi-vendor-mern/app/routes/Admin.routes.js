@@ -1,66 +1,50 @@
 import { Router } from 'express';
 import * as adminController from '../controllers/Admin.controller.js';
-import * as adminManagementController from '../controllers/Admin.management.controller.js';
-import * as adminPermissionController from '../controllers/Admin.permission.controller.js';
 import { authenticate, requireRole } from '../middleware/Auth.middleware.js';
 
 const router = Router();
+
 router.use(authenticate, requireRole('Admin'));
 
-// Dashboard
-router.get('/stats', adminController.getStats);
-
 // Users
-router.get('/users', adminManagementController.getUsers);
-router.put('/users/:id/activate', adminManagementController.activateUser);
-router.put('/users/:id/deactivate', adminManagementController.deactivateUser);
+router.get('/users', adminController.getUsers);
+router.put('/users/:id/activate', adminController.activateUser);
+router.put('/users/:id/deactivate', adminController.deactivateUser);
 
 // Sellers
-router.get('/sellers', adminManagementController.getSellers);
-router.put('/sellers/:id/approve', adminManagementController.approveSeller);
-router.put('/sellers/:id/reject', adminManagementController.rejectSeller);
-
-// Products
-router.get('/products', adminManagementController.getAllProducts);
-router.put('/products/:id/status', adminManagementController.updateProductStatus);
+router.get('/sellers', adminController.getSellers);
+router.put('/sellers/:id/approve', adminController.approveSeller);
+router.put('/sellers/:id/reject', adminController.rejectSeller);
 
 // Orders
-router.get('/orders', adminManagementController.getAllParentOrders);
-router.get('/seller-orders', adminManagementController.getAllSellerOrders);
+router.get('/orders', adminController.getOrders);
 
 // Payments
-router.get('/payments', adminManagementController.getAllPayments);
+router.get('/payments', adminController.getPayments);
 
 // Shipments
-router.get('/shipments', adminManagementController.getAllShipments);
+router.get('/shipments', adminController.getShipments);
 
 // Returns
-router.get('/returns', adminManagementController.getAllReturns);
+router.get('/returns', adminController.getReturns);
+router.put('/returns/:id/process', adminController.processReturn);
 
 // Refunds
-router.get('/refunds', adminManagementController.getAllRefunds);
+router.get('/refunds', adminController.getRefunds);
+router.post('/refunds', adminController.createRefund);
 
-// Permission Groups CRUD
-router.get('/permission-groups', adminPermissionController.getGroups);
-router.post('/permission-groups', adminPermissionController.createGroup);
-router.put('/permission-groups/:id', adminPermissionController.updateGroup);
-router.delete('/permission-groups/:id', adminPermissionController.deleteGroup);
-
-// Permissions CRUD
-router.get('/permissions', adminPermissionController.getPermissions);
-router.post('/permissions', adminPermissionController.createPermission);
-router.put('/permissions/:id', adminPermissionController.updatePermission);
-router.delete('/permissions/:id', adminPermissionController.deletePermission);
-
-// Permission Group – get its permissions
-router.get('/permission-groups/:id/permissions', adminController.getGroupPermissions);
+// Permission Groups
+router.get('/permission-groups', adminController.getPermissionGroups);
+router.post('/permission-groups', adminController.createPermissionGroup);
+router.put('/permission-groups/:id', adminController.updatePermissionGroup);
+router.delete('/permission-groups/:id', adminController.deletePermissionGroup);
 
 // Roles
 router.get('/roles', adminController.getRoles);
-router.get('/roles/:id', adminController.getRoleById);
-
-// Role – assign / remove permission group
 router.put('/roles/:roleId/groups/:groupId', adminController.assignGroupToRole);
 router.delete('/roles/:roleId/groups/:groupId', adminController.removeGroupFromRole);
+
+// Dashboard stats
+router.get('/stats', adminController.getStats);
 
 export default router;

@@ -4,22 +4,29 @@ import PermissionGate from "../../components/common/PermissionGate";
 
 const RefundManagementPage = () => {
   const [approvedReturns, setApprovedReturns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
+
+  const loadReturns = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getReturns();                     // returns { items, total, ... }
+      const allReturns = res.items || [];
+      const refundable = allReturns.filter((r) => r.status === "Approved");
+      setApprovedReturns(refundable);
+    } catch (err) {
+      console.error("Failed to load returns", err);
+      setError("Could not load returns.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const returns = await getReturns();
-        setApprovedReturns(returns.filter((r) => r.status === "Approved"));
-      } catch (err) {
-        console.error("Failed to load returns", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    loadReturns();
   }, []);
 
   const handleRefund = async (returnRequestId) => {
@@ -36,14 +43,18 @@ const RefundManagementPage = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading...</div>;
-
   return (
     <div>
       <h2 className="section-title">Refund Management</h2>
+      <h3 style={{ fontWeight: 600, marginBottom: "1rem", color: "#000" }}>
+        Approved Returns (Pending Refund)
+      </h3>
 
-      <h3 style={{ fontWeight: 600, marginBottom: "1rem", color: "#000" }}>Approved Returns (Pending Refund)</h3>
-      {approvedReturns.length === 0 ? (
+      {loading ? (
+        <p style={{ color: "#666" }}>Loading...</p>
+      ) : error ? (
+        <p className="error-text">{error}</p>
+      ) : approvedReturns.length === 0 ? (
         <p className="empty-state">No approved returns waiting for refund.</p>
       ) : (
         <table className="product-table">
@@ -63,18 +74,27 @@ const RefundManagementPage = () => {
                 <td>{ret.reason}</td>
                 <td>
                   <PermissionGate permission="Orders.Refund">
-  <button className="btn-primary" onClick={handleRefund} disabled={submitting}>
-    {submitting ? "Processing..." : "Refund"}
-  </button>
-</PermissionGate>
+                    <button
+                      className="btn-primary"
+                      onClick={() => handleRefund(ret.id)}
+                      disabled={submitting}
+                    >
+                      {submitting ? "Processing..." : "Refund"}
+                    </button>
+                  </PermissionGate>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+
       {message && (
-        <p style={{ color: message.type === "success" ? "#000" : "#d11a2a", marginTop: "1rem", fontWeight: 500 }}>
+        <p style={{
+          color: message.type === "success" ? "#000" : "#d11a2a",
+          marginTop: "1rem",
+          fontWeight: 500,
+        }}>
           {message.text}
         </p>
       )}

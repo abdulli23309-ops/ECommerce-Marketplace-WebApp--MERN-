@@ -4,6 +4,7 @@ import { ApiError } from '../utils/ApiError.util.js';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    // Use the existing directory inside the app folder
     cb(null, 'app/uploads/products');
   },
   filename: (req, file, cb) => {
@@ -26,12 +27,10 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 }).array('images', 5);
 
-// Wrapper that calls multer and catches its errors, forwarding them to next()
 export const uploadProductImages = (req, res, next) => {
   upload(req, res, (err) => {
     if (err) {
       if (err instanceof ApiError) return next(err);
-      // Multer-specific errors (like file too large)
       if (err.code === 'LIMIT_FILE_SIZE') {
         return next(new ApiError(400, 'File too large. Maximum size is 5 MB.'));
       }

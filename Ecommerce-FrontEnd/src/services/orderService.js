@@ -1,8 +1,8 @@
 import axiosInstance from "./axiosInstance";
 
-export const fetchOrders = async () => {
-  const { data } = await axiosInstance.get("/orders");
-  return data.data ?? []; // array of ParentOrders
+export const fetchOrders = async ({ page = 1, pageSize = 10 } = {}) => {
+  const { data } = await axiosInstance.get("/orders", { params: { page, pageSize } });
+  return data.data ?? { items: [], total: 0, page: 1, totalPages: 1 };
 };
 
 export const fetchOrderById = async (orderId) => {

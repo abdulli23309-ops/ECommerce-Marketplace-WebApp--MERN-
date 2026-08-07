@@ -19,8 +19,8 @@ const SellerApprovalPage = () => {
   const loadSellers = async () => {
     setLoading(true);
     try {
-      const data = await getSellers();
-      setSellers(data || []);
+      const { items: sellers } = await getSellers();
+setSellers(sellers || []);
     } catch (err) {
       console.error(err);
     } finally {

@@ -3,19 +3,23 @@ import axiosInstance from "./axiosInstance";
 const mapProduct = (p) => ({
   ...p,
   id: p._id,
-  basePrice: p.price,
+  basePrice: p.price,      // keep basePrice for backward compatibility, but we'll use price
+  price: p.price,
   stockQuantity: p.stock,
 });
 
 export const fetchApprovedProducts = async (params = {}) => {
+  if (typeof params === 'number') {
+    params = { page: arguments[0], pageSize: arguments[1] || 100 };
+  }
   const { data } = await axiosInstance.get("/products/public", { params });
-  const response = data.data; // { products, page, pageSize, total, totalPages }
+  const body = data.data;
   return {
-    items: (response.products || []).map(mapProduct),
-    totalPages: response.totalPages,
-    total: response.total,
-    page: response.page,
-    pageSize: response.pageSize,
+    items: (body.products || []).map(mapProduct),
+    totalPages: body.totalPages,
+    total: body.total,
+    page: body.page,
+    pageSize: body.pageSize,
   };
 };
 

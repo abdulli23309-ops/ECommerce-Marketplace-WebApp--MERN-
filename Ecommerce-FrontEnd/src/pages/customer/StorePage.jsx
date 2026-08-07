@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
-import { fetchApprovedProducts } from "../../services/productService";
 import { getImageUrl } from "../../utils/imageHelper";
 
 const StorePage = () => {
@@ -9,19 +8,26 @@ const StorePage = () => {
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const load = async () => {
       try {
-        // Fetch store details (public endpoint)
+        // Fetch store details (public route)
         const storeRes = await axiosInstance.get(`/stores/${storeId}`);
-        setStore(storeRes.data);
+        const storeData = storeRes.data?.data || storeRes.data;
+        setStore(storeData);
 
-        // Fetch products for this store (using existing endpoint)
-        const productsRes = await axiosInstance.get(`/products/store/${storeId}`);
-        setProducts(productsRes.data || []);
+        // Fetch store's approved products (public products endpoint)
+        const productsRes = await axiosInstance.get("/products/public", {
+          params: { store: storeId, pageSize: 100 },
+        });
+        // The response is { products, total, ... } – extract products array
+        const allProducts = productsRes.data?.data?.products || productsRes.data?.data || [];
+        setProducts(allProducts);
       } catch (err) {
         console.error("Failed to load store page", err);
+        setError("Store not found.");
       } finally {
         setLoading(false);
       }
@@ -30,15 +36,16 @@ const StorePage = () => {
   }, [storeId]);
 
   if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading store...</div>;
+  if (error) return <div style={{ padding: "2rem", color: "red" }}>{error}</div>;
   if (!store) return <div style={{ padding: "2rem", color: "#666" }}>Store not found.</div>;
 
   return (
     <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "2rem" }}>
       {/* Store Header */}
       <div className="store-header" style={{ display: "flex", gap: "1.5rem", alignItems: "center", marginBottom: "2rem", paddingBottom: "1.5rem", borderBottom: "1px solid #eaeaea" }}>
-        {store.logoUrl ? (
+        {store.logo ? (                             // ← use "logo" not "logoUrl"
           <img
-            src={getImageUrl(store.logoUrl)}
+            src={getImageUrl(store.logo)}           // ← use "store.logo"
             alt={store.name}
             style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "0.5rem", border: "1px solid #eaeaea" }}
           />
@@ -60,7 +67,7 @@ const StorePage = () => {
       ) : (
         <div className="product-grid">
           {products.map((product) => (
-            <Link to={`/products/${product.id}`} key={product.id} className="product-card">
+            <Link to={`/products/${product._id}`} key={product._id} className="product-card">   {/* ← use "_id", not "id" */}
               <div className="product-image">
                 {product.images && product.images.length > 0 ? (
                   <img src={getImageUrl(product.images[0])} alt={product.name} />
@@ -70,7 +77,7 @@ const StorePage = () => {
               </div>
               <div className="product-details">
                 <p className="product-name">{product.name}</p>
-                <p className="product-price">PKR {product.basePrice?.toLocaleString()}</p>
+                <p className="product-price">PKR {product.price?.toLocaleString()}</p>   {/* ← "price" not "basePrice" */}
               </div>
             </Link>
           ))}

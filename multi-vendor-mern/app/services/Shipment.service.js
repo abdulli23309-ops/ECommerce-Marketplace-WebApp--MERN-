@@ -47,10 +47,22 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
 
   const updated = await shipmentRepo.updateStatus(shipmentId, status, note || '');
 
-  // Propagate to SellerOrder and ParentOrder if delivered
-  if (status === 'Delivered') {
-    await orderRepo.updateSellerOrderStatus(shipment.sellerOrder, 'Delivered');
+  // Map shipment status to seller order status
+  const statusMapping = {
+    Pending: 'Pending',
+    Packed: 'Packed',
+    Dispatched: 'Dispatched',
+    OutForDelivery: 'OutForDelivery',
+    Delivered: 'Delivered',
+  };
 
+  const sellerOrderStatus = statusMapping[status] || null;
+  if (sellerOrderStatus) {
+    await orderRepo.updateSellerOrderStatus(shipment.sellerOrder, sellerOrderStatus);
+  }
+
+  // If delivered, also check parent order
+  if (status === 'Delivered') {
     const sellerOrder = await orderRepo.findSellerOrderById(shipment.sellerOrder);
     const allSellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(sellerOrder.parentOrder);
     const allDelivered = allSellerOrders.every(so => so.status === 'Delivered');

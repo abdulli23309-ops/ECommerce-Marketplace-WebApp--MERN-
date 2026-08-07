@@ -1,6 +1,7 @@
 import * as reviewService from '../services/Review.service.js';
 import { ApiResponse } from '../utils/ApiResponse.util.js';
 import { asyncHandler } from '../utils/AsyncHandler.util.js';
+import { ApiError } from '../utils/ApiError.util.js';
 
 export const createReview = asyncHandler(async (req, res) => {
   const review = await reviewService.createReview(req.user.id, req.body);
@@ -8,11 +9,17 @@ export const createReview = asyncHandler(async (req, res) => {
 });
 
 export const getProductReviews = asyncHandler(async (req, res) => {
-  const reviews = await reviewService.getProductReviews(req.params.productId);
-  new ApiResponse(200, reviews, 'Product reviews retrieved').send(res);
+  const data = await reviewService.getProductReviews(req.params.productId, req.query);
+  new ApiResponse(200, data, 'Product reviews retrieved').send(res);
 });
 
 export const getMyReviews = asyncHandler(async (req, res) => {
-  const reviews = await reviewService.getMyReviews(req.user.id);
-  new ApiResponse(200, reviews, 'My reviews retrieved').send(res);
+  const data = await reviewService.getMyReviews(req.user.id, req.query);
+  new ApiResponse(200, data, 'My reviews retrieved').send(res);
+});
+
+export const getReviewById = asyncHandler(async (req, res) => {
+  const review = await reviewService.getReviewById(req.params.id);
+  if (!review) throw new ApiError(404, 'Review not found');
+  new ApiResponse(200, review, 'Review retrieved').send(res);
 });

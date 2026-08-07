@@ -9,17 +9,21 @@ const RolePermissionGroupsPage = () => {
   const [assignments, setAssignments] = useState([]);
 
   useEffect(() => {
+    // Fetch roles – now returns { items, total, ... }
     axiosInstance.get("/admin/roles")
       .then(res => {
-        const data = res.data?.data || res.data;
-        setRoles(data.map(r => ({ id: r._id, name: r.name })));
+        const payload = res.data?.data || res.data;
+        const rolesArray = payload.items || payload; // handle both
+        setRoles(rolesArray.map(r => ({ id: r._id, name: r.name })));
       })
       .catch(console.error);
+
+    // Fetch permission groups
     axiosInstance.get("/admin/permission-groups?pageSize=100")
       .then(res => {
-        const data = res.data?.data || res.data;
-        const groupArray = data.items || data;
-        setGroups(groupArray.map(g => ({ id: g._id, name: g.name })));
+        const payload = res.data?.data || res.data;
+        const groupsArray = payload.items || payload;
+        setGroups(groupsArray.map(g => ({ id: g._id, name: g.name })));
       })
       .catch(console.error);
   }, []);

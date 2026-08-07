@@ -10,5 +10,6 @@ router.post('/', authenticate, reviewController.createReview);
 
 // ---- Public route ----
 router.get('/product/:productId', reviewController.getProductReviews);     // now after /mine
+router.get('/:id', authenticate, reviewController.getReviewById);
 
 export default router;

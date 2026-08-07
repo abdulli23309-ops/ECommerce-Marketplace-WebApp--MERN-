@@ -16,3 +16,8 @@ export const getPermissions = asyncHandler(async (req, res) => {
   const data = await accountService.getMyPermissions(req.user.id);
   new ApiResponse(200, data, 'Permissions retrieved').send(res);
 });
+export const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  await accountService.changePassword(req.user.id, currentPassword, newPassword);
+  new ApiResponse(200, null, 'Password changed successfully').send(res);
+});

@@ -1,5 +1,6 @@
 import User from '../models/User.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
+import bcrypt from 'bcrypt'; // make sure this is imported
 
 export const getProfile = async (userId) => {
   const user = await User.findById(userId).populate('roles', 'name').lean();
@@ -45,4 +46,16 @@ export const getMyPermissions = async (userId) => {
   const allCodes = [...new Set([...directCodes, ...groupCodes])];
 
   return { roles, permissions: allCodes };
+};
+
+
+export const changePassword = async (userId, currentPassword, newPassword) => {
+  const user = await User.findById(userId).select('+password');   // ← force include password
+  if (!user) throw new ApiError(404, 'User not found');
+
+  const isMatch = await user.comparePassword(currentPassword);
+  if (!isMatch) throw new ApiError(401, 'Current password is incorrect');
+
+  user.password = newPassword;
+  await user.save();
 };

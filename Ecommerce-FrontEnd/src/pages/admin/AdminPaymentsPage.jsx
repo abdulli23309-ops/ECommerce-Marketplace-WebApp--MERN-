@@ -4,6 +4,7 @@ import { getPayments } from "../../services/adminService";
 const AdminPaymentsPage = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
@@ -12,18 +13,22 @@ const AdminPaymentsPage = () => {
 
   const fetchPayments = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const data = await getPayments();
-      setPayments(data || []);
-      setTotalPages(1);
+      const res = await getPayments({ page, pageSize: 10, search, status: statusFilter, method: methodFilter });
+      setPayments(res.items || []);
+      setTotalPages(res.totalPages || 1);
     } catch (err) {
       console.error("Failed to load payments", err);
+      setError("Could not load payments.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchPayments(); }, [page, search, statusFilter, methodFilter]);
+  useEffect(() => {
+    fetchPayments();
+  }, [page, search, statusFilter, methodFilter]);
 
   return (
     <div>
@@ -46,12 +51,26 @@ const AdminPaymentsPage = () => {
         </select>
       </div>
 
-      {loading ? <p style={{ color: "#666" }}>Loading...</p> :
-        payments.length === 0 ? <div className="empty-state">No payments found.</div> :
+      {loading ? (
+        <p style={{ color: "#666" }}>Loading...</p>
+      ) : error ? (
+        <p className="error-text">{error}</p>
+      ) : payments.length === 0 ? (
+        <div className="empty-state">No payments found.</div>
+      ) : (
         <table className="product-table">
-          <thead><tr><th>Payment ID</th><th>Order ID</th><th>Method</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Payment ID</th>
+              <th>Order ID</th>
+              <th>Method</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
           <tbody>
-            {payments.map(p => (
+            {payments.map((p) => (
               <tr key={p.paymentId}>
                 <td>{p.paymentId.slice(0, 8).toUpperCase()}</td>
                 <td>{p.orderId?.slice(0, 8).toUpperCase() || "N/A"}</td>
@@ -63,7 +82,7 @@ const AdminPaymentsPage = () => {
             ))}
           </tbody>
         </table>
-      }
+      )}
 
       {totalPages > 1 && (
         <div className="pagination">

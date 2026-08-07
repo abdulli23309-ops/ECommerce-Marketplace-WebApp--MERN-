@@ -17,13 +17,13 @@ const CartPage = () => {
     dispatch(loadCart());
   }, [dispatch]);
 
-  const handleQuantityChange = (cartItemId, newQuantity) => {
+  const handleQuantityChange = (productId, newQuantity) => {
     if (newQuantity < 1) return;
-    dispatch(updateQuantity({ cartItemId, quantity: newQuantity }));
+    dispatch(updateQuantity({ productId, quantity: newQuantity }));
   };
 
-  const handleRemove = (cartItemId) => {
-    dispatch(removeFromCart(cartItemId));
+  const handleRemove = (productId) => {
+    dispatch(removeFromCart(productId));
   };
 
   const handleClearCart = () => {
@@ -56,8 +56,28 @@ const CartPage = () => {
         {items.map((item) => (
           <div className="cart-item" key={item.cartItemId}>
             <div className="cart-item-details">
-              <p className="cart-item-name">{item.productName}</p>
-              <p className="cart-item-price">PKR {item.unitPrice.toLocaleString()}</p>
+              {/* Product image */}
+              {item.productImage && (
+                <img
+                  src={item.productImage.startsWith("http") 
+                    ? item.productImage 
+                    : `${import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1.*$/, "")}${item.productImage}`}
+                  alt={item.productName}
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    objectFit: "cover",
+                    borderRadius: "0.25rem",
+                    marginRight: "1rem",
+                  }}
+                />
+              )}
+              <div>
+                <p className="cart-item-name">{item.productName}</p>
+                <p className="cart-item-price">
+                  PKR {item.unitPrice.toLocaleString()}
+                </p>
+              </div>
             </div>
 
             <div className="cart-item-actions">
@@ -65,7 +85,7 @@ const CartPage = () => {
                 <button
                   className="quantity-btn"
                   onClick={() =>
-                    handleQuantityChange(item.cartItemId, item.quantity - 1)
+                    handleQuantityChange(item.productId, item.quantity - 1)
                   }
                   disabled={item.quantity <= 1}
                 >
@@ -75,7 +95,7 @@ const CartPage = () => {
                 <button
                   className="quantity-btn"
                   onClick={() =>
-                    handleQuantityChange(item.cartItemId, item.quantity + 1)
+                    handleQuantityChange(item.productId, item.quantity + 1)
                   }
                 >
                   +
@@ -83,7 +103,7 @@ const CartPage = () => {
               </div>
               <button
                 className="btn-remove"
-                onClick={() => handleRemove(item.cartItemId)}
+                onClick={() => handleRemove(item.productId)}
               >
                 Remove
               </button>

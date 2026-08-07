@@ -45,6 +45,7 @@ import ReviewDetailPage from "./pages/customer/ReviewDetailPage";
 import PermissionGroupsPage from "./pages/admin/PermissionGroupsPage";
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminShipmentsPage from "./pages/admin/AdminShipmentsPage";
+import ProductGrid from "./pages/seller/ProductGrid";   // new card grid
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
 
 
@@ -117,7 +118,7 @@ useEffect(() => {
       <Route element={<ProtectedRoute allowedRoles={["Seller"]} />}>
         <Route element={<SellerLayout />}>
           <Route path="/seller/dashboard" element={<SellerDashboardPage />} />
-          <Route path="/seller/products" element={<SellerProductsPage />} />
+            <Route path="/seller/products" element={<ProductGrid />} />
           <Route path="/seller/products/new" element={<ProductForm />} />
           <Route path="/seller/products/edit/:id" element={<ProductForm />} />
           <Route path="/seller/orders" element={<SellerOrdersPage />} />

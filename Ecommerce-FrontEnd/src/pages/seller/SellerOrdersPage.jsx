@@ -1,19 +1,26 @@
 import { useState, useEffect } from "react";
-import { fetchSellerOrders, updateShipmentStatus } from "../../services/sellerOrderService";
+import { fetchSellerOrders } from "../../services/sellerOrderService";
+import ShipmentModal from "./ShipmentModal";
 
 const SellerOrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
+  // Shipment modal state
+  const [selectedSellerOrderId, setSelectedSellerOrderId] = useState(null);
+  const [selectedParentOrderId, setSelectedParentOrderId] = useState("");
+  const [selectedShipment, setSelectedShipment] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const loadOrders = async () => {
+    setLoading(true);
     try {
-      const data = await fetchSellerOrders();
-      setOrders(data || []);
+      const data = await fetchSellerOrders({ page, pageSize: 10 });
+      setOrders(data.items || []);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error("Failed to load seller orders", err);
     } finally {
@@ -21,17 +28,25 @@ const SellerOrdersPage = () => {
     }
   };
 
+  useEffect(() => {
+    loadOrders();
+  }, [page]);
+
   const toggleOrder = (orderId) => {
     setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
   };
 
-  const handleStatusChange = async (shipmentId, newStatus) => {
-    try {
-      await updateShipmentStatus(shipmentId, newStatus, "");
-      loadOrders();
-    } catch (err) {
-      console.error("Failed to update shipment status", err);
-    }
+  const openShipmentModal = (so) => {
+    setSelectedSellerOrderId(so._id);
+    setSelectedParentOrderId(so._id.slice(0, 8).toUpperCase());
+    setSelectedShipment(so.shipment || null);
+    setModalOpen(true);
+  };
+
+  const handleShipmentSaved = (updatedShipment) => {
+    // Refresh orders to reflect updated shipment status
+    loadOrders();
+    setSelectedShipment(updatedShipment);
   };
 
   if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading orders...</div>;
@@ -39,73 +54,182 @@ const SellerOrdersPage = () => {
   return (
     <div>
       <h2 className="section-title">Orders</h2>
+
       {orders.length === 0 ? (
         <div className="empty-state">No orders yet.</div>
       ) : (
-        orders.map((order) => (
-          <div className="order-card" key={order._id}>
-            <div className="order-card-header" onClick={() => toggleOrder(order._id)}>
-              <div>
-                <span className="order-id">Order #{order._id.slice(0, 8).toUpperCase()}</span>
-                <span className="order-date"> · {new Date(order.createdAt).toLocaleDateString()}</span>
+        <>
+          {orders.map((order) => (
+            <div
+              className="order-card"
+              key={order._id}
+              style={{
+                marginBottom: "1rem",
+                border: "1px solid #eaeaea",
+                borderRadius: "0.5rem",
+                padding: "1rem",
+              }}
+            >
+              <div
+                className="order-card-header"
+                onClick={() => toggleOrder(order._id)}
+                style={{
+                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div>
+                  <span>Order #{order._id.slice(0, 8).toUpperCase()}</span>
+                  <span> · {new Date(order.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div>
+                  <span style={{ fontWeight: 600, marginRight: "1rem" }}>
+                    {order.orderStatus || order.status || "Unknown"}
+                  </span>
+                  <span>PKR {Number(order.totalAmount ?? 0).toLocaleString()}</span>
+                </div>
               </div>
-              <span className="order-status">{order.orderStatus || order.status || "Unknown"}</span>
-              <span className="order-total">PKR {Number(order.totalAmount ?? 0).toLocaleString()}</span>
-            </div>
 
-            {expandedOrderId === order._id && (
-              <div className="order-card-body">
-                {order.sellerOrders.map((so) => (
-                  <div className="seller-order" key={so._id}>
-                    <div className="seller-order-header">
-                      <span className="seller-store-name">{so.store?.name || so.storeName || "Store"}</span>
-                      <span className="seller-order-status">{so.status}</span>
-                    </div>
-                    {so.items.map((item, idx) => (
-                      <div className="order-item" key={idx}>
-                        <span className="order-item-name">
-                          {item.productNameSnapshot || item.productName} × {item.quantity}
-                        </span>
-                        <span className="order-item-price">
-                          PKR {Number((item.unitPriceSnapshot ?? item.unitPrice ?? 0) * item.quantity).toLocaleString()}
-                        </span>
+              {expandedOrderId === order._id && (
+                <div className="order-card-body" style={{ marginTop: "1rem" }}>
+                  {order.sellerOrders.map((so) => (
+                    <div
+                      className="seller-order"
+                      key={so._id}
+                      style={{
+                        marginBottom: "1rem",
+                        padding: "0.5rem",
+                        background: "#f9fafb",
+                        borderRadius: "0.25rem",
+                      }}
+                    >
+                      <div
+                        className="seller-order-header"
+                        style={{ display: "flex", justifyContent: "space-between" }}
+                      >
+                        <span>{so.store?.name || "Store"}</span>
+                        <span>{so.status}</span>
                       </div>
-                    ))}
-                    <div style={{ textAlign: "right", fontWeight: 600, marginTop: "0.5rem" }}>
-                      Subtotal: PKR {Number(so.subTotal ?? 0).toLocaleString()}
-                    </div>
+                      {so.items.map((item, idx) => (
+                        <div
+                          className="order-item"
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          <span>
+                            {item.productNameSnapshot || item.productName} × {item.quantity}
+                          </span>
+                          <span>
+                            PKR{" "}
+                            {Number(
+                              (item.unitPriceSnapshot ?? item.unitPrice ?? 0) *
+                                item.quantity
+                            ).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                      <div
+                        style={{
+                          textAlign: "right",
+                          fontWeight: 600,
+                          marginTop: "0.5rem",
+                        }}
+                      >
+                        Subtotal: PKR {Number(so.subTotal ?? 0).toLocaleString()}
+                      </div>
 
-                    {so.shipment && (
-                      <div style={{ marginTop: "1rem", padding: "1rem", background: "#f9fafb", borderRadius: "0.5rem" }}>
-                        <p style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>
-                          Tracking: {so.shipment.trackingNumber || "N/A"} ({so.shipment.status})
-                        </p>
-                        <div className="order-actions">
-                          <select
-                            className="shipment-select"
-                            defaultValue=""
-                            onChange={(e) => {
-                              if (e.target.value) handleStatusChange(so.shipment._id, e.target.value);
-                              e.target.value = "";
+                      {/* Shipment info or button to open modal */}
+                      {so.shipment ? (
+                        <div
+                          style={{
+                            marginTop: "0.5rem",
+                            padding: "0.5rem",
+                            background: "#fff",
+                            borderRadius: "0.25rem",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <span>
+                            Tracking: {so.shipment.trackingNumber || "N/A"} (
+                            {so.shipment.status})
+                          </span>
+                          <button
+                            className="btn-edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openShipmentModal(so);
                             }}
                           >
-                            <option value="" disabled>
-                              Update Status
-                            </option>
-                            <option value="Packed">Packed</option>
-                            <option value="Dispatched">Dispatched</option>
-                            <option value="OutForDelivery">Out For Delivery</option>
-                            <option value="Delivered">Delivered</option>
-                          </select>
+                            Manage Shipment
+                          </button>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))
+                      ) : (
+                        <div
+                          style={{
+                            marginTop: "0.5rem",
+                            padding: "0.5rem",
+                            background: "#fff",
+                            borderRadius: "0.25rem",
+                            textAlign: "right",
+                          }}
+                        >
+                          <button
+                            className="btn-edit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openShipmentModal(so);
+                            }}
+                          >
+                            Create Shipment
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button
+                className="page-btn"
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Previous
+              </button>
+              <span>
+                Page {page} of {totalPages}
+              </span>
+              <button
+                className="page-btn"
+                disabled={page >= totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {modalOpen && (
+        <ShipmentModal
+          sellerOrderId={selectedSellerOrderId}
+          parentOrderId={selectedParentOrderId}
+          shipment={selectedShipment}
+          onClose={() => setModalOpen(false)}
+          onSaved={handleShipmentSaved}
+        />
       )}
     </div>
   );

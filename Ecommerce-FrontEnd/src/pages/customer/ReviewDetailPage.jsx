@@ -18,7 +18,8 @@ const ReviewDetailPage = () => {
     const fetchReview = async () => {
       try {
         const res = await axiosInstance.get(`/reviews/${reviewId}`);
-        setReview(res.data);
+        // res.data is the ApiResponse envelope; the actual review is in res.data.data
+        setReview(res.data.data || res.data);
       } catch (err) {
         console.error("Failed to load review", err);
       } finally {
@@ -39,15 +40,10 @@ const ReviewDetailPage = () => {
       <div className="review-card" style={{ border: "1px solid #eaeaea", borderRadius: "0.5rem", padding: "1.5rem", background: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <div>
-            <p style={{ fontWeight: 600, color: "#000", margin: 0 }}>{review.productName}</p>
-            {review.orderId && (
-              <Link
-                to={`/orders/${review.orderId}`}
-                style={{ fontSize: "0.8rem", textDecoration: "underline", color: "#666" }}
-              >
-                View Order #{review.orderId?.slice(0, 8).toUpperCase()}
-              </Link>
-            )}
+            <p style={{ fontWeight: 600, color: "#000", margin: 0 }}>
+              {review.product?.name || "Deleted Product"}
+            </p>
+            {/* No orderId on review; remove the fake link entirely */}
           </div>
           <span style={{ fontSize: "1.5rem", letterSpacing: "2px" }}>
             {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
@@ -62,10 +58,10 @@ const ReviewDetailPage = () => {
 
         {review.images?.length > 0 && (
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-            {review.images.map((img, idx) => (
+            {review.images.map((imgUrl, idx) => (
               <img
                 key={idx}
-                src={getImageUrl(img.imageUrl)}
+                src={getImageUrl(imgUrl)}   // imgUrl is a string, not an object
                 alt={`Review image ${idx + 1}`}
                 style={{ width: "120px", height: "120px", objectFit: "cover", borderRadius: "0.25rem", border: "1px solid #eaeaea" }}
               />

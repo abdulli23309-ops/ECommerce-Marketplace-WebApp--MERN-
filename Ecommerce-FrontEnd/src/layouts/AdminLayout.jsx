@@ -22,7 +22,7 @@ const AdminLayout = () => {
       <div className="dashboard-layout">
         {/* Sidebar */}
         <aside className="dashboard-sidebar">
-          {/* ─────── Refactored Admin Header ─────── */}
+          {/* ─────── Refactored Admin Header (overflow‑proof) ─────── */}
           <div
             style={{
               height: `${headerHeight}px`,
@@ -34,12 +34,40 @@ const AdminLayout = () => {
               borderBottom: "1px solid #e5e7eb",
               boxSizing: "border-box",
               gap: "4px",
+              minWidth: 0,                        // ← allow flex child to shrink
             }}
           >
             {/* Primary Brand Logo Row */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <BrandLogo className="dashboard-brand-mark" variant="mark" />
-              <BrandLogo className="dashboard-brand-wordmark" variant="wordmark" />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                minWidth: 0,                      // ← container can shrink
+                maxWidth: "100%",                 // ← never exceeds sidebar width
+              }}
+            >
+              <BrandLogo
+                className="dashboard-brand-mark"
+                variant="mark"
+                style={{
+                  maxWidth: "100%",
+                  height: "auto",
+                  flexShrink: 1,                 // ← image shrinks if needed
+                }}
+              />
+              <BrandLogo
+                className="dashboard-brand-wordmark"
+                variant="wordmark"
+                style={{
+                  maxWidth: "100%",
+                  height: "auto",
+                  flexShrink: 1,
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",      // ← text truncates if needed
+                }}
+              />
             </div>
 
             {/* Admin Panel Subtitle Badge */}
@@ -55,6 +83,10 @@ const AdminLayout = () => {
                 borderRadius: "4px",
                 lineHeight: 1,
                 border: "1px solid #e5e7eb",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "100%",
               }}
             >
               Admin Panel

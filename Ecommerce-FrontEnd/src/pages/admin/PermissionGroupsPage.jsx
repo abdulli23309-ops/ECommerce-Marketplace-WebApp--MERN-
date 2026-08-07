@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import axiosInstance from "../../services/axiosInstance";
 
-// Determine which role a permission targets based on its prefix
 const getPermissionRole = (code) => {
   if (!code) return { label: "Unknown", color: "#6b7280", bg: "#f3f4f6" };
   if (code.startsWith("Seller."))
@@ -30,25 +29,33 @@ const PermissionGroupsPage = () => {
   const [allPermissions, setAllPermissions] = useState([]);
   const [selectedPermIds, setSelectedPermIds] = useState([]);
 
-  useEffect(() => {
-    fetchGroups();
-  }, [page, search, sort]);
-
+  // Only ONE fetchGroups declaration — remove the duplicate
   const fetchGroups = async () => {
     setLoading(true);
     try {
       const res = await axiosInstance.get("/admin/permission-groups", {
         params: { page, pageSize: 10, search, sortBy: sort },
       });
-      const data = res.data?.data || res.data;
-      const groupsArray = data.items || data;
-      setGroups(groupsArray.map((g) => ({ ...g, id: g._id })));
+      const payload = res.data?.data || res.data;
+      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+        const groupsArray = payload.items || payload;
+        setGroups((groupsArray || []).map((g) => ({ ...g, id: g._id })));
+        setTotalPages(payload.totalPages || 1);
+      } else {
+        const groupsArray = Array.isArray(payload) ? payload : [];
+        setGroups(groupsArray.map((g) => ({ ...g, id: g._id })));
+        setTotalPages(1);
+      }
     } catch (err) {
       console.error("Failed to load groups", err);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchGroups();
+  }, [page, search, sort]);
 
   const fetchAllPermissions = async () => {
     try {

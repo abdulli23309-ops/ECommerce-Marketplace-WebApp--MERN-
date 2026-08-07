@@ -8,11 +8,11 @@ export const getDashboard = asyncHandler(async (req, res) => {
 });
 
 export const getOrders = asyncHandler(async (req, res) => {
-  const orders = await sellerDashboardService.getSellerOrders(req.user.id);
-  new ApiResponse(200, orders, 'Seller orders retrieved').send(res);
+  const data = await sellerDashboardService.getSellerOrders(req.user.id, req.query);
+  new ApiResponse(200, data, 'Seller orders retrieved').send(res);
 });
 
 export const getReviews = asyncHandler(async (req, res) => {
-  const reviews = await sellerDashboardService.getSellerReviews(req.user.id);
-  new ApiResponse(200, reviews, 'Seller reviews retrieved').send(res);
+  const data = await sellerDashboardService.getSellerReviews(req.user.id, req.query);
+  new ApiResponse(200, data, 'Seller reviews retrieved').send(res);
 });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getAdminUsers } from "../../services/adminService";
+import axiosInstance from "../../services/axiosInstance";
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState([]);
@@ -10,18 +11,18 @@ const AdminUsersPage = () => {
   const [roleFilter, setRoleFilter] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const data = await getAdminUsers({ page, pageSize: 10, search, role: roleFilter, isActive: activeFilter });
-      setUsers(data || []);
-      setTotalPages(data.totalPages || 1);
-    } catch (err) {
-      console.error("Failed to load users", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchUsers = async () => {
+  setLoading(true);
+  try {
+    const res = await getAdminUsers({ page, pageSize: 10, search, role: roleFilter, isActive: activeFilter });
+    setUsers(res.items || []);
+    setTotalPages(res.totalPages || 1);
+  } catch (err) {
+    console.error("Failed to load users", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => { fetchUsers(); }, [page, search, roleFilter, activeFilter]);
 

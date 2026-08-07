@@ -11,17 +11,17 @@ const AdminOrdersPage = () => {
   const [sort, setSort] = useState("newest");
 
   const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const data = await getAdminOrders({ page, pageSize: 10, search, status: statusFilter, sortBy: sort });
-      setOrders(data || []);
-      setTotalPages(data.totalPages || 1);
-    } catch (err) {
-      console.error("Failed to load orders", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const res = await getAdminOrders({ page, pageSize: 10, search, status: statusFilter, sortBy: sort });
+    setOrders(res.items || []);
+    setTotalPages(res.totalPages || 1);
+  } catch (err) {
+    console.error("Failed to load orders", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => { fetchOrders(); }, [page, search, statusFilter, sort]);
 

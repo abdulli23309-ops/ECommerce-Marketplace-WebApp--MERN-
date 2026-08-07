@@ -17,9 +17,10 @@ export const createProduct = async (userId, data) => {
   return productRepo.create({ ...data, store: store._id });
 };
 
-export const getMyProducts = async (userId, filters = {}) => {
+export const getMyProducts = async (userId, queryParams = {}) => {
   const store = await resolveStore(userId);
-  return productRepo.findByStore(store._id, filters);
+  const { page, pageSize, ...otherFilters } = queryParams;
+  return productRepo.findByStore(store._id, { page, pageSize, ...otherFilters });
 };
 
 export const updateMyProduct = async (userId, productId, data) => {
@@ -28,7 +29,7 @@ export const updateMyProduct = async (userId, productId, data) => {
   if (!product || product.store.toString() !== store._id.toString()) {
     throw new ApiError(404, 'Product not found');
   }
-  delete data.status; // sellers cannot change product status
+  delete data.status;
   return productRepo.updateById(productId, data);
 };
 

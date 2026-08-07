@@ -1,46 +1,45 @@
-import User from '../models/User.model.js';
-import Product from '../models/Product.model.js';
-import ParentOrder from '../models/ParentOrder.model.js';
-import SellerProfile from '../models/SellerProfile.model.js';
-import ReturnRequest from '../models/Return.model.js';
+import * as adminRepo from '../repositories/Admin.repository.js';
+import { ApiError } from '../utils/ApiError.util.js';
 
-export const getStats = async () => {
-  const [
-    totalUsers,
-    totalSellers,
-    totalProducts,
-    totalOrders,
-    approvedSellers,
-    pendingSellers,
-    approvedProducts,
-    pendingProducts,
-    pendingReturns,
-  ] = await Promise.all([
-    User.countDocuments(),
-    SellerProfile.countDocuments(),
-    Product.countDocuments({ isDeleted: false }),
-    ParentOrder.countDocuments(),
-    SellerProfile.countDocuments({ status: 'Approved' }),
-    SellerProfile.countDocuments({ status: 'Pending' }),
-    Product.countDocuments({ isDeleted: false, status: 'Approved' }),
-    Product.countDocuments({ isDeleted: false, status: 'PendingApproval' }),
-    ReturnRequest.countDocuments({ status: 'Requested' }),
-  ]);
+// ---------------- Users ----------------
+export const getUsers = (query) => adminRepo.findUsers(query);
+export const activateUser = (id) => adminRepo.activateUser(id);
+export const deactivateUser = (id) => adminRepo.deactivateUser(id);
 
-  // Calculate total revenue from all parent orders
-  const revenueResult = await ParentOrder.aggregate([
-    { $group: { _id: null, total: { $sum: '$totalAmount' } } },
-  ]);
-  const totalRevenue = revenueResult[0]?.total || 0;
+// ---------------- Sellers ----------------
+export const getSellers = (query) => adminRepo.findSellers(query);
+export const approveSeller = (id) => adminRepo.approveSeller(id);
+export const rejectSeller = (id, reason) => adminRepo.rejectSeller(id, reason);
 
-  return {
-    totalUsers,
-    totalSellers,
-    totalProducts,
-    totalOrders,
-    totalRevenue,
-    pendingSellerApprovals: pendingSellers,
-    pendingProductApprovals: pendingProducts,
-    pendingReturns,
-  };
-};
+// ---------------- Orders ----------------
+export const getOrders = (query) => adminRepo.findOrders(query);
+
+// ---------------- Payments ----------------
+export const getPayments = (query) => adminRepo.findPayments(query);
+
+// ---------------- Shipments ----------------
+export const getShipments = (query) => adminRepo.findShipments(query);
+
+// ---------------- Returns ----------------
+export const getReturns = (query) => adminRepo.findReturns(query);
+export const processReturn = (id, status, adminId, reason) =>
+  adminRepo.processReturn(id, status, adminId, reason);
+
+// ---------------- Refunds ----------------
+export const getRefunds = (query) => adminRepo.findRefunds(query);
+export const createRefund = (returnRequestId, adminId) =>
+  adminRepo.createRefund(returnRequestId, adminId);
+
+// ---------------- Permission Groups ----------------
+export const getPermissionGroups = (query) => adminRepo.findPermissionGroups(query);
+export const createPermissionGroup = (data) => adminRepo.createPermissionGroup(data);
+export const updatePermissionGroup = (id, data) => adminRepo.updatePermissionGroup(id, data);
+export const deletePermissionGroup = (id) => adminRepo.deletePermissionGroup(id);
+
+// ---------------- Roles (for assignment) ----------------
+export const getRoles = (query) => adminRepo.findRoles(query);
+export const assignGroupToRole = (roleId, groupId) => adminRepo.assignGroupToRole(roleId, groupId);
+export const removeGroupFromRole = (roleId, groupId) => adminRepo.removeGroupFromRole(roleId, groupId);
+
+// ---------------- Stats ----------------
+export const getStats = () => adminRepo.getStats();
