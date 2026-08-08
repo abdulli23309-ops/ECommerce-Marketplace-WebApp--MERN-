@@ -21,3 +21,10 @@ export const changePassword = asyncHandler(async (req, res) => {
   await accountService.changePassword(req.user.id, currentPassword, newPassword);
   new ApiResponse(200, null, 'Password changed successfully').send(res);
 });
+
+export const updateAvatar = asyncHandler(async (req, res) => {
+  if (!req.file) throw new ApiError(400, 'No image uploaded');
+  const imagePath = `/uploads/products/${req.file.filename}`;
+  await accountService.updateAvatar(req.user.id, imagePath);
+  new ApiResponse(200, { avatar: imagePath }, 'Avatar updated').send(res);
+});

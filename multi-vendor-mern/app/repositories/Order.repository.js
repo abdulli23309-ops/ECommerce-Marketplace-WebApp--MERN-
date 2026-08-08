@@ -1,5 +1,6 @@
 import ParentOrder from '../models/ParentOrder.model.js';
 import SellerOrder from '../models/SellerOrder.model.js';
+import mongoose from 'mongoose';
 
 export const findByCustomer = async (customerId, { page = 1, pageSize = 10 } = {}) => {
   const skip = (Number(page) - 1) * Number(pageSize);
@@ -28,7 +29,10 @@ export const findByCustomer = async (customerId, { page = 1, pageSize = 10 } = {
 };
 
 export const findById = (id, customerId) =>
-  ParentOrder.findOne({ _id: id, customer: customerId })
+  ParentOrder.findOne({
+    _id: new mongoose.Types.ObjectId(id),
+    customer: new mongoose.Types.ObjectId(customerId),
+  })
     .populate({
       path: 'sellerOrders',
       populate: { path: 'store', select: 'name city' },

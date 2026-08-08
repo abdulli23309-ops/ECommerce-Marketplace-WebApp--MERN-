@@ -13,6 +13,7 @@ router.post('/store/logo', authenticate, requireRole('Seller'), uploadProductIma
 // All other seller routes require the Seller role
 router.use(authenticate, requireRole('Seller'));
 
+router.get('/seller-orders/:id', authenticate, requireRole('Seller'), sellerController.getSellerOrderById);
 router.get('/dashboard', sellerDashboardController.getDashboard);
 router.get('/orders', sellerDashboardController.getOrders);
 router.get('/reviews', sellerDashboardController.getReviews);

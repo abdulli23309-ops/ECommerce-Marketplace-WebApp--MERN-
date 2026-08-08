@@ -22,3 +22,9 @@ export const processReturn = asyncHandler(async (req, res) => {
   );
   new ApiResponse(200, returnReq, 'Return processed').send(res);
 });
+
+export const uploadReturnImage = asyncHandler(async (req, res) => {
+  const imagePaths = (req.files || []).map(file => `/uploads/products/${file.filename}`);
+  if (imagePaths.length === 0) throw new ApiError(400, 'No image uploaded');
+  new ApiResponse(200, { url: imagePaths[0] }, 'Image uploaded').send(res);
+});

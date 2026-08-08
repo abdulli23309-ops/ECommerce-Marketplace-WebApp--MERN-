@@ -59,3 +59,10 @@ export const changePassword = async (userId, currentPassword, newPassword) => {
   user.password = newPassword;
   await user.save();
 };
+
+export const updateAvatar = async (userId, avatarUrl) => {
+  const user = await User.findByIdAndUpdate(userId, { avatar: avatarUrl }, { new: true }).lean();
+  if (!user) throw new ApiError(404, 'User not found');
+  const { password, refreshTokens, ...profile } = user;
+  return profile;
+};

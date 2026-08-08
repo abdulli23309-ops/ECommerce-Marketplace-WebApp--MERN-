@@ -1,25 +1,119 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { fetchOrderById } from "../../services/orderService";
-import axiosInstance from "../../services/axiosInstance";
+import { fetchMyReviews } from "../../services/reviewService";
+
+const statusSteps = ["Pending", "Processing", "Shipped", "Delivered"];
+
+const StepProgress = ({ currentStep }) => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
+    {statusSteps.map((step, idx) => {
+      const isFinalStep = idx === statusSteps.length - 1;
+      const isCompleted =
+        idx < currentStep || (idx === currentStep && isFinalStep);
+      const isActive = idx === currentStep && !isFinalStep;
+      const lineColor = isCompleted && idx > 0 ? "#10b981" : "#e5e7eb";
+
+      let dotBg = isCompleted ? "#10b981" : "#e5e7eb";
+      let dotBorder = "none";
+      let icon = null;
+
+      if (isActive) {
+        dotBg = "#fff";
+        dotBorder = "3px solid #10b981";
+      }
+
+      if (isCompleted) {
+        icon = (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        );
+      }
+
+      return (
+        <div key={step} style={{ flex: 1, textAlign: "center", position: "relative" }}>
+          {idx > 0 && (
+            <div style={{
+              position: "absolute", top: "14px", left: "-50%", right: "50%",
+              height: "2px", background: lineColor,
+            }} />
+          )}
+          <div style={{
+            width: "28px", height: "28px", borderRadius: "50%",
+            background: dotBg, border: dotBorder,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 0.5rem", fontSize: "0.8rem",
+          }}>
+            {icon || (isActive ? (
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="#10b981" stroke="none">
+                <circle cx="12" cy="12" r="6" />
+              </svg>
+            ) : null)}
+          </div>
+          <span style={{
+            fontSize: "0.8rem",
+            color: isCompleted ? "#10b981" : isActive ? "#000" : "#d1d5db",
+            fontWeight: isCompleted || isActive ? 600 : 400,
+          }}>
+            {step}
+          </span>
+        </div>
+      );
+    })}
+  </div>
+);
+const ShipmentInfo = ({ shipment }) => {
+  if (!shipment) {
+    return (
+      <div style={{
+        marginTop: "1rem", padding: "0.75rem 1rem",
+        background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px",
+        fontSize: "0.85rem", color: "#92400e",
+        display: "flex", alignItems: "center", gap: "0.5rem",
+      }}>
+        <span>ℹ️</span>
+        <span>Awaiting shipment details from the seller.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: "1rem", padding: "0.75rem 1rem", background: "#f9fafb", borderRadius: "8px", fontSize: "0.85rem", color: "#374151" }}>
+      <p style={{ fontWeight: 600, margin: "0 0 0.5rem" }}>Shipment</p>
+      <p style={{ margin: "0 0 0.25rem" }}>Carrier: {shipment.carrier || "N/A"} | Tracking: {shipment.trackingNumber || "N/A"}</p>
+      <p style={{ margin: 0, fontWeight: 600 }}>Status: {shipment.status}</p>
+      {shipment.trackingHistory?.length > 0 && (
+        <div style={{ marginTop: "0.75rem" }}>
+          {shipment.trackingHistory.map((th, i) => (
+            <div key={i} style={{ marginBottom: "0.25rem", fontSize: "0.8rem" }}>
+              <span style={{ fontWeight: 500 }}>{th.status}</span>
+              {th.location && <span> – {th.location}</span>}
+              <span style={{ color: "#6b7280", marginLeft: "0.5rem" }}>{new Date(th.timestamp).toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const OrderDetailPage = () => {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [reviewedItemIds, setReviewedItemIds] = useState(new Set());
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [orderData, reviewsData] = await Promise.all([
-          fetchOrderById(orderId),
-          axiosInstance.get("/reviews/my").then(res => res.data),
-        ]);
+        const orderData = await fetchOrderById(orderId);
+        const reviewsRes = await fetchMyReviews({ pageSize: 100 });
+        const allReviews = reviewsRes.items || [];
+        const reviewedSellerOrderIds = new Set(
+          allReviews.map((r) => (r.sellerOrder?._id || r.sellerOrder).toString())
+        );
+        orderData.reviewedSellerOrderIds = reviewedSellerOrderIds;
         setOrder(orderData);
-        // Build a set of order item IDs that already have a review
-        const reviewedIds = new Set((reviewsData || []).map(r => r.orderItemId));
-        setReviewedItemIds(reviewedIds);
       } catch (err) {
         console.error("Failed to load order", err);
       } finally {
@@ -29,135 +123,152 @@ const OrderDetailPage = () => {
     load();
   }, [orderId]);
 
-  const statusSteps = ["Pending", "Processing", "Shipped", "Delivered"];
   const currentStep = statusSteps.indexOf(order?.orderStatus);
 
   if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading order...</div>;
   if (!order) return <div style={{ padding: "2rem", color: "#666" }}>Order not found.</div>;
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem" }}>
-      <Link to="/orders" className="back-link">← Back to orders</Link>
-      <h2 className="section-title">Order #{order.parentOrderId.slice(0, 8).toUpperCase()}</h2>
+    <div style={{ maxWidth: "960px", margin: "0 auto", padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "#111827" }}>
+      {/* Back link */}
+      <Link
+        to="/orders"
+        style={{
+          display: "inline-flex", alignItems: "center", gap: "0.25rem",
+          color: "#6b7280", textDecoration: "none", fontSize: "0.9rem",
+          marginBottom: "1.5rem", transition: "color 0.2s",
+        }}
+        onMouseEnter={(e) => e.target.style.color = "#111827"}
+        onMouseLeave={(e) => e.target.style.color = "#6b7280"}
+      >
+        ← Back to orders
+      </Link>
 
-      {/* Status progress bar */}
-      <div className="order-progress">
-        {statusSteps.map((step, idx) => (
-          <div
-            key={step}
-            className={`progress-step ${idx <= currentStep ? "active" : ""}`}
-            style={{
-              flex: 1,
-              textAlign: "center",
-              position: "relative",
-              color: idx <= currentStep ? "#000" : "#ccc",
-              fontWeight: idx <= currentStep ? 600 : 400,
-            }}
-          >
-            <div
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                background: idx <= currentStep ? "#000" : "#ddd",
-                margin: "0 auto 0.25rem",
-              }}
-            />
-            {step}
-          </div>
-        ))}
+      {/* Order header */}
+      <div style={{ marginBottom: "2rem", paddingBottom: "1.5rem", borderBottom: "1px solid #e5e7eb" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0 0 0.5rem" }}>
+          Order #{order._id.slice(0, 8).toUpperCase()}
+        </h2>
+        <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", color: "#4b5563", fontSize: "0.9rem" }}>
+          <span>Placed: {new Date(order.createdAt).toLocaleString()}</span>
+          <span>Total: <strong style={{ color: "#111827" }}>PKR {order.totalAmount.toLocaleString()}</strong></span>
+        </div>
       </div>
 
-      <div className="order-meta" style={{ margin: "1.5rem 0", display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-        <span>Placed: {new Date(order.orderDate).toLocaleString()}</span>
-        <span>Total: <strong>PKR {order.totalAmount.toLocaleString()}</strong></span>
-      </div>
+      {/* Progress stepper */}
+      <StepProgress currentStep={currentStep} />
 
-      {order.sellerOrders.map((so) => (
-        <div className="order-card" key={so.sellerOrderId}>
-          <div className="order-card-header" style={{ flexDirection: "column", alignItems: "flex-start", gap: "0.25rem" }}>
-            <span style={{ fontWeight: 600 }}>Seller: {so.storeName}</span>
-            <span style={{ color: "#666", fontSize: "0.85rem" }}>Sub‑status: {so.status}</span>
+      {/* Multi‑vendor cards */}
+      {order.sellerOrders?.map((so) => (
+        <div
+          key={so._id}
+          style={{
+            background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)", marginBottom: "1.5rem", overflow: "hidden",
+          }}
+        >
+          {/* Card header */}
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "1rem 1.25rem", borderBottom: "1px solid #f3f4f6", background: "#f9fafb",
+          }}>
+            <span style={{ fontWeight: 600, fontSize: "1rem" }}>
+              Package from {so.store?.name || "Unknown Store"}
+            </span>
+            <span style={{
+              padding: "2px 10px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 600,
+              color: so.status === "Delivered" ? "#065f46" : "#92400e",
+              background: so.status === "Delivered" ? "#d1fae5" : "#ffedd5",
+            }}>
+              {so.status}
+            </span>
           </div>
 
-          <table className="product-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Price</th>
-                <th>Qty</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {so.items.map((item, idx) => (
-                <tr key={idx}>
-                  <td>{item.productName}</td>
-                  <td>PKR {item.unitPrice}</td>
-                  <td>{item.quantity}</td>
-                  <td>PKR {(item.unitPrice * item.quantity).toLocaleString()}</td>
+          {/* Item table */}
+          <div style={{ padding: "1rem 1.25rem" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #f3f4f6", color: "#6b7280" }}>
+                  <th style={{ textAlign: "left", padding: "0.5rem 0", fontWeight: 500 }}>Product</th>
+                  <th style={{ textAlign: "left", padding: "0.5rem 0", fontWeight: 500 }}>Price</th>
+                  <th style={{ textAlign: "left", padding: "0.5rem 0", fontWeight: 500 }}>Qty</th>
+                  <th style={{ textAlign: "right", padding: "0.5rem 0", fontWeight: 500 }}>Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{ textAlign: "right", fontWeight: 600, margin: "0.5rem 0" }}>
-            Subtotal: PKR {so.subTotal.toLocaleString()}
+              </thead>
+              <tbody>
+                {so.items?.map((item, idx) => (
+                  <tr key={idx} style={{ borderBottom: "1px solid #f9fafb" }}>
+                    <td style={{ padding: "0.5rem 0" }}>{item.productNameSnapshot}</td>
+                    <td style={{ padding: "0.5rem 0" }}>PKR {item.unitPriceSnapshot}</td>
+                    <td style={{ padding: "0.5rem 0" }}>{item.quantity}</td>
+                    <td style={{ padding: "0.5rem 0", textAlign: "right", fontWeight: 500 }}>
+                      PKR {(item.unitPriceSnapshot * item.quantity).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ textAlign: "right", fontWeight: 600, marginTop: "0.75rem", fontSize: "0.95rem" }}>
+              Subtotal: PKR {so.subTotal?.toLocaleString()}
+            </div>
           </div>
 
-          {/* "Write a Review" link for each delivered item not already reviewed */}
-          {so.items.map((item) => (
-            <div key={item.orderItemId} style={{ marginTop: "0.25rem" }}>
-              {so.shipment?.status === "Delivered" && !reviewedItemIds.has(item.orderItemId) && (
-                <Link
-                  to={`/review/new/${item.orderItemId}`}
-                  className="btn-edit"
-                  style={{ fontSize: "0.8rem", textDecoration: "underline" }}
-                >
-                  Write a Review
-                </Link>
-              )}
-              {so.shipment?.status === "Delivered" && reviewedItemIds.has(item.orderItemId) && (
-                <span style={{ fontSize: "0.8rem", color: "#999" }}>Review submitted ✓</span>
-              )}
-            </div>
-          ))}
+          {/* Shipment info */}
+          <div style={{ padding: "0 1.25rem 1rem" }}>
+            <ShipmentInfo shipment={so.shipment} />
+          </div>
 
-          {/* Shipment & Tracking */}
-          {so.shipment ? (
-            <div className="shipment-info">
-              <h4>Shipment</h4>
-              <p>Carrier: {so.shipment.carrier || "N/A"} | Tracking: {so.shipment.trackingNumber || "N/A"}</p>
-              <p>Status: <strong>{so.shipment.status}</strong></p>
-              <div className="tracking-history">
-                {so.shipment.trackingHistory?.map((th, i) => (
-                  <div key={i} className="tracking-step">
-                    <span>{th.status}</span>
-                    {th.location && <span> – {th.location}</span>}
-                    <span className="tracking-time">{new Date(th.timestamp).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p style={{ color: "#666", fontSize: "0.875rem" }}>No shipment created yet.</p>
-          )}
-
-          {/* Actions */}
-          <div className="order-actions" style={{ marginTop: "1rem", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+          {/* Actions footer */}
+          <div style={{
+            display: "flex", justifyContent: "flex-end", gap: "0.75rem",
+            padding: "0.75rem 1.25rem", borderTop: "1px solid #f3f4f6", background: "#f9fafb",
+          }}>
+            {so.status === "Delivered" && !order.reviewedSellerOrderIds?.has(so._id.toString()) && (
+              <Link
+                to={`/review/new/${so._id}`}
+                style={{
+                  padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #d1d5db",
+                  color: "#111827", textDecoration: "none", fontSize: "0.85rem", fontWeight: 500,
+                  background: "#fff", transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => e.target.style.background = "#f3f4f6"}
+                onMouseLeave={(e) => e.target.style.background = "#fff"}
+              >
+                Write a Review
+              </Link>
+            )}
+            {so.status === "Delivered" && order.reviewedSellerOrderIds?.has(so._id.toString()) && (
+              <span style={{ fontSize: "0.8rem", color: "#9ca3af", alignSelf: "center" }}>
+                Review submitted ✓
+              </span>
+            )}
+            {so.status === "Delivered" && (
+              <Link
+                to={`/returns/new/${so._id}`}
+                style={{
+                  padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #e5e7eb",
+                  color: "#4b5563", textDecoration: "none", fontSize: "0.85rem", fontWeight: 400,
+                  background: "#fff", transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => e.target.style.background = "#f3f4f6"}
+                onMouseLeave={(e) => e.target.style.background = "#fff"}
+              >
+                Request Return
+              </Link>
+            )}
             {order.orderStatus === "Pending" && (
-              <button className="btn-remove" style={{ fontWeight: 600, border: "1px solid #eaeaea", background: "#fff", padding: "0.5rem 1rem", cursor: "pointer" }}>
+              <button
+                style={{
+                  padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #fca5a5",
+                  color: "#b91c1c", background: "#fff", fontSize: "0.85rem", fontWeight: 500,
+                  cursor: "pointer", transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => e.target.style.background = "#fef2f2"}
+                onMouseLeave={(e) => e.target.style.background = "#fff"}
+              >
                 Cancel Order
               </button>
             )}
-            {so.shipment?.status === "Delivered" && (
-  <Link
-    to={`/returns/new/${item.orderItemId}`}
-    className="btn-edit"
-    style={{ fontSize: "0.8rem", textDecoration: "underline", marginLeft: "1rem" }}
-  >
-    Request Return
-  </Link>
-)}
           </div>
         </div>
       ))}

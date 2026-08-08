@@ -34,3 +34,8 @@ export const uploadStoreLogo = asyncHandler(async (req, res) => {
   if (imagePaths.length === 0) throw new ApiError(400, 'No image uploaded');
   new ApiResponse(200, { logoUrl: imagePaths[0] }, 'Logo uploaded').send(res);
 });
+export const getSellerOrderById = asyncHandler(async (req, res) => {
+  const order = await SellerOrder.findById(req.params.id).populate('store', 'name').lean();
+  if (!order) throw new ApiError(404, 'Seller order not found');
+  new ApiResponse(200, order, 'Seller order retrieved').send(res);
+});

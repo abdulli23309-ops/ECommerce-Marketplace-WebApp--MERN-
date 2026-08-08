@@ -23,3 +23,9 @@ export const getReviewById = asyncHandler(async (req, res) => {
   if (!review) throw new ApiError(404, 'Review not found');
   new ApiResponse(200, review, 'Review retrieved').send(res);
 });
+
+export const uploadReviewImage = asyncHandler(async (req, res) => {
+  const imagePaths = (req.files || []).map(file => `/uploads/products/${file.filename}`);
+  if (imagePaths.length === 0) throw new ApiError(400, 'No image uploaded');
+  new ApiResponse(200, { url: imagePaths[0] }, 'Image uploaded').send(res);
+});

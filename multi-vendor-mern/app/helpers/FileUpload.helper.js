@@ -21,14 +21,23 @@ const fileFilter = (req, file, cb) => {
   cb(new ApiError(400, 'Only image files (jpeg, jpg, png, gif, webp) are allowed'), false);
 };
 
-const upload = multer({
+// Product images (multiple, field name "images")
+const uploadProduct = multer({
   storage,
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
 }).array('images', 5);
 
+// Avatar (single, field name "avatar")
+const uploadAvatarMulter = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024 },
+}).single('avatar');
+
+// Wrapper for product image upload
 export const uploadProductImages = (req, res, next) => {
-  upload(req, res, (err) => {
+  uploadProduct(req, res, (err) => {
     if (err) {
       if (err instanceof ApiError) return next(err);
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -36,6 +45,20 @@ export const uploadProductImages = (req, res, next) => {
       }
       if (err.code === 'LIMIT_UNEXPECTED_FILE') {
         return next(new ApiError(400, 'Too many files. Maximum is 5.'));
+      }
+      return next(new ApiError(500, err.message));
+    }
+    next();
+  });
+};
+
+// Wrapper for avatar upload
+export const uploadAvatar = (req, res, next) => {
+  uploadAvatarMulter(req, res, (err) => {
+    if (err) {
+      if (err instanceof ApiError) return next(err);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return next(new ApiError(400, 'File too large. Maximum size is 2 MB.'));
       }
       return next(new ApiError(500, err.message));
     }

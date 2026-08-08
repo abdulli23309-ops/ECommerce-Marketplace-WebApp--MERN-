@@ -21,6 +21,10 @@ const returnSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    description: {
+  type: String,
+  default: '',
+},
     images: {
       type: [String],
       default: [],

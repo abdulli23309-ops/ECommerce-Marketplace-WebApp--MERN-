@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import * as reviewController from '../controllers/Review.controller.js';
 import { authenticate } from '../middleware/Auth.middleware.js';
+import { uploadProductImages } from '../helpers/FileUpload.helper.js';
 
 const router = Router();
 
 // ---- Authenticated routes ----
 router.get('/mine', authenticate, reviewController.getMyReviews);          // <-- MUST be first
 router.post('/', authenticate, reviewController.createReview);
-
+router.post('/upload-image', authenticate, uploadProductImages, reviewController.uploadReviewImage);
 // ---- Public route ----
 router.get('/product/:productId', reviewController.getProductReviews);     // now after /mine
 router.get('/:id', authenticate, reviewController.getReviewById);

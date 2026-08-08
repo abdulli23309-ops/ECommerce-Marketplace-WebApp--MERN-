@@ -43,24 +43,24 @@ import ReviewPage from "./pages/customer/ReviewPage";
 import MyReviewsPage from "./pages/customer/MyReviewsPage";
 import ReviewDetailPage from "./pages/customer/ReviewDetailPage";
 import PermissionGroupsPage from "./pages/admin/PermissionGroupsPage";
+import RequestReturnPage from "./pages/customer/RequestReturnPage";   // single import
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminShipmentsPage from "./pages/admin/AdminShipmentsPage";
-import ProductGrid from "./pages/seller/ProductGrid";   // new card grid
+import ProductGrid from "./pages/seller/ProductGrid";
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
-
 
 const App = () => {
   const dispatch = useDispatch();
-const { accessToken } = useSelector(state => state.auth);
-const { codes } = useSelector(state => state.permissions);
+  const { accessToken } = useSelector(state => state.auth);
+  const { codes } = useSelector(state => state.permissions);
 
-useEffect(() => {
-  if (accessToken ) {
-    dispatch(fetchPermissions());
-  }
-}, [accessToken, dispatch]);
+  useEffect(() => {
+    if (accessToken) {
+      dispatch(fetchPermissions());
+    }
+  }, [accessToken, dispatch]);
+
   return (
-    
     <Routes>
       {/* Public auth pages – NOT protected */}
       <Route element={<AuthLayout />}>
@@ -68,22 +68,7 @@ useEffect(() => {
         <Route path="/register" element={<RegisterPage />} />
       </Route>
 
-      {/*
-        PUBLIC storefront routes — NOT behind ProtectedRoute.
-        This was the single biggest bug found in the QA review: the home page
-        and product browsing were previously locked behind ProtectedRoute
-        allowedRoles={["Customer"]}, meaning a first-time visitor with no
-        account was redirected straight to /login and could never see the
-        site. CustomerLayout already renders correctly for a logged-out user
-        (it shows "Sign In" instead of "Profile" — see its user ? ... : ...
-        branch), so it's safe to render it outside auth entirely.
-
-        NOTE: "/products" still points at the placeholder <div>Products</div>
-        and there is still no "/products/:id" route or backing
-        GET /api/products/{id} endpoint. Building the real listing + detail
-        pages is Phase 1 work, not part of this Phase 0 security/routing fix —
-        flagging so this isn't mistaken for "already done."
-      */}
+      {/* PUBLIC storefront routes — NOT behind ProtectedRoute */}
       <Route element={<CustomerLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
@@ -101,11 +86,13 @@ useEffect(() => {
           <Route path="/orders" element={<OrderHistoryPage />} />
           <Route path="/addresses" element={<AddressBookPage />} />
           <Route path="/orders/:orderId" element={<OrderDetailPage />} />
-          <Route path="/review/new/:orderItemId" element={<ReviewPage />} />
+          <Route path="/review/new/:sellerOrderId" element={<ReviewPage />} />
+          <Route path="/returns/new/:sellerOrderId" element={<RequestReturnPage />} />   {/* single route */}
           <Route path="/reviews/my" element={<MyReviewsPage />} />
           <Route path="/reviews/:reviewId" element={<ReviewDetailPage />} />
         </Route>
       </Route>
+
       {/* Authenticated-only routes (any role) */}
       <Route element={<ProtectedRoute />}>
         <Route element={<CustomerLayout />}>
@@ -118,7 +105,7 @@ useEffect(() => {
       <Route element={<ProtectedRoute allowedRoles={["Seller"]} />}>
         <Route element={<SellerLayout />}>
           <Route path="/seller/dashboard" element={<SellerDashboardPage />} />
-            <Route path="/seller/products" element={<ProductGrid />} />
+          <Route path="/seller/products" element={<ProductGrid />} />
           <Route path="/seller/products/new" element={<ProductForm />} />
           <Route path="/seller/products/edit/:id" element={<ProductForm />} />
           <Route path="/seller/orders" element={<SellerOrdersPage />} />

@@ -3,7 +3,7 @@ import * as orderRepo from '../repositories/Order.repository.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
 export const createReturn = async (customerId, data) => {
-  const { productId, sellerOrderId, reason, images } = data;
+  const { productId, sellerOrderId, reason, description, images } = data;   // ← added description
 
   const sellerOrder = await orderRepo.findSellerOrderById(sellerOrderId);
   if (!sellerOrder) throw new ApiError(404, 'Seller order not found');
@@ -25,6 +25,7 @@ export const createReturn = async (customerId, data) => {
     product: productId,
     sellerOrder: sellerOrderId,
     reason,
+    description,            // ← now included
     images,
   });
 };
@@ -35,6 +36,5 @@ export const processReturn = async (returnId, status, adminId, rejectionReason) 
   const returnRequest = await returnRepo.findById(returnId);
   if (!returnRequest) throw new ApiError(404, 'Return request not found');
   if (returnRequest.status !== 'Requested') throw new ApiError(400, 'Return already processed');
-
   return returnRepo.updateStatus(returnId, status, adminId, rejectionReason);
 };

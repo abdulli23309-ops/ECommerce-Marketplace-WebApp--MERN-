@@ -7,8 +7,16 @@ const router = Router();
 
 router.use(authenticate);
 
+// Customer checkout
 router.post('/checkout', orderController.checkout);
+
+// Get single seller order (for review page, returns product info)
+router.get('/seller-orders/:id', orderController.getSellerOrderById);
+
+// Customer order history
 router.get('/', orderHistoryController.getMyOrders);
+
+// Single order detail
 router.get('/:id', orderHistoryController.getOrderById);
 
 export default router;

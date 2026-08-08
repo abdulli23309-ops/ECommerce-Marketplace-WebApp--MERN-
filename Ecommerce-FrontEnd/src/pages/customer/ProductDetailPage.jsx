@@ -32,6 +32,7 @@ const ProductDetailPage = () => {
           setMainImage(getImageUrl(productData.images[0]));
         }
 
+        // Related products
         try {
           const allProducts = await fetchApprovedProducts({ page: 1, pageSize: 100 });
           const related = (allProducts?.items || [])
@@ -43,9 +44,11 @@ const ProductDetailPage = () => {
           setRelatedProducts([]);
         }
 
+        // Reviews – handle paginated response
         try {
-          const reviewData = await fetchProductReviews(productId);
-          setReviews(reviewData || []);
+          const reviewRes = await fetchProductReviews(productId);
+          // reviewRes could be { items, total, ... } or plain array (fallback)
+          setReviews(reviewRes.items || reviewRes || []);
         } catch (error) {
           console.error("Failed to fetch reviews:", error);
           setReviews([]);
@@ -169,7 +172,7 @@ const ProductDetailPage = () => {
             className="product-detail-price"
             style={{ fontSize: "1.5rem", fontWeight: "bold", margin: "0 0 1.5rem 0" }}
           >
-            PKR {product.basePrice?.toLocaleString()}
+            PKR {product.price?.toLocaleString()}
           </p>
 
           <div
@@ -183,14 +186,14 @@ const ProductDetailPage = () => {
               gap: "0.5rem",
             }}
           >
-            {product.brandName && (
+            {product.brand?.name && (
               <span>
-                <strong>Brand:</strong> {product.brandName}
+                <strong>Brand:</strong> {product.brand.name}
               </span>
             )}
-            {product.categoryName && (
+            {product.category?.name && (
               <span>
-                <strong>Category:</strong> {product.categoryName}
+                <strong>Category:</strong> {product.category.name}
               </span>
             )}
           </div>
@@ -252,13 +255,11 @@ const ProductDetailPage = () => {
           </div>
 
           <p className="product-detail-description" style={{ lineHeight: "1.6", marginBottom: "2rem" }}>
-            {product.description && product.description.length > 100
-              ? product.description.slice(0, 100) + "..."
-              : product.description || "No description available for this product."}
+            {product.description || "No description available for this product."}
           </p>
 
           {/* Cart Controls */}
-          {product.stockQuantity === 0 ? (
+          {product.stock === 0 ? (
             <p
               className="out-of-stock"
               style={{
@@ -370,7 +371,7 @@ const ProductDetailPage = () => {
                   </span>
                 </div>
                 <p className="review-comment">{review.comment}</p>
-                <p className="review-author">— {review.userName || "Anonymous"}</p>
+                <p className="review-author">— {review.customer?.name || "Anonymous"}</p>
               </div>
             ))}
           </div>
@@ -419,7 +420,7 @@ const ProductDetailPage = () => {
                     {rp.name}
                   </p>
                   <p className="product-price" style={{ color: "#333", margin: 0 }}>
-                    PKR {rp.basePrice?.toLocaleString()}
+                    PKR {rp.price?.toLocaleString()}
                   </p>
                 </div>
               </Link>
