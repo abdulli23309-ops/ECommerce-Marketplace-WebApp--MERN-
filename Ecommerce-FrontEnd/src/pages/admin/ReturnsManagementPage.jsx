@@ -1,93 +1,136 @@
 import { useState, useEffect } from "react";
 import { getReturns, approveReturn, rejectReturn } from "../../services/adminService";
+import { getImageUrl } from "../../utils/imageHelper";
+
+const statusBadgeStyle = (status) => {
+  const base = { display: "inline-block", padding: "2px 10px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 600 };
+  switch (status) {
+    case "Approved": return { ...base, backgroundColor: "#dcfce7", color: "#166534" };
+    case "Requested": return { ...base, backgroundColor: "#fef3c7", color: "#92400e" };
+    case "Rejected": return { ...base, backgroundColor: "#fee2e2", color: "#991b1b" };
+    default: return { ...base, backgroundColor: "#f3f4f6", color: "#1f2937" };
+  }
+};
+
+const iconBtnStyle = {
+  background: "transparent", border: "none", cursor: "pointer", padding: "4px", borderRadius: "4px",
+  color: "#6b7280", transition: "background 0.15s, color 0.15s",
+};
+
+const ApproveIcon = () => ( <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> );
+const RejectIcon = () => ( <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg> );
 
 const ReturnsManagementPage = () => {
   const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [selectedReturn, setSelectedReturn] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const loadReturns = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const res = await getReturns();           // { items, total, ... }
+      const res = await getReturns();
       setReturns(res.items || []);
-    } catch (err) {
-      console.error("Failed to load returns", err);
-      setError("Could not load returns.");
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    loadReturns();
-  }, []);
+  useEffect(() => { loadReturns(); }, []);
 
   const handleAction = async (returnId, action) => {
     try {
       if (action === "approve") await approveReturn(returnId);
       else await rejectReturn(returnId);
-      setReturns((prev) =>
-        prev.map((r) =>
-          r.id === returnId ? { ...r, status: action === "approve" ? "Approved" : "Rejected" } : r
-        )
-      );
-    } catch (err) {
-      console.error(`Failed to ${action} return`, err);
-    }
+      setReturns(prev => prev.map(r => r.id === returnId ? { ...r, status: action === "approve" ? "Approved" : "Rejected" } : r));
+      setModalOpen(false);
+    } catch (err) { console.error(`Failed to ${action} return`, err); }
+  };
+
+  const openModal = (ret) => {
+    setSelectedReturn(ret);
+    setModalOpen(true);
   };
 
   return (
-    <div>
-      <h2 className="section-title">Returns Management</h2>
+    <div style={{ backgroundColor: "#f9fafb", minHeight: "100vh", padding: "2rem" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <div style={{ marginBottom: "1.5rem" }}>
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", margin: 0 }}>Returns Management</h1>
+          <p style={{ color: "#6b7280", marginTop: "0.25rem" }}>Review and process customer returns</p>
+        </div>
 
-      {loading ? (
-        <p style={{ color: "#666" }}>Loading returns...</p>
-      ) : error ? (
-        <p className="error-text">{error}</p>
-      ) : returns.length === 0 ? (
-        <div className="empty-state">No return requests.</div>
-      ) : (
-        <table className="product-table">
-          <thead>
-            <tr>
-              <th>Customer</th>
-              <th>Product</th>
-              <th>Reason</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {returns.map((ret) => (
-              <tr key={ret.id}>
-                <td>{ret.customerEmail}</td>
-                <td>{ret.productName}</td>
-                <td style={{ maxWidth: "300px" }}>{ret.reason}</td>
-                <td>
-                  <span style={{ fontWeight: 600, color: ret.status === "Approved" ? "#000" : "#666" }}>
-                    {ret.status}
-                  </span>
-                </td>
-                <td>
-                  {ret.status === "Requested" && (
-                    <>
-                      <button className="btn-edit" onClick={() => handleAction(ret.id, "approve")}>
-                        Approve
-                      </button>
-                      <button className="btn-delete" onClick={() => handleAction(ret.id, "reject")}>
-                        Reject
-                      </button>
-                    </>
-                  )}
-                  {ret.status !== "Requested" && <span style={{ color: "#999" }}>—</span>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+        <div style={{ background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", border: "1px solid #e5e7eb", overflow: "hidden" }}>
+          {loading ? (
+            <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>Loading returns...</div>
+          ) : returns.length === 0 ? (
+            <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>No return requests.</div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #f3f4f6", backgroundColor: "#f9fafb" }}>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Customer</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left" }}>Product</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left" }}>Reason</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left" }}>Status</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {returns.map((ret) => (
+                  <tr key={ret.id} style={{ borderBottom: "1px solid #f3f4f6", transition: "background 0.15s", cursor: "pointer" }}
+                    onClick={() => openModal(ret)}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f9fafb"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                    <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "#4b5563" }}>{ret.customerEmail}</td>
+                    <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 500, color: "#111827" }}>{ret.productName}</td>
+                    <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "#4b5563", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis" }}>{ret.reason}</td>
+                    <td style={{ padding: "0.75rem 1.25rem" }}><span style={statusBadgeStyle(ret.status)}>{ret.status}</span></td>
+                    <td style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>
+                      {ret.status === "Requested" && (
+                        <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+                          <button onClick={(e) => { e.stopPropagation(); handleAction(ret.id, "approve"); }} style={{ ...iconBtnStyle, color: "#16a34a" }} title="Approve"><ApproveIcon /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleAction(ret.id, "reject"); }} style={{ ...iconBtnStyle, color: "#dc2626" }} title="Reject"><RejectIcon /></button>
+                        </div>
+                      )}
+                      {ret.status !== "Requested" && <span style={{ color: "#9ca3af" }}>—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Return Detail Modal */}
+        {modalOpen && selectedReturn && (
+          <div className="modal-overlay" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setModalOpen(false)}>
+            <div className="modal-content" style={{ background: "#fff", borderRadius: "12px", padding: "2rem", maxWidth: "600px", width: "90%", maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>Return Request</h3>
+                <button onClick={() => setModalOpen(false)} style={{ background: "transparent", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#6b7280" }}>×</button>
+              </div>
+              <div style={{ marginBottom: "1rem" }}>
+                <p><strong>Customer:</strong> {selectedReturn.customerEmail}</p>
+                <p><strong>Product:</strong> {selectedReturn.productName}</p>
+                <p><strong>Reason:</strong> {selectedReturn.reason}</p>
+                {selectedReturn.description && <p><strong>Description:</strong> {selectedReturn.description}</p>}
+              </div>
+              {selectedReturn.images?.length > 0 && (
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+                  {selectedReturn.images.map((img, idx) => (
+                    <img key={idx} src={getImageUrl(img)} alt={`Return ${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} />
+                  ))}
+                </div>
+              )}
+              {selectedReturn.status === "Requested" && (
+                <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+                  <button onClick={() => handleAction(selectedReturn.id, "approve")} style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: "#16a34a", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Approve</button>
+                  <button onClick={() => handleAction(selectedReturn.id, "reject")} style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Reject</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

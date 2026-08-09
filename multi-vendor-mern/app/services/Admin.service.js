@@ -43,3 +43,6 @@ export const removeGroupFromRole = (roleId, groupId) => adminRepo.removeGroupFro
 
 // ---------------- Stats ----------------
 export const getStats = () => adminRepo.getStats();
+
+// ---------------- Permissions (new) ----------------
+export const getPermissions = () => adminRepo.findAllPermissions();  // ← new

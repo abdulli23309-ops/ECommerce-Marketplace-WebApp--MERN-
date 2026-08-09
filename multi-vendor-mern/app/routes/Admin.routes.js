@@ -44,6 +44,9 @@ router.get('/roles', adminController.getRoles);
 router.put('/roles/:roleId/groups/:groupId', adminController.assignGroupToRole);
 router.delete('/roles/:roleId/groups/:groupId', adminController.removeGroupFromRole);
 
+// Permissions (new)
+router.get('/permissions', adminController.getPermissions);   // ← add this line
+
 // Dashboard stats
 router.get('/stats', adminController.getStats);
 

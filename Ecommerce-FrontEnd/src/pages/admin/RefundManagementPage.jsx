@@ -1,33 +1,26 @@
 import { useState, useEffect } from "react";
 import { getReturns, createRefund } from "../../services/adminService";
-import PermissionGate from "../../components/common/PermissionGate";
 
 const RefundManagementPage = () => {
   const [approvedReturns, setApprovedReturns] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState(null);
 
   const loadReturns = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const res = await getReturns();                     // returns { items, total, ... }
+      const res = await getReturns();
       const allReturns = res.items || [];
-      const refundable = allReturns.filter((r) => r.status === "Approved");
-      setApprovedReturns(refundable);
+      setApprovedReturns(allReturns.filter((r) => r.status === "Approved"));
     } catch (err) {
       console.error("Failed to load returns", err);
-      setError("Could not load returns.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadReturns();
-  }, []);
+  useEffect(() => { loadReturns(); }, []);
 
   const handleRefund = async (returnRequestId) => {
     setSubmitting(true);
@@ -44,60 +37,70 @@ const RefundManagementPage = () => {
   };
 
   return (
-    <div>
-      <h2 className="section-title">Refund Management</h2>
-      <h3 style={{ fontWeight: 600, marginBottom: "1rem", color: "#000" }}>
-        Approved Returns (Pending Refund)
-      </h3>
+    <div style={{ backgroundColor: "#f9fafb", minHeight: "100vh", padding: "2rem" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <div style={{ marginBottom: "1.5rem" }}>
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", margin: 0 }}>Refund Management</h1>
+          <p style={{ color: "#6b7280", marginTop: "0.25rem" }}>Approved returns pending refund</p>
+        </div>
 
-      {loading ? (
-        <p style={{ color: "#666" }}>Loading...</p>
-      ) : error ? (
-        <p className="error-text">{error}</p>
-      ) : approvedReturns.length === 0 ? (
-        <p className="empty-state">No approved returns waiting for refund.</p>
-      ) : (
-        <table className="product-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Customer</th>
-              <th>Reason</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {approvedReturns.map((ret) => (
-              <tr key={ret.id}>
-                <td>{ret.productName}</td>
-                <td>{ret.customerEmail}</td>
-                <td>{ret.reason}</td>
-                <td>
-                  <PermissionGate permission="Orders.Refund">
-                    <button
-                      className="btn-primary"
-                      onClick={() => handleRefund(ret.id)}
-                      disabled={submitting}
-                    >
-                      {submitting ? "Processing..." : "Refund"}
-                    </button>
-                  </PermissionGate>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+        <div style={{ background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", border: "1px solid #e5e7eb", overflow: "hidden" }}>
+          {loading ? (
+            <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>Loading...</div>
+          ) : approvedReturns.length === 0 ? (
+            <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>No approved returns waiting for refund.</div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #f3f4f6", backgroundColor: "#f9fafb" }}>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Product</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Customer</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Reason</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "center", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {approvedReturns.map((ret) => (
+                  <tr key={ret.id} style={{ borderBottom: "1px solid #f3f4f6", transition: "background 0.15s" }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f9fafb"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                    <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 500, color: "#111827" }}>{ret.productName}</td>
+                    <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "#4b5563" }}>{ret.customerEmail}</td>
+                    <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "#4b5563" }}>{ret.reason}</td>
+                    <td style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>
+                      <button
+                        onClick={() => handleRefund(ret.id)}
+                        disabled={submitting}
+                        style={{
+                          padding: "0.4rem 1rem",
+                          borderRadius: "6px",
+                          border: "none",
+                          background: "#111827",
+                          color: "#fff",
+                          fontWeight: 600,
+                          fontSize: "0.85rem",
+                          cursor: "pointer",
+                          transition: "background 0.2s",
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = "#1f2937"}
+                        onMouseLeave={(e) => e.target.style.background = "#111827"}
+                      >
+                        {submitting ? "Processing..." : "Refund"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-      {message && (
-        <p style={{
-          color: message.type === "success" ? "#000" : "#d11a2a",
-          marginTop: "1rem",
-          fontWeight: 500,
-        }}>
-          {message.text}
-        </p>
-      )}
+          {message && (
+            <div style={{ padding: "0.75rem 1.25rem", borderTop: "1px solid #f3f4f6", color: message.type === "success" ? "#065f46" : "#991b1b", fontWeight: 500, fontSize: "0.9rem" }}>
+              {message.text}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

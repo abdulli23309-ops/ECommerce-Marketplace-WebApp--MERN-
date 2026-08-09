@@ -12,7 +12,6 @@ const extractItems = (responseData) => {
 // ---------- Sellers ----------
 export const getSellers = async () => {
   const { data } = await axiosInstance.get("/admin/sellers");
-  // data.data is { items, total, ... }
   const sellers = extractItems(data.data);
   return {
     items: sellers.map(s => ({
@@ -20,11 +19,12 @@ export const getSellers = async () => {
       businessName: s.businessName,
       fullName: s.user?.name || "",
       email: s.user?.email || "",
-      storeName: "", // optional
-      storeLogoUrl: "",
+      storeName: s.store?.name || "",          // ← store name
+      storeLogoUrl: s.store?.logo || "",       // ← store logo path
+      storeDescription: s.store?.description || "",
       status: s.status,
     })),
-    total: sellers.length, // not paginated in frontend, but keep shape
+    total: sellers.length,
     page: 1,
     totalPages: 1,
   };
@@ -66,6 +66,7 @@ export const updateProductStatus = async (productId, status) => {
 };
 
 // ---------- Returns ----------
+// ---------- Returns ----------
 export const getReturns = async () => {
   const { data } = await axiosInstance.get("/admin/returns");
   const returns = extractItems(data.data);
@@ -75,6 +76,8 @@ export const getReturns = async () => {
       customerEmail: r.customer?.email || "",
       productName: r.product?.name || "",
       reason: r.reason,
+      description: r.description || "",   // ← new field
+      images: r.images || [],             // ← new field (array of strings)
       status: r.status,
     })),
     total: returns.length,

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'; 
 import User from '../models/User.model.js';
 import SellerProfile from '../models/SellerProfile.model.js';
 import ParentOrder from '../models/ParentOrder.model.js';
@@ -8,7 +9,7 @@ import ReturnRequest from '../models/Return.model.js';
 import Refund from '../models/Refund.model.js';
 import PermissionGroup from '../models/PermissionGroup.model.js';
 import Role from '../models/Role.model.js';
-
+import Permission from '../models/Permission.model.js'; 
 // ---------- Users ----------
 export const findUsers = async ({ page = 1, pageSize = 10, search, role, isActive }) => {
   const query = {};
@@ -50,6 +51,7 @@ export const findUsers = async ({ page = 1, pageSize = 10, search, role, isActiv
 };
 
 // ---------- Sellers ----------
+// ---------- Sellers ----------
 export const findSellers = async ({ page = 1, pageSize = 10, search, status }) => {
   const query = {};
   if (status) query.status = status;
@@ -67,13 +69,23 @@ export const findSellers = async ({ page = 1, pageSize = 10, search, status }) =
 
   const [profiles, total] = await Promise.all([pipeline, totalPromise]);
 
-  let items = profiles;
+  // Fetch stores for these profiles
+  const storeIds = profiles.map(p => p._id);
+  const stores = await mongoose.model('Store').find({ sellerProfile: { $in: storeIds } }).lean();
+  const storeMap = new Map(stores.map(s => [s.sellerProfile.toString(), s]));
+
+  let items = profiles.map(p => ({
+    ...p,
+    store: storeMap.get(p._id.toString()) || null,
+  }));
+
   if (search) {
     const regex = new RegExp(search, 'i');
-    items = profiles.filter(p =>
+    items = items.filter(p =>
       regex.test(p.businessName) ||
       regex.test(p.user?.name) ||
-      regex.test(p.user?.email)
+      regex.test(p.user?.email) ||
+      regex.test(p.store?.name)
     );
   }
 
@@ -85,7 +97,6 @@ export const findSellers = async ({ page = 1, pageSize = 10, search, status }) =
     totalPages: Math.ceil((search ? items.length : total) / limit),
   };
 };
-
 // ---------- Orders (ID search added) ----------
 export const findOrders = async ({ page = 1, pageSize = 10, search, status, sortBy }) => {
   const query = {};
@@ -172,7 +183,7 @@ export const findShipments = async ({ page = 1, pageSize = 10, search, status })
 
   return { items, total, page: Number(page), pageSize: limit, totalPages: Math.ceil(total / limit) };
 };
-
+export const findAllPermissions = () => Permission.find({}).lean();
 // ---------- Returns ----------
 export const findReturns = async ({ page = 1, pageSize = 10, search, status }) => {
   const query = {};

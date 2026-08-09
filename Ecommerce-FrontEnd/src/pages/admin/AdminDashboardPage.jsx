@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getAdminStats } from "../../services/adminService";
-import "./AdminDashboardPage.css";
 
 const AdminDashboardPage = () => {
   const [stats, setStats] = useState(null);
@@ -16,16 +15,17 @@ const AdminDashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="admin-dashboard-loading">
-        <div className="spinner"></div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "#64748b" }}>
+        <div style={{ width: "28px", height: "28px", border: "3px solid #e2e8f0", borderTopColor: "#2563eb", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: "12px" }}></div>
         <p>Loading platform metrics...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   if (!stats) {
     return (
-      <div className="admin-dashboard-error">
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "#64748b" }}>
         <p>Failed to load dashboard metrics. Please refresh the page.</p>
       </div>
     );
@@ -37,7 +37,7 @@ const AdminDashboardPage = () => {
       value: stats.totalUsers ?? 0,
       to: "/admin/users",
       badge: "Accounts",
-      badgeClass: "badge-blue",
+      badgeStyle: { background: "#eff6ff", color: "#1d4ed8" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -52,7 +52,7 @@ const AdminDashboardPage = () => {
       value: stats.totalSellers ?? 0,
       to: "/admin/sellers",
       badge: "Active",
-      badgeClass: "badge-green",
+      badgeStyle: { background: "#ecfdf5", color: "#047857" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -65,7 +65,7 @@ const AdminDashboardPage = () => {
       value: stats.totalProducts ?? 0,
       to: "/admin/products",
       badge: "Catalog",
-      badgeClass: "badge-blue",
+      badgeStyle: { background: "#eff6ff", color: "#1d4ed8" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" />
@@ -80,7 +80,7 @@ const AdminDashboardPage = () => {
       value: stats.totalOrders ?? 0,
       to: "/admin/orders",
       badge: "Total",
-      badgeClass: "badge-purple",
+      badgeStyle: { background: "#f5f3ff", color: "#6d28d9" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="9" cy="21" r="1" />
@@ -94,7 +94,7 @@ const AdminDashboardPage = () => {
       value: `PKR ${(stats.totalRevenue || 0).toLocaleString()}`,
       to: "/admin/orders",
       badge: "Gross",
-      badgeClass: "badge-green",
+      badgeStyle: { background: "#ecfdf5", color: "#047857" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="1" x2="12" y2="23" />
@@ -107,7 +107,9 @@ const AdminDashboardPage = () => {
       value: stats.pendingSellerApprovals ?? 0,
       to: "/admin/sellers",
       badge: stats.pendingSellerApprovals > 0 ? "Action Required" : "Up to Date",
-      badgeClass: stats.pendingSellerApprovals > 0 ? "badge-amber" : "badge-gray",
+      badgeStyle: stats.pendingSellerApprovals > 0
+        ? { background: "#fffbeb", color: "#b45309" }
+        : { background: "#f1f5f9", color: "#475569" },
       highlight: stats.pendingSellerApprovals > 0,
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -122,7 +124,9 @@ const AdminDashboardPage = () => {
       value: stats.pendingProductApprovals ?? 0,
       to: "/admin/products",
       badge: stats.pendingProductApprovals > 0 ? "Action Required" : "Up to Date",
-      badgeClass: stats.pendingProductApprovals > 0 ? "badge-amber" : "badge-gray",
+      badgeStyle: stats.pendingProductApprovals > 0
+        ? { background: "#fffbeb", color: "#b45309" }
+        : { background: "#f1f5f9", color: "#475569" },
       highlight: stats.pendingProductApprovals > 0,
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -136,7 +140,9 @@ const AdminDashboardPage = () => {
       value: stats.pendingReturns ?? 0,
       to: "/admin/returns",
       badge: stats.pendingReturns > 0 ? "Action Required" : "Up to Date",
-      badgeClass: stats.pendingReturns > 0 ? "badge-rose" : "badge-gray",
+      badgeStyle: stats.pendingReturns > 0
+        ? { background: "#fff1f2", color: "#be123c" }
+        : { background: "#f1f5f9", color: "#475569" },
       highlight: stats.pendingReturns > 0,
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -147,109 +153,148 @@ const AdminDashboardPage = () => {
   ];
 
   return (
-    <div className="admin-dashboard-container">
-      {/* Header Bar */}
-      <div className="dashboard-header">
+    <div style={{
+      padding: "24px",
+      maxWidth: "1320px",
+      margin: "0 auto",
+      fontFamily: "Inter, system-ui, sans-serif",
+      color: "#111827",
+      backgroundColor: "#f9fafb",
+      minHeight: "100vh",
+    }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
-          <h1 className="dashboard-title">System Overview</h1>
-          <p className="dashboard-subtitle">
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", margin: "0 0 4px 0" }}>System Overview</h1>
+          <p style={{ fontSize: "0.875rem", color: "#6b7280", margin: 0 }}>
             Marketplace health, store metrics, and pending approvals.
           </p>
         </div>
-        <div className="dashboard-header-right">
-          <span className="live-indicator">
-            <span className="live-dot"></span> Realtime Sync
-          </span>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.8125rem", fontWeight: 500, color: "#475569", backgroundColor: "#ffffff", border: "1px solid #e5e7eb", padding: "6px 14px", borderRadius: "20px" }}>
+          <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981" }}></span>
+          Realtime Sync
         </div>
       </div>
 
       {/* Metrics Grid */}
-      <div className="metrics-grid">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px", marginBottom: "28px" }}>
         {cards.map((card) => (
           <Link
             key={card.label}
             to={card.to}
-            className={`metric-card ${card.highlight ? "metric-card-highlight" : ""}`}
+            style={{
+              background: "#ffffff",
+              border: card.highlight ? "1px solid #f59e0b" : "1px solid #e5e7eb",
+              borderLeft: card.highlight ? "4px solid #f59e0b" : "1px solid #e5e7eb",
+              borderRadius: "12px",
+              padding: "18px",
+              textDecoration: "none",
+              color: "inherit",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              transition: "transform 0.15s ease, box-shadow 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
           >
-            <div className="metric-card-top">
-              <span className="metric-label">{card.label}</span>
-              <div className="metric-icon-box">{card.icon}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                {card.label}
+              </span>
+              <div style={{ backgroundColor: "#f1f5f9", color: "#334155", padding: "8px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {card.icon}
+              </div>
             </div>
 
-            <div className="metric-value">{card.value}</div>
+            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "#111827", marginBottom: "14px" }}>
+              {card.value}
+            </div>
 
-            <div className="metric-card-bottom">
-              <span className={`status-badge ${card.badgeClass}`}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f3f4f6", paddingTop: "10px" }}>
+              <span style={{
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                padding: "3px 8px",
+                borderRadius: "12px",
+                background: card.badgeStyle.background,
+                color: card.badgeStyle.color,
+              }}>
                 {card.badge}
               </span>
-              <span className="metric-link-text">View details →</span>
+              <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#2563eb" }}>View details →</span>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* Lower Workspace Area */}
-      <div className="dashboard-lower-grid">
-        {/* Left Column: Pending Queue */}
-        <div className="dashboard-panel panel-large">
-          <div className="panel-header">
-            <h2 className="panel-title">Pending Approvals Queue</h2>
-            <span className="panel-tag">
+      {/* Lower workspace */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px" }} className="dashboard-lower-grid">
+        <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid #f3f4f6" }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "#111827", margin: 0 }}>Pending Approvals Queue</h2>
+            <span style={{ fontSize: "0.75rem", fontWeight: 500, background: "#f1f5f9", color: "#475569", padding: "2px 8px", borderRadius: "12px" }}>
               {(stats.pendingSellerApprovals || 0) + (stats.pendingProductApprovals || 0)} Items
             </span>
           </div>
-          <div className="panel-empty-state">
-            <div className="empty-icon">
+          <div style={{ textAlign: "center", padding: "36px 12px" }}>
+            <div style={{ display: "inline-flex", padding: "12px", background: "#ecfdf5", color: "#059669", borderRadius: "50%", marginBottom: "12px" }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <p className="empty-title">Queue is clear</p>
-            <p className="empty-description">
+            <p style={{ fontWeight: 600, fontSize: "0.9375rem", color: "#111827", margin: "0 0 4px" }}>Queue is clear</p>
+            <p style={{ fontSize: "0.8125rem", color: "#6b7280", margin: "0 0 16px" }}>
               All seller accounts and product updates have been reviewed.
             </p>
-            <div className="empty-actions">
-              <Link to="/admin/sellers" className="btn-secondary">
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <Link to="/admin/sellers" style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#334155", background: "#f9fafb", border: "1px solid #d1d5db", padding: "6px 14px", borderRadius: "6px", textDecoration: "none" }}>
                 Manage Sellers
               </Link>
-              <Link to="/admin/products" className="btn-secondary">
+              <Link to="/admin/products" style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#334155", background: "#f9fafb", border: "1px solid #d1d5db", padding: "6px 14px", borderRadius: "6px", textDecoration: "none" }}>
                 Manage Products
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Platform Status */}
-        <div className="dashboard-panel panel-small">
-          <div className="panel-header">
-            <h2 className="panel-title">System Status</h2>
+        <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid #f3f4f6" }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "#111827", margin: 0 }}>System Status</h2>
           </div>
-          <div className="status-list">
-            <div className="status-item">
-              <span className="status-dot green"></span>
-              <div className="status-info">
-                <span className="status-name">Database (MongoDB)</span>
-                <span className="status-sub">Operational</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            {[
+              { label: "Database (MongoDB)", sub: "Operational", color: "#10b981" },
+              { label: "Express API Server", sub: "Connected", color: "#10b981" },
+              { label: "Authentication Service", sub: "JWT Refresh Active", color: "#2563eb" },
+            ].map((item) => (
+              <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: item.color, flexShrink: 0 }}></span>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#111827" }}>{item.label}</span>
+                  <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>{item.sub}</span>
+                </div>
               </div>
-            </div>
-            <div className="status-item">
-              <span className="status-dot green"></span>
-              <div className="status-info">
-                <span className="status-name">Express API Server</span>
-                <span className="status-sub">Connected</span>
-              </div>
-            </div>
-            <div className="status-item">
-              <span className="status-dot blue"></span>
-              <div className="status-info">
-                <span className="status-name">Authentication Service</span>
-                <span className="status-sub">JWT Refresh Active</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Responsive fix for lower grid on small screens */}
+      <style>{`
+        @media (max-width: 900px) {
+          .dashboard-lower-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

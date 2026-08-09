@@ -108,3 +108,7 @@ export const getStats = asyncHandler(async (req, res) => {
   const stats = await adminService.getStats();
   new ApiResponse(200, stats, 'Stats retrieved').send(res);
 });
+export const getPermissions = asyncHandler(async (req, res) => {
+  const permissions = await adminService.getPermissions();
+  new ApiResponse(200, permissions, 'Permissions retrieved').send(res);
+});
