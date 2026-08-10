@@ -4,6 +4,7 @@ import SellerOrder from '../models/SellerOrder.model.js';
 import * as addressRepo from '../repositories/Address.repository.js';
 import * as cartRepo from '../repositories/Cart.repository.js';
 import * as productRepo from '../repositories/Product.repository.js';
+import * as orderRepo from '../repositories/Order.repository.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
 export const checkout = async (userId, addressId) => {
@@ -99,4 +100,78 @@ for (const cartItem of cart.items) {
     console.error('Checkout transaction failed:', error);   // 🔍 this will show the exact error
     throw error;
   }
+};
+// Add this to the existing order.service.js (after the imports)
+
+export const prepareOrder = async (userId, addressId, session) => {
+  // 1. Validate address
+  const address = await addressRepo.findById(addressId, userId);
+  if (!address) throw new ApiError(404, 'Address not found');
+
+  // 2. Load cart
+  const cart = await cartRepo.findByUser(userId);
+  if (!cart || cart.items.length === 0) {
+    throw new ApiError(400, 'Cart is empty');
+  }
+
+  // 3. Validate stock & group by store (no deduction)
+  const storeItemsMap = new Map();
+  for (const cartItem of cart.items) {
+    const product = await productRepo.findPublicById(cartItem.product);
+    if (!product) throw new ApiError(404, `Product ${cartItem.product} not found`);
+    if (product.stock < cartItem.quantity) {
+      throw new ApiError(400, `Insufficient stock for ${product.name}`);
+    }
+    const storeId = (product.store?._id || product.store).toString();
+    if (!storeItemsMap.has(storeId)) storeItemsMap.set(storeId, []);
+    storeItemsMap.get(storeId).push({
+      product: product._id,
+      productNameSnapshot: product.name,
+      unitPriceSnapshot: product.price,
+      quantity: cartItem.quantity,
+    });
+  }
+
+  // 4. Create ParentOrder – use actual address fields
+  const parentOrder = await ParentOrder.create([{
+    customer: userId,
+    shippingFullName: address.fullName || address.street,      // fallback if no fullName
+    shippingPhone: address.phoneNumber || '03001234567',       // fallback
+    shippingAddressLine1: address.street,                       // your Address uses "street"
+    shippingAddressLine2: address.addressLine2 || '',
+    shippingCity: address.city,
+    shippingState: address.state || '',
+    shippingPostalCode: address.postalCode || '',
+    totalAmount: 0,
+  }], { session });
+
+  const createdParent = parentOrder[0];
+  let totalAmount = 0;
+
+  // 5. Create SellerOrders
+  for (const [storeIdStr, items] of storeItemsMap.entries()) {
+    const subTotal = items.reduce((sum, item) => sum + item.unitPriceSnapshot * item.quantity, 0);
+    totalAmount += subTotal;
+    await SellerOrder.create([{
+      parentOrder: createdParent._id,
+      store: storeIdStr,
+      subTotal,
+      items,
+    }], { session });
+  }
+
+  // 6. Update ParentOrder total
+  createdParent.totalAmount = totalAmount;
+  await createdParent.save({ session });
+
+  return { parentOrder: createdParent, cart };
+};
+
+export const cancelOrder = async (orderId, userId) => {
+  const order = await orderRepo.findByIdForMutation(orderId, userId);
+  if (!order) throw new ApiError(404, 'Order not found');
+  if (order.orderStatus !== 'Pending') throw new ApiError(400, 'Only pending orders can be cancelled');
+  order.orderStatus = 'Cancelled';
+  await order.save();
+  return order;
 };

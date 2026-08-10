@@ -19,17 +19,40 @@ const parseDurationToMilliseconds = (duration) => {
   return Number(match[1]) * units[match[2]];
 };
 
-const generateAccessToken = (userId, roles, permissions) => jwt.sign(
-  { roles, permissions }, accessSecret(), { subject: userId.toString(), expiresIn: appConf.jwt.accessExpiresIn }
-);
+const generateAccessToken = (userId, userRole, permissions) => {
+  return jwt.sign(
+    {
+      sub: userId,
+      roles: [userRole],
+      permissions: permissions || [],
+    },
+    accessSecret(),
+    { expiresIn: appConf.jwt.accessExpiresIn }
+  );
+};
 
-const generateRefreshToken = (userId) => jwt.sign(
-  {}, refreshSecret(), { subject: userId.toString(), jwtid: crypto.randomUUID(), expiresIn: appConf.jwt.refreshExpiresIn }
-);
+const generateRefreshToken = (userId) =>
+  jwt.sign(
+    {},
+    refreshSecret(),
+    {
+      subject: userId.toString(),
+      jwtid: crypto.randomUUID(),
+      expiresIn: appConf.jwt.refreshExpiresIn,
+    }
+  );
 
 const verifyAccessToken = (token) => jwt.verify(token, accessSecret());
 const verifyRefreshToken = (token) => jwt.verify(token, refreshSecret());
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
-const getRefreshTokenExpiry = () => new Date(Date.now() + parseDurationToMilliseconds(appConf.jwt.refreshExpiresIn));
+const getRefreshTokenExpiry = () =>
+  new Date(Date.now() + parseDurationToMilliseconds(appConf.jwt.refreshExpiresIn));
 
-export { generateAccessToken, generateRefreshToken, getRefreshTokenExpiry, hashToken, verifyAccessToken, verifyRefreshToken };
+export {
+  generateAccessToken,
+  generateRefreshToken,
+  getRefreshTokenExpiry,
+  hashToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+};

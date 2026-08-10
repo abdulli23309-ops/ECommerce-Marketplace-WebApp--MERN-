@@ -1,17 +1,24 @@
+import stripe from '../stripe.js';  // adjust path if needed
+import PaymentTransaction from '../models/PaymentTransaction.model.js';
+import Cart from '../models/Cart.model.js';
+import Product from '../models/Product.model.js';
+import SellerOrder from '../models/SellerOrder.model.js';
+import ParentOrder from '../models/ParentOrder.model.js';  // used in catch block
 import * as paymentRepo from '../repositories/Payment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
+import * as orderService from './Order.service.js';
+import { createPaymentProcessor } from './payment/PaymentFactory.js';
 import { ApiError } from '../utils/ApiError.util.js';
+import mongoose from 'mongoose';
 
+// ---------- OLD dummy payment – keep for backward compatibility ----------
 export const createPayment = async (parentOrderId, userId) => {
-  // Verify order exists and belongs to the customer
   const order = await orderRepo.findById(parentOrderId, userId);
   if (!order) throw new ApiError(404, 'Order not found');
 
-  // Check for existing payment
   const existing = await paymentRepo.findByParentOrder(parentOrderId);
   if (existing) throw new ApiError(409, 'Payment already exists for this order');
 
-  // Create dummy payment (always Completed)
   const payment = await paymentRepo.create({
     parentOrder: parentOrderId,
     amount: order.totalAmount,
@@ -20,10 +27,72 @@ export const createPayment = async (parentOrderId, userId) => {
     paidAt: new Date(),
   });
 
-  // Update parent order status to 'Processing'
   await orderRepo.updateStatus(parentOrderId, 'Processing');
-
   return payment;
+};
+
+// ---------- NEW – Stripe/COD payment intent creation ----------
+export const createPaymentIntent = async (userId, addressId, paymentMethod) => {
+  if (!['Stripe', 'CashOnDelivery'].includes(paymentMethod)) {
+    throw new ApiError(400, `Unsupported payment method: ${paymentMethod}`);
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  let parentOrder, payment;
+  try {
+    const result = await orderService.prepareOrder(userId, addressId, session);
+    parentOrder = result.parentOrder;
+
+    const [paymentDoc] = await paymentRepo.create(
+      [{
+        parentOrder: parentOrder._id,
+        amount: parentOrder.totalAmount,
+        method: paymentMethod,
+        status: 'Pending',
+      }],
+      { session }
+    );
+    payment = paymentDoc;
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+
+  // After commit, handle payment gateway (no DB transaction)
+  const processor = createPaymentProcessor(paymentMethod);
+  let clientSecret = null;
+
+  if (paymentMethod === 'Stripe') {
+    try {
+      const intent = await processor.createPaymentIntent(payment, parentOrder);
+      payment.stripePaymentIntentId = intent.paymentIntentId;
+      await payment.save();
+      clientSecret = intent.clientSecret;
+    } catch (stripeError) {
+      payment.status = 'Failed';
+      await payment.save();
+      throw new ApiError(502, 'Payment processing failed. Please try again.');
+    }
+ } else if (paymentMethod === 'CashOnDelivery') {
+  await processor.process(payment, parentOrder);
+  // COD order is confirmed – clear the cart immediately
+  await Cart.updateOne(
+    { user: userId },
+    { $set: { items: [] } }
+  );
+}
+
+  return {
+    payment: payment.toObject(),
+    order: parentOrder.toObject(),
+    clientSecret,
+  };
 };
 
 export const getPaymentStatus = async (parentOrderId, userId) => {
@@ -32,4 +101,154 @@ export const getPaymentStatus = async (parentOrderId, userId) => {
   const payment = await paymentRepo.findByParentOrder(parentOrderId);
   if (!payment) throw new ApiError(404, 'Payment not found');
   return payment;
+};
+
+// ---------- Stripe webhook helpers ----------
+export const verifyWebhookSignature = (rawBody, signature) => {
+  return stripe.webhooks.constructEvent(
+    rawBody,
+    signature,
+    process.env.STRIPE_WEBHOOK_SECRET
+  );
+};
+
+// ---------- Process successful payment ----------
+// ---------- Process successful payment ----------
+export const handlePaymentSuccess = async (event) => {
+  const paymentIntent = event.data.object;
+  const stripePaymentIntentId = paymentIntent.id;
+  const stripeEventId = event.id;
+
+  const payment = await paymentRepo.findByStripePaymentIntentId(stripePaymentIntentId);
+  if (!payment) {
+    console.error(`Payment not found for PI: ${stripePaymentIntentId}`);
+    return;
+  }
+
+  // Idempotency check
+  const existingTx = await PaymentTransaction.findOne({ stripeEventId });
+  if (existingTx) return;
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Use session‑aware queries
+    const currentPayment = await paymentRepo.findByIdQuery(payment._id, session);
+    if (!currentPayment || currentPayment.status !== 'Pending') {
+      await session.abortTransaction();
+      session.endSession();
+      return;
+    }
+
+    const parentOrder = await orderRepo.findByIdQuery(currentPayment.parentOrder, session);
+    if (!parentOrder) throw new Error('ParentOrder not found');
+
+    // Atomic stock deduction
+    const sellerOrders = await orderRepo.findSellerOrdersByParentQuery(parentOrder._id, session);
+    for (const so of sellerOrders) {
+      for (const item of so.items) {
+        const updatedProduct = await Product.findOneAndUpdate(
+          { _id: item.product, stock: { $gte: item.quantity } },
+          { $inc: { stock: -item.quantity } },
+          { new: true, session }
+        );
+        if (!updatedProduct) {
+          throw new Error(`Insufficient stock for product ${item.product}`);
+        }
+      }
+    }
+
+    // Create success PaymentTransaction
+    await PaymentTransaction.create([{
+      payment: currentPayment._id,
+      type: 'success',
+      status: 'success',
+      amount: currentPayment.amount,
+      stripePaymentIntentId,
+      stripeEventId,
+    }], { session });
+
+    // Update Payment
+    currentPayment.status = 'Completed';
+    currentPayment.paidAt = new Date();
+    await currentPayment.save({ session });
+
+    // Update ParentOrder
+    parentOrder.orderStatus = 'Processing';
+    await parentOrder.save({ session });
+
+    // Clear cart (use Mongoose model directly with session)
+    await Cart.updateOne(
+      { user: parentOrder.customer },
+      { $set: { items: [] } },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+
+    if (error.message.includes('Insufficient stock')) {
+      console.error('Stock deduction failed after successful payment. Order cannot be fulfilled.');
+      // Order cancelled, payment remains Completed (refund later)
+      await ParentOrder.findByIdAndUpdate(parentOrder._id, { orderStatus: 'Cancelled' });
+    }
+    throw error; // controller returns 200 to Stripe
+  }
+};
+
+// ---------- Process failed payment ----------
+export const handlePaymentFailure = async (event) => {
+  const paymentIntent = event.data.object;
+  const stripePaymentIntentId = paymentIntent.id;
+  const stripeEventId = event.id;
+
+  const payment = await paymentRepo.findByStripePaymentIntentId(stripePaymentIntentId);
+  if (!payment) {
+    console.error(`Payment not found for PI: ${stripePaymentIntentId}`);
+    return;
+  }
+
+  const existingTx = await PaymentTransaction.findOne({ stripeEventId });
+  if (existingTx) return;
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const currentPayment = await paymentRepo.findByIdQuery(payment._id, session);
+    if (!currentPayment || currentPayment.status !== 'Pending') {
+      await session.abortTransaction();
+      session.endSession();
+      return;
+    }
+
+    const failureReason =
+      paymentIntent.last_payment_error?.message ||
+      paymentIntent.last_payment_error?.code ||
+      'Payment failed';
+
+    await PaymentTransaction.create([{
+      payment: currentPayment._id,
+      type: 'failure',
+      status: 'failed',
+      amount: currentPayment.amount,
+      stripePaymentIntentId,
+      stripeEventId,
+      failureReason,
+    }], { session });
+
+    currentPayment.status = 'Failed';
+    await currentPayment.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };

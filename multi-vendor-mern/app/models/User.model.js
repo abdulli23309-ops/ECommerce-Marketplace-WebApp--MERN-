@@ -7,7 +7,12 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     password: { type: String, required: true, select: false },
     avatar: { type: String, default: null },
-    roles: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true }],
+    role: {
+      type: String,
+      enum: ['Customer', 'Seller', 'Admin'],
+      default: 'Customer',
+      required: true,
+    },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true, versionKey: false }

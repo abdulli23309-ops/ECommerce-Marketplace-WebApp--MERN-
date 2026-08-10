@@ -5,9 +5,9 @@ export const fetchPermissions = createAsyncThunk(
   "permissions/fetchPermissions",
   async () => {
     const response = await axiosInstance.get("/account/permissions");
-    // The backend now returns { success, message, data: { roles, permissions } }
-    const data = response.data?.data;
-    return data?.permissions || [];   // safely extract the permissions array
+    // response.data = { success, data: [...], message }
+    // response.data.data = the permissions array
+    return response.data?.data ?? [];
   }
 );
 

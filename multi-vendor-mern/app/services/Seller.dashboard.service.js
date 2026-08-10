@@ -44,7 +44,8 @@ export const getSellerOrders = async (userId, { page = 1, pageSize = 10 } = {}) 
 
   // 2. Group by parentOrder to get distinct parent orders
   const groupedMap = new Map();
-  for (const so of allSellerOrders) {
+for (const so of allSellerOrders) {
+  if (!so.parentOrder) continue; 
     const pid = so.parentOrder._id.toString();
     if (!groupedMap.has(pid)) {
       groupedMap.set(pid, {

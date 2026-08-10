@@ -1,7 +1,12 @@
 import Cart from '../models/Cart.model.js';
 
 export const findByUser = (userId) =>
-  Cart.findOne({ user: userId }).populate('items.product', 'name images');
+  Cart.findOne({ user: userId })
+    .populate('items.product', 'name images price')   // ← populates everything: name, images, price, etc.
+    .lean();
+    
+    export const findByUserForMutation = (userId) =>
+  Cart.findOne({ user: userId });
 
 export const create = (userId, items = []) => Cart.create({ user: userId, items });
 

@@ -16,3 +16,7 @@ export const getSellerOrderById = asyncHandler(async (req, res) => {
   if (!order) throw new ApiError(404, 'Seller order not found');
   new ApiResponse(200, order, 'Seller order retrieved').send(res);
 });
+export const cancelOrder = asyncHandler(async (req, res) => {
+  const order = await orderService.cancelOrder(req.params.id, req.user.id);
+  new ApiResponse(200, order, 'Order cancelled').send(res);
+});

@@ -14,3 +14,15 @@ export const placeOrder = async (addressId) => {
   const { data } = await axiosInstance.post("/orders/checkout", { addressId });
   return data.data;
 };
+
+export const createPaymentIntent = async (addressId, paymentMethod) => {
+  const { data } = await axiosInstance.post('/payments/create-intent', {
+    addressId,
+    paymentMethod,
+  });
+  return data.data; // { payment, order, clientSecret }
+};
+export const cancelOrder = async (orderId) => {
+  const { data } = await axiosInstance.put(`/orders/${orderId}/cancel`);
+  return data.data;
+};

@@ -19,7 +19,7 @@ export const addItem = async (userId, productId, quantity) => {
   if (!product) throw new ApiError(404, 'Product not found');
   if (product.stock < quantity) throw new ApiError(400, 'Insufficient stock');
 
-  let cart = await cartRepo.findByUser(userId);
+  let cart = await cartRepo.findByUserForMutation(userId);
   if (!cart) {
     await cartRepo.create(userId, [{ product: productId, quantity, price: product.price }]);
   } else {

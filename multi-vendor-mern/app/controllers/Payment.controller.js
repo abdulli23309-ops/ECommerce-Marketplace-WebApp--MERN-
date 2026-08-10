@@ -11,3 +11,10 @@ export const getPaymentStatus = asyncHandler(async (req, res) => {
   const payment = await paymentService.getPaymentStatus(req.params.parentOrderId, req.user.id);
   new ApiResponse(200, payment, 'Payment status retrieved').send(res);
 });
+
+export const createPaymentIntent = asyncHandler(async (req, res) => {
+  const { addressId, paymentMethod } = req.body;
+  const userId = req.user.id;
+  const result = await paymentService.createPaymentIntent(userId, addressId, paymentMethod);
+  new ApiResponse(200, result, 'Payment intent created').send(res);
+});

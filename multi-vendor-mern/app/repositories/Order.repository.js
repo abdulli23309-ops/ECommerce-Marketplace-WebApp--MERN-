@@ -50,3 +50,15 @@ export const updateSellerOrderStatus = (id, status) =>
 
 export const findAllSellerOrdersByParentOrder = (parentOrderId) =>
   SellerOrder.find({ parentOrder: parentOrderId });
+
+export const findByIdQuery = (id, session) =>
+  ParentOrder.findById(id).session(session);
+
+export const findSellerOrdersByParentQuery = (parentOrderId, session) =>
+  SellerOrder.find({ parentOrder: parentOrderId }).session(session);
+
+export const findByIdForMutation = (id, customerId) =>
+  ParentOrder.findOne({
+    _id: id,
+    customer: customerId,
+  });

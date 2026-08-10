@@ -1,6 +1,7 @@
 import axios from "axios";
 import { store } from "../store/store";
 import { logout, setCredentials } from "../store/authSlice";
+import { clearPermissions } from "../store/permissionsSlice";
 import { refreshAccessToken } from "./authService";
 
 const axiosInstance = axios.create({
@@ -36,6 +37,7 @@ axiosInstance.interceptors.response.use(
         }
       } catch (refreshError) {
         store.dispatch(logout());
+        store.dispatch(clearPermissions());
         window.location.href = "/login";
         return Promise.reject(refreshError);
       }

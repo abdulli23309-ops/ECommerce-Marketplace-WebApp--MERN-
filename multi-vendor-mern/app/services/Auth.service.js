@@ -15,21 +15,22 @@ import {
   verifyRefreshToken,
 } from '../helpers/Jwt.helper.js';
 
-const getAuthorization = (user) => {
-  const roles = user.roles.map((role) => role.name);
-  const permissions = [...new Set(
-    user.roles.flatMap((role) =>
-      (role.permissionGroups || []).flatMap((g) =>
-        (g.permissions || []).map((p) => p.code)
-      )
-    )
-  )];
-  return { roles, permissions };
+export const getAuthorization = async (user) => {
+  const roleName = user.role;   // string: 'Customer', 'Seller', 'Admin'
+  const roleDoc = await findRoleByName(roleName);
+  const permissions = roleDoc
+    ? [...new Set(
+        (roleDoc.permissionGroups || []).flatMap((g) =>
+          (g.permissions || []).map((p) => p.code)
+        )
+      )]
+    : [];
+  return { roles: [roleName], permissions };
 };
 
 const issueSession = async (user) => {
-  const { roles, permissions } = getAuthorization(user);
-  const accessToken = generateAccessToken(user._id, roles, permissions);
+  const { roles, permissions } = await getAuthorization(user);
+  const accessToken = generateAccessToken(user._id, user.role, permissions);
   const refreshToken = generateRefreshToken(user._id);
   await createRefreshToken(user._id, hashToken(refreshToken), getRefreshTokenExpiry());
 
@@ -44,10 +45,12 @@ const register = async ({ name, email, password }) => {
   const existingUser = await findUserByEmail(email);
   if (existingUser) throw new ApiError(409, 'Email already registered');
 
-  const customerRole = await findRoleByName('Customer');
-  if (!customerRole) throw new ApiError(503, 'Default Customer role is not configured');
-
-  const user = await createUser({ name, email, password, roles: [customerRole._id] });
+  const user = await createUser({
+    name,
+    email,
+    password,
+    role: 'Customer',
+  });
   const authorizedUser = await findUserAuthorization(user._id);
   return issueSession(authorizedUser);
 };

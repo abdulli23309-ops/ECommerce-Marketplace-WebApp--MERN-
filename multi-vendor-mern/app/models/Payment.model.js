@@ -6,7 +6,7 @@ const paymentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ParentOrder',
       required: true,
-      unique: true,               // one payment per order
+      unique: true,
       index: true,
     },
     amount: {
@@ -28,7 +28,12 @@ const paymentSchema = new mongoose.Schema(
     },
     transactionId: {
       type: String,
-      default: null,              // optional, for real gateways
+      default: null,
+    },
+    stripePaymentIntentId: {      // ← new field
+      type: String,
+      default: null,
+      index: true,
     },
     paidAt: {
       type: Date,

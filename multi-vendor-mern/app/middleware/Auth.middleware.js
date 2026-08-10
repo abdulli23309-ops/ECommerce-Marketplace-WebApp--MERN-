@@ -7,17 +7,33 @@ const authenticate = (req, res, next) => {
 
   try {
     const payload = verifyAccessToken(token);
-    req.user = { id: payload.sub, roles: payload.roles || [], permissions: payload.permissions || [] };
+    req.user = {
+      id: payload.sub,
+      roles: payload.roles || [],
+      permissions: payload.permissions || [],
+    };
     return next();
   } catch {
     return next(new ApiError(401, 'Invalid or expired access token'));
   }
 };
 
-const requireRole = (...roles) => (req, res, next) => {
-  if (!req.user) return next(new ApiError(401, 'Authentication required'));
-  if (!roles.some((role) => req.user.roles.includes(role))) return next(new ApiError(403, 'Insufficient role privileges'));
-  return next();
+export const requireRole = (requiredRole) => {
+  return (req, res, next) => {
+    if (!req.user) return next(new ApiError(401, 'Authentication required'));
+
+    // roles can be plain strings (from JWT) or populated objects (from DB)
+    const hasRole = req.user.roles.some(
+      (r) => (typeof r === 'string' ? r : r.name) === requiredRole
+    );
+
+    if (!hasRole) {
+      return next(
+        new ApiError(403, `You must be a ${requiredRole} to perform this action`)
+      );
+    }
+    next();
+  };
 };
 
 const requirePermission = (...permissions) => (req, res, next) => {
@@ -28,4 +44,4 @@ const requirePermission = (...permissions) => (req, res, next) => {
   return next();
 };
 
-export { authenticate, requirePermission, requireRole };
+export { authenticate, requirePermission };

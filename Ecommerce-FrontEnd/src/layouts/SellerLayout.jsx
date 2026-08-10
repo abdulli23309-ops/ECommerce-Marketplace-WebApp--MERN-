@@ -6,11 +6,13 @@ import axiosInstance from "../services/axiosInstance";
 import PermissionGate from "../components/common/PermissionGate";
 import BrandLogo from "../components/common/BrandLogo";
 import Footer from "../components/common/Footer";
+import useIdleLogout from '../hooks/useIdleLogout';
 import { clearPermissions } from '../store/permissionsSlice';
 
 const SellerLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  useIdleLogout();
   const [storeId, setStoreId] = useState(null);
 
   useEffect(() => {

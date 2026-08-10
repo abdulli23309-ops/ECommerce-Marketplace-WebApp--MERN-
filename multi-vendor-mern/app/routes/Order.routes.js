@@ -15,6 +15,7 @@ router.get('/seller-orders/:id', orderController.getSellerOrderById);
 
 // Customer order history
 router.get('/', orderHistoryController.getMyOrders);
+router.put('/:id/cancel', orderController.cancelOrder);
 
 // Single order detail
 router.get('/:id', orderHistoryController.getOrderById);

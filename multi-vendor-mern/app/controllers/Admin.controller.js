@@ -8,11 +8,12 @@ export const getUsers = asyncHandler(async (req, res) => {
   new ApiResponse(200, data, 'Users retrieved').send(res);
 });
 export const activateUser = asyncHandler(async (req, res) => {
-  const user = await adminService.activateUser(req.params.id);
+  const user = await adminService.activateUser(req.params.id, req.user.id);
   new ApiResponse(200, user, 'User activated').send(res);
 });
+
 export const deactivateUser = asyncHandler(async (req, res) => {
-  const user = await adminService.deactivateUser(req.params.id);
+  const user = await adminService.deactivateUser(req.params.id, req.user.id);
   new ApiResponse(200, user, 'User deactivated').send(res);
 });
 
@@ -70,11 +71,14 @@ export const createRefund = asyncHandler(async (req, res) => {
   const refund = await adminService.createRefund(returnRequestId, req.user.id);
   new ApiResponse(201, refund, 'Refund created').send(res);
 });
-
-// Permission Groups
 export const getPermissionGroups = asyncHandler(async (req, res) => {
   const data = await adminService.getPermissionGroups(req.query);
   new ApiResponse(200, data, 'Groups retrieved').send(res);
+});
+// Permission Groups
+export const getGroupPermissions = asyncHandler(async (req, res) => {
+  const permissions = await adminService.getGroupPermissions(req.params.id);
+  new ApiResponse(200, permissions, 'Group permissions retrieved').send(res);
 });
 export const createPermissionGroup = asyncHandler(async (req, res) => {
   const group = await adminService.createPermissionGroup(req.body);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { fetchOrderById } from "../../services/orderService";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { fetchOrderById, cancelOrder } from "../../services/orderService";
 import { fetchMyReviews } from "../../services/reviewService";
 
 const statusSteps = ["Pending", "Processing", "Shipped", "Delivered"];
@@ -63,6 +63,7 @@ const StepProgress = ({ currentStep }) => (
     })}
   </div>
 );
+
 const ShipmentInfo = ({ shipment }) => {
   if (!shipment) {
     return (
@@ -100,8 +101,11 @@ const ShipmentInfo = ({ shipment }) => {
 
 const OrderDetailPage = () => {
   const { orderId } = useParams();
+  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);   // custom modal state
 
   useEffect(() => {
     const load = async () => {
@@ -123,7 +127,54 @@ const OrderDetailPage = () => {
     load();
   }, [orderId]);
 
-  const currentStep = statusSteps.indexOf(order?.orderStatus);
+  // Opens the custom modal instead of window.confirm
+  const handleCancelClick = () => {
+    setIsCancelModalOpen(true);
+  };
+
+  // Called when user confirms cancellation in the modal
+  const handleConfirmCancel = async () => {
+    setIsCancelModalOpen(false);
+    setCancelling(true);
+    try {
+      await cancelOrder(orderId);
+      const updatedOrder = await fetchOrderById(orderId);
+      setOrder(updatedOrder);
+    } catch (err) {
+      console.error("Failed to cancel order", err);
+      alert("Could not cancel the order. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+// Helper: get the most advanced status across parent and seller orders
+const getEffectiveStatus = (order) => {
+  if (!order) return 'Pending';
+  // If parent order is already advanced, use it
+  if (['Shipped', 'OutForDelivery', 'Delivered'].includes(order.orderStatus)) {
+    return order.orderStatus;
+  }
+  // Otherwise, check all seller order statuses
+  const sellerStatuses = (order.sellerOrders || []).map(so => so.status);
+  if (sellerStatuses.includes('Delivered')) return 'Delivered';
+  if (sellerStatuses.includes('OutForDelivery') || sellerStatuses.includes('Shipped')) return 'OutForDelivery';
+  if (sellerStatuses.includes('Processing')) return 'Processing';
+  return 'Pending';
+};
+
+const getActiveIndex = (status) => {
+  switch (status) {
+    case 'Pending':   return 0;
+    case 'Processing':return 1;
+    case 'Shipped':
+    case 'OutForDelivery': return 2;
+    case 'Delivered': return 3;
+    default:          return 0;
+  }
+};
+
+const currentStep = getActiveIndex(getEffectiveStatus(order));
 
   if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading order...</div>;
   if (!order) return <div style={{ padding: "2rem", color: "#666" }}>Order not found.</div>;
@@ -258,20 +309,116 @@ const OrderDetailPage = () => {
             )}
             {order.orderStatus === "Pending" && (
               <button
+                onClick={handleCancelClick}
+                disabled={cancelling}
                 style={{
                   padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #fca5a5",
-                  color: "#b91c1c", background: "#fff", fontSize: "0.85rem", fontWeight: 500,
-                  cursor: "pointer", transition: "background 0.2s",
+                  color: "#b91c1c", background: cancelling ? "#fef2f2" : "#fff",
+                  fontSize: "0.85rem", fontWeight: 500,
+                  cursor: cancelling ? "not-allowed" : "pointer",
+                  opacity: cancelling ? 0.6 : 1,
+                  transition: "background 0.2s",
                 }}
-                onMouseEnter={(e) => e.target.style.background = "#fef2f2"}
-                onMouseLeave={(e) => e.target.style.background = "#fff"}
+                onMouseEnter={(e) => { if (!cancelling) e.target.style.background = "#fef2f2" }}
+                onMouseLeave={(e) => { if (!cancelling) e.target.style.background = "#fff" }}
               >
-                Cancel Order
+                {cancelling ? "Cancelling..." : "Cancel Order"}
               </button>
             )}
           </div>
         </div>
       ))}
+
+      {/* ---------- Custom Cancel Confirmation Modal ---------- */}
+      {isCancelModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setIsCancelModalOpen(false)}   // close on backdrop click
+        >
+          <div
+            style={{
+              backgroundColor: "#fff",
+              padding: "32px",
+              borderRadius: "16px",
+              width: "90%",
+              maxWidth: "400px",
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+            }}
+            onClick={(e) => e.stopPropagation()}   // prevent backdrop click from closing when clicking inside modal
+          >
+            {/* Warning icon */}
+            <svg
+              style={{ width: 48, height: 48, color: "#ef4444", marginBottom: 16 }}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+
+            <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", margin: "0 0 8px" }}>
+              Cancel this order?
+            </h3>
+            <p style={{ fontSize: "0.9rem", color: "#6b7280", margin: 0 }}>
+              Are you sure you want to cancel this order? This action cannot be undone and the seller will be notified.
+            </p>
+
+            <div style={{ display: "flex", gap: 12, width: "100%", marginTop: 24 }}>
+              <button
+                onClick={() => setIsCancelModalOpen(false)}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: "1px solid #e5e7eb",
+                  backgroundColor: "#f9fafb",
+                  color: "#374151",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Nevermind
+              </button>
+              <button
+                onClick={handleConfirmCancel}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "8px",
+                  border: "none",
+                  backgroundColor: "#ef4444",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Cancel Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

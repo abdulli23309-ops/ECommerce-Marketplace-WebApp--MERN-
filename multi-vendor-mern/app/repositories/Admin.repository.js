@@ -1,15 +1,17 @@
-import mongoose from 'mongoose'; 
+import mongoose from 'mongoose';
 import User from '../models/User.model.js';
 import SellerProfile from '../models/SellerProfile.model.js';
 import ParentOrder from '../models/ParentOrder.model.js';
 import Product from '../models/Product.model.js';
 import Payment from '../models/Payment.model.js';
 import Shipment from '../models/Shipment.model.js';
+import { ApiError } from '../utils/ApiError.util.js';
 import ReturnRequest from '../models/Return.model.js';
 import Refund from '../models/Refund.model.js';
 import PermissionGroup from '../models/PermissionGroup.model.js';
 import Role from '../models/Role.model.js';
-import Permission from '../models/Permission.model.js'; 
+import Permission from '../models/Permission.model.js';
+
 // ---------- Users ----------
 export const findUsers = async ({ page = 1, pageSize = 10, search, role, isActive }) => {
   const query = {};
@@ -22,33 +24,27 @@ export const findUsers = async ({ page = 1, pageSize = 10, search, role, isActiv
   if (isActive !== undefined && isActive !== '') {
     query.isActive = isActive === 'true';
   }
+  if (role) {
+    query.role = role;   // direct string match
+  }
 
   const skip = (Number(page) - 1) * Number(pageSize);
   const limit = Number(pageSize);
 
-  let usersPromise = User.find(query)
-    .populate('roles', 'name')
-    .skip(skip)
-    .limit(limit)
-    .lean();
-
-  const totalPromise = User.countDocuments(query);
-
-  const [users, total] = await Promise.all([usersPromise, totalPromise]);
-
-  let filteredUsers = users;
-  if (role) {
-    filteredUsers = users.filter(u => u.roles.some(r => r.name === role));
-  }
+  const [items, total] = await Promise.all([
+    User.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    User.countDocuments(query),
+  ]);
 
   return {
-    items: filteredUsers.map(({ password, refreshTokens, ...rest }) => rest),
-    total: role ? filteredUsers.length : total,
+    items: items.map(({ password, refreshTokens, ...rest }) => rest),
+    total,
     page: Number(page),
     pageSize: limit,
-    totalPages: Math.ceil((role ? filteredUsers.length : total) / limit),
+    totalPages: Math.ceil(total / limit),
   };
 };
+
 
 // ---------- Sellers ----------
 // ---------- Sellers ----------
@@ -324,3 +320,28 @@ export const getStats = async () => {
     pendingReturns,
   };
 };
+// ---------- User Activation / Deactivation ----------
+// Prevent self-modification
+const ensureNotSelf = (userId, adminId) => {
+  if (userId.toString() === adminId.toString()) {
+    throw new ApiError(403, 'You cannot modify your own account');
+  }
+};
+
+export const activateUser = async (id, adminId) => {
+  ensureNotSelf(id, adminId);
+  return User.findByIdAndUpdate(id, { isActive: true }, { new: true }).lean();
+};
+
+export const deactivateUser = async (id, adminId) => {
+  ensureNotSelf(id, adminId);
+  return User.findByIdAndUpdate(id, { isActive: false }, { new: true }).lean();
+};
+export const createPermissionGroup = (data) =>
+  PermissionGroup.create(data);
+
+export const updatePermissionGroup = (id, data) =>
+  PermissionGroup.findByIdAndUpdate(id, { $set: data }, { new: true }).lean();
+
+export const deletePermissionGroup = (id) =>
+  PermissionGroup.findByIdAndDelete(id).lean();

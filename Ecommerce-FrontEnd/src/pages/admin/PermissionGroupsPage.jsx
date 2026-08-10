@@ -1,18 +1,6 @@
 import { useState, useEffect } from "react";
 import axiosInstance from "../../services/axiosInstance";
 
-const getPermissionRole = (code) => {
-  if (!code) return { label: "Unknown", color: "#6b7280", bg: "#f3f4f6" };
-  if (code.startsWith("Seller.")) return { label: "Seller", color: "#065f46", bg: "#ecfdf5" };
-  if (
-    code.startsWith("Products.") ||
-    code.startsWith("Orders.") ||
-    code.startsWith("Customers.") ||
-    code.startsWith("Reports.")
-  ) return { label: "Customer", color: "#1e40af", bg: "#eff6ff" };
-  return { label: "Admin", color: "#991b1b", bg: "#fef2f2" };
-};
-
 const iconBtnStyle = {
   background: "transparent",
   border: "none",
@@ -138,8 +126,13 @@ const PermissionGroupsPage = () => {
     }
   };
 
-  const groupedPermissions = allPermissions.reduce((acc, perm) => {
-    const module = (perm.code || perm.name).split(".")[0] || "Other";
+  // Only show Seller‑scoped permissions
+  const filteredPermissions = allPermissions.filter((perm) =>
+    perm.code.startsWith('Seller.')
+  );
+
+  const groupedPermissions = filteredPermissions.reduce((acc, perm) => {
+    const module = "Seller";  // everything under one module for simplicity
     if (!acc[module]) acc[module] = [];
     acc[module].push(perm);
     return acc;
@@ -151,7 +144,7 @@ const PermissionGroupsPage = () => {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <div>
             <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", margin: 0 }}>Permission Groups</h1>
-            <p style={{ color: "#6b7280", marginTop: "0.25rem" }}>Manage permission groups and their permissions</p>
+            <p style={{ color: "#6b7280", marginTop: "0.25rem" }}>Manage seller permission groups</p>
           </div>
           <button onClick={openCreateModal} style={{
             padding: "0.5rem 1.25rem", borderRadius: "8px", border: "none",
@@ -230,23 +223,16 @@ const PermissionGroupsPage = () => {
                 <textarea className="form-input" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
 
-              <h4 style={{ marginTop: "1rem", fontWeight: 600 }}>Permissions</h4>
+              <h4 style={{ marginTop: "1rem", fontWeight: 600 }}>Seller Permissions</h4>
               {Object.entries(groupedPermissions).map(([module, perms]) => (
                 <div key={module} style={{ marginBottom: "1rem" }}>
-                  <p style={{ fontWeight: 600, color: "#111827", marginBottom: "0.25rem" }}>{module.charAt(0).toUpperCase() + module.slice(1)}</p>
-                  {perms.map((perm) => {
-                    const role = getPermissionRole(perm.code);
-                    return (
-                      <label key={perm.id} style={{ display: "block", marginLeft: "1rem", fontSize: "0.9rem", cursor: "pointer" }}>
-                        <input type="checkbox" checked={selectedPermIds.includes(perm.id)} onChange={() => handleCheckboxChange(perm.id)} style={{ marginRight: "0.5rem" }} />
-                        {perm.name}{" "}
-                        <span style={{ color: role.color, background: role.bg, fontSize: "0.65rem", fontWeight: 700, padding: "1px 6px", borderRadius: "4px", marginLeft: "0.25rem", textTransform: "uppercase" }}>
-                          {role.label}
-                        </span>
-                        <span style={{ color: "#888", fontSize: "0.8rem", marginLeft: "0.5rem" }}>({perm.code})</span>
-                      </label>
-                    );
-                  })}
+                  {perms.map((perm) => (
+                    <label key={perm.id} style={{ display: "block", marginLeft: "1rem", fontSize: "0.9rem", cursor: "pointer" }}>
+                      <input type="checkbox" checked={selectedPermIds.includes(perm.id)} onChange={() => handleCheckboxChange(perm.id)} style={{ marginRight: "0.5rem" }} />
+                      {perm.name}{" "}
+                      <span style={{ color: "#888", fontSize: "0.8rem", marginLeft: "0.5rem" }}>({perm.code})</span>
+                    </label>
+                  ))}
                 </div>
               ))}
 

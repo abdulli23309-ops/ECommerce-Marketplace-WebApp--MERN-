@@ -38,14 +38,15 @@ router.get('/permission-groups', adminController.getPermissionGroups);
 router.post('/permission-groups', adminController.createPermissionGroup);
 router.put('/permission-groups/:id', adminController.updatePermissionGroup);
 router.delete('/permission-groups/:id', adminController.deletePermissionGroup);
+router.get('/permission-groups/:id/permissions', adminController.getGroupPermissions);
 
 // Roles
 router.get('/roles', adminController.getRoles);
 router.put('/roles/:roleId/groups/:groupId', adminController.assignGroupToRole);
 router.delete('/roles/:roleId/groups/:groupId', adminController.removeGroupFromRole);
 
-// Permissions (new)
-router.get('/permissions', adminController.getPermissions);   // ← add this line
+// Permissions
+router.get('/permissions', adminController.getPermissions);
 
 // Dashboard stats
 router.get('/stats', adminController.getStats);

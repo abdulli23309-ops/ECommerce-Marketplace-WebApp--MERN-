@@ -3,11 +3,13 @@ import { useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
 import BrandLogo from "../components/common/BrandLogo";
 import Footer from "../components/common/Footer";
+import useIdleLogout from '../hooks/useIdleLogout';
 import { clearPermissions } from '../store/permissionsSlice';
 
 const AdminLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  useIdleLogout();
 
   const handleLogout = () => {
     dispatch(logout());
