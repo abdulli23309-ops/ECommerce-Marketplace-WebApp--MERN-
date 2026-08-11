@@ -47,7 +47,9 @@ import RequestReturnPage from "./pages/customer/RequestReturnPage";   // single 
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminShipmentsPage from "./pages/admin/AdminShipmentsPage";
 import ProductGrid from "./pages/seller/ProductGrid";
+import CustomerReturnsPage from "./pages/customer/CustomerReturnsPage";
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
+import SellerReturnsPage from "./pages/seller/SellerReturnsPage";
 
 const App = () => {
   const dispatch = useDispatch();
@@ -87,7 +89,8 @@ const App = () => {
           <Route path="/addresses" element={<AddressBookPage />} />
           <Route path="/orders/:orderId" element={<OrderDetailPage />} />
           <Route path="/review/new/:sellerOrderId" element={<ReviewPage />} />
-          <Route path="/returns/new/:sellerOrderId" element={<RequestReturnPage />} />   {/* single route */}
+          <Route path="/returns/new/:sellerOrderId" element={<RequestReturnPage />} /> 
+          <Route path="/returns" element={<CustomerReturnsPage />} />   {/* single route */}
           <Route path="/reviews/my" element={<MyReviewsPage />} />
           <Route path="/reviews/:reviewId" element={<ReviewDetailPage />} />
         </Route>
@@ -112,6 +115,7 @@ const App = () => {
           <Route path="/seller/settings" element={<StoreSettingsPage />} />
           <Route path="/seller/shipments" element={<ShipmentManagementPage />} />
           <Route path="/seller/reviews" element={<SellerReviewsPage />} />
+          <Route path="/seller/returns" element={<SellerReturnsPage />} />
         </Route>
       </Route>
 

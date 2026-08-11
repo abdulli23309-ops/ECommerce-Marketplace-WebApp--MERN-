@@ -21,6 +21,10 @@ const mapProduct = (p) => ({
   store: p.store,
   createdAt: p.createdAt,
   updatedAt: p.updatedAt,
+    avgRating: p.avgRating || 0,
+  reviewCount: p.reviewCount || 0,
+    rejectionReason: p.rejectionReason || '',
+  internalNote: p.internalNote || '',
 });
 
 // ---------- Paginated fetch for seller's own products ----------
@@ -67,3 +71,5 @@ export const fetchRawProductById = async (productId) => {
   const { data } = await axiosInstance.get(`/products/${productId}`);
   return data.data;  // returns full object with category: { _id, name }, etc.
 };
+export const fetchSellerProductById = (productId) =>
+  axiosInstance.get(`/products/${productId}`).then(res => res.data.data);

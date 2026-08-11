@@ -15,6 +15,11 @@ export const getProductById = asyncHandler(async (req, res) => {
 
 export const updateProductStatus = asyncHandler(async (req, res) => {
   const { status, reason, internalNote } = req.body;
-  const product = await adminProductService.updateStatus(req.params.id, status, reason, internalNote);
-  new ApiResponse(200, product, 'Status updated').send(res);
+  const updatedProduct = await adminProductService.updateProductStatus(
+    req.params.id,
+    status,
+    reason,
+    internalNote
+  );
+  new ApiResponse(200, updatedProduct, 'Product status updated').send(res);
 });

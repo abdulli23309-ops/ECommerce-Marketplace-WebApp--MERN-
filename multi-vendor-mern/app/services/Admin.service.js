@@ -97,3 +97,5 @@ export const getGroupPermissions = async (groupId) => {
   if (!group) throw new ApiError(404, 'Permission group not found');
   return group.permissions;   // array of ObjectIds
 };
+export const adminDecision = (returnId, decision, adminId, notes) =>
+  returnService.adminDecision(returnId, decision, adminId, notes);

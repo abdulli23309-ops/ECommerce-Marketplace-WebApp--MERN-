@@ -1,5 +1,7 @@
 import SellerProfile from '../models/SellerProfile.model.js';
 import Store from '../models/Store.model.js';
+import ParentOrder from '../models/ParentOrder.model.js';
+import Payment from '../models/Payment.model.js';
 import Product from '../models/Product.model.js';
 import SellerOrder from '../models/SellerOrder.model.js';
 import Shipment from '../models/Shipment.model.js';
@@ -17,12 +19,32 @@ const getStoreId = async (userId) => {
 
 export const getDashboard = async (userId) => {
   const { store } = await getStoreId(userId);
+
   const totalProducts = await Product.countDocuments({ store: store._id, isDeleted: false });
   const totalOrders = await SellerOrder.countDocuments({ store: store._id });
+
+  // Pending shipments: seller orders that have no shipment or shipment status "Pending"
   const pendingShipments = await Shipment.countDocuments({
-    sellerOrder: { $in: (await SellerOrder.find({ store: store._id }).select('_id')) },
+    sellerOrder: { $in: await SellerOrder.find({ store: store._id }).select('_id') },
     status: 'Pending',
   });
+
+  // Today's orders (seller orders created today)
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const todayOrders = await SellerOrder.countDocuments({
+    store: store._id,
+    createdAt: { $gte: startOfToday },
+  });
+
+  // Total revenue from delivered orders
+  const deliveredOrders = await SellerOrder.find({
+    store: store._id,
+    status: 'Delivered',
+  }).select('subTotal');
+  const totalRevenue = deliveredOrders.reduce((sum, o) => sum + o.subTotal, 0);
+
+  // Ratings
   const productIds = (await Product.find({ store: store._id }).select('_id')).map(p => p._id);
   const avgResult = await Review.aggregate([
     { $match: { product: { $in: productIds } } },
@@ -30,22 +52,59 @@ export const getDashboard = async (userId) => {
   ]);
   const averageRating = avgResult[0]?.avg || 0;
   const totalReviews = avgResult[0]?.count || 0;
-  return { totalProducts, totalOrders, pendingShipments, averageRating: Math.round(averageRating * 10) / 10, totalReviews };
+
+  return {
+    totalProducts,
+    totalOrders,
+    pendingShipments,
+    todayOrders,
+    totalRevenue,
+    averageRating: Math.round(averageRating * 10) / 10,
+    totalReviews,
+  };
 };
 
+// ---------- Seller orders (grouped, sorted newest first) ----------
 export const getSellerOrders = async (userId, { page = 1, pageSize = 10 } = {}) => {
   const { store } = await getStoreId(userId);
 
-  // 1. Get all seller orders for this store
   const allSellerOrders = await SellerOrder.find({ store: store._id })
-    .populate('parentOrder', 'orderStatus totalAmount createdAt')
+    .populate('parentOrder', 'orderStatus totalAmount createdAt customer shippingCity shippingState')
+    .populate('store', 'name')                              // ← now we get store name
     .populate('items.product', 'name')
     .lean();
 
-  // 2. Group by parentOrder to get distinct parent orders
+  // Collect parent order IDs
+  const parentOrderIds = [...new Set(allSellerOrders.map(so => so.parentOrder?._id))].filter(Boolean);
+
+  // Fetch customer names for all parent orders
+  const parentOrders = await ParentOrder.find({ _id: { $in: parentOrderIds } })
+    .select('customer shippingCity shippingState')
+    .populate('customer', 'name')
+    .lean();
+
+  // Map parent order id → customer name + shipping
+  const parentMap = {};
+  parentOrders.forEach(po => {
+    parentMap[po._id.toString()] = {
+      customerName: po.customer?.name || 'Unknown Customer',
+      shippingLocation: `${po.shippingCity || ''}${po.shippingState ? ', ' + po.shippingState : ''}`.trim() || '—',
+    };
+  });
+
+  // Fetch payments for all parent orders (to get payment method)
+  const payments = await Payment.find({ parentOrder: { $in: parentOrderIds } })
+    .select('parentOrder method')
+    .lean();
+  const paymentMap = {};
+  payments.forEach(p => {
+    paymentMap[p.parentOrder.toString()] = p.method;
+  });
+
+  // Group by parentOrder._id
   const groupedMap = new Map();
-for (const so of allSellerOrders) {
-  if (!so.parentOrder) continue; 
+  for (const so of allSellerOrders) {
+    if (!so.parentOrder) continue;
     const pid = so.parentOrder._id.toString();
     if (!groupedMap.has(pid)) {
       groupedMap.set(pid, {
@@ -53,32 +112,38 @@ for (const so of allSellerOrders) {
         orderStatus: so.parentOrder.orderStatus,
         totalAmount: so.parentOrder.totalAmount,
         createdAt: so.parentOrder.createdAt,
+        customerName: parentMap[pid]?.customerName || 'Unknown Customer',
+        shippingLocation: parentMap[pid]?.shippingLocation || '—',
+        paymentMethod: paymentMap[pid] || 'N/A',
         sellerOrders: [],
       });
     }
-    groupedMap.get(pid).sellerOrders.push({
+    // Flatten items across all seller orders for this parent
+    const sellerOrdersGroup = groupedMap.get(pid).sellerOrders;
+    sellerOrdersGroup.push({
       _id: so._id,
-      store: so.store,
+      store: so.store,                   // now populated with { _id, name }
       status: so.status,
       subTotal: so.subTotal,
       items: so.items,
     });
   }
 
+  // Convert to array and sort by createdAt descending (newest first)
   const allGroups = Array.from(groupedMap.values());
+  allGroups.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  // 3. Apply pagination on the parent orders
+  // Pagination
   const total = allGroups.length;
   const skip = (Number(page) - 1) * Number(pageSize);
   const paginatedGroups = allGroups.slice(skip, skip + Number(pageSize));
 
-  // 4. Fetch shipments for the seller orders in this page
+  // Fetch shipments for the seller orders in this page
   const sellerOrderIds = paginatedGroups.flatMap(g => g.sellerOrders.map(so => so._id));
   const shipments = await Shipment.find({ sellerOrder: { $in: sellerOrderIds } }).lean();
   const shipmentMap = new Map();
   shipments.forEach(s => shipmentMap.set(s.sellerOrder.toString(), s));
 
-  // 5. Attach shipments to each seller order
   for (const group of paginatedGroups) {
     for (const so of group.sellerOrders) {
       so.shipment = shipmentMap.get(so._id.toString()) || null;
@@ -94,6 +159,21 @@ for (const so of allSellerOrders) {
   };
 };
 
+// ---------- Unread orders (new order notifications) ----------
+export const getUnreadCount = async (userId) => {
+  const { store } = await getStoreId(userId);
+  return SellerOrder.countDocuments({ store: store._id, isReadBySeller: false });
+};
+
+export const markAllAsRead = async (userId) => {
+  const { store } = await getStoreId(userId);
+  await SellerOrder.updateMany(
+    { store: store._id, isReadBySeller: false },
+    { $set: { isReadBySeller: true } }
+  );
+};
+
+// ---------- Seller reviews (unchanged) ----------
 export const getSellerReviews = async (userId, { page = 1, pageSize = 10 } = {}) => {
   const { store } = await getStoreId(userId);
   const productIds = (await Product.find({ store: store._id }).select('_id')).map(p => p._id);

@@ -44,6 +44,14 @@ const productSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    rejectionReason: {
+  type: String,
+  default: null,
+},
+internalNote: {
+  type: String,
+  default: null,
+},
     brand: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Brand',

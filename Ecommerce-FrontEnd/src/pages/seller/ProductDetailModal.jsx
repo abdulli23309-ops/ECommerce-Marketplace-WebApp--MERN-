@@ -1,8 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getImageUrl } from '../../utils/imageHelper';
+import axiosInstance from '../../services/axiosInstance';
 
 const ProductDetailModal = ({ product, onClose }) => {
   const [activeTab, setActiveTab] = useState('details');
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
+
+  // Fetch reviews when modal opens
+  useEffect(() => {
+    if (!product?._id) return;
+    const fetchReviews = async () => {
+      setLoadingReviews(true);
+      try {
+        const res = await axiosInstance.get(`/reviews/product/${product._id}`);
+        const data = res.data?.data || res.data;
+        const reviewList = data?.items || (Array.isArray(data) ? data : []);
+        setReviews(reviewList);
+      } catch (err) {
+        console.error('Failed to fetch reviews', err);
+        setReviews([]);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+    fetchReviews();
+  }, [product]);
+
+  const images = product?.images || [];
+
+  const goToPrevImage = (e) => {
+    e.stopPropagation();
+    setCurrentImgIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const goToNextImage = (e) => {
+    e.stopPropagation();
+    setCurrentImgIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
 
   const renderStars = (rating) => {
     return '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
@@ -30,7 +66,7 @@ const ProductDetailModal = ({ product, onClose }) => {
           transform: 'translate(-50%, -50%)',
           width: '800px',
           maxWidth: '90vw',
-          maxHeight: '90vh',
+          maxHeight: '75vh',
           background: '#fff',
           borderRadius: '12px',
           boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
@@ -59,32 +95,154 @@ const ProductDetailModal = ({ product, onClose }) => {
           ×
         </button>
 
-        {/* Product Image & Basic Info */}
-        <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
-          <img
-            src={getImageUrl(product.images?.[0]) || '/placeholder.png'}
-            alt={product.name}
-            style={{
-              width: '240px',
-              height: '240px',
-              objectFit: 'cover',
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb',
-            }}
-            onError={e => e.target.src = '/placeholder.png'}
-          />
-          <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.5rem' }}>{product.name}</h2>
+        {/* Image Carousel */}
+        {images.length > 0 && (
+          <>
+            <div
+              style={{
+                position: 'relative',
+                width: '100%',
+                height: '300px',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: '16px',
+              }}
+            >
+              <img
+                src={getImageUrl(images[currentImgIndex]) || '/placeholder.png'}
+                alt={product.name}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb',
+                }}
+                onError={(e) => (e.target.src = '/placeholder.png')}
+              />
+
+              {/* Left Arrow */}
+              {images.length > 1 && (
+                <button
+                  onClick={goToPrevImage}
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '10px',
+                    transform: 'translateY(-50%)',
+                    backgroundColor: 'rgba(255,255,255,0.8)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    cursor: 'pointer',
+                    zIndex: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    color: '#111827',
+                  }}
+                >
+                  ‹
+                </button>
+              )}
+
+              {/* Right Arrow */}
+              {images.length > 1 && (
+                <button
+                  onClick={goToNextImage}
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    right: '10px',
+                    transform: 'translateY(-50%)',
+                    backgroundColor: 'rgba(255,255,255,0.8)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    cursor: 'pointer',
+                    zIndex: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    color: '#111827',
+                  }}
+                >
+                  ›
+                </button>
+              )}
+            </div>
+
+            {/* Thumbnails */}
+            {images.length > 1 && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  overflowX: 'auto',
+                  paddingBottom: '8px',
+                  marginBottom: '1.5rem',
+                }}
+              >
+                {images.map((img, idx) => (
+                  <img
+                    key={idx}
+                    src={getImageUrl(img) || '/placeholder.png'}
+                    alt={`Thumbnail ${idx + 1}`}
+                    onClick={() => setCurrentImgIndex(idx)}
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      border:
+                        currentImgIndex === idx
+                          ? '2px solid #000'
+                          : '1px solid #e5e7eb',
+                      objectFit: 'cover',
+                    }}
+                    onError={(e) => (e.target.style.display = 'none')}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Product Basic Info */}
+        <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.5rem' }}>
+              {product.name}
+            </h2>
             <p style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: '0 0 1rem' }}>
               PKR {product.price?.toLocaleString()}
             </p>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <span style={{ background: '#f3f4f6', padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 600, color: '#4b5563' }}>
+              <span
+                style={{
+                  background: '#f3f4f6',
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '999px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: '#4b5563',
+                }}
+              >
                 {product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}
               </span>
-              {product.rating && (
+              {product.avgRating > 0 && (
                 <span style={{ color: '#f59e0b', fontWeight: 600 }}>
-                  {product.rating} ★
+                  {product.avgRating} ★ ({product.reviewCount})
                 </span>
               )}
             </div>
@@ -130,23 +288,29 @@ const ProductDetailModal = ({ product, onClose }) => {
           <div>
             <div style={{ marginBottom: '1rem' }}>
               <h4 style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#4b5563' }}>Description</h4>
-              <p style={{ lineHeight: '1.6', color: '#111827' }}>{product.description || 'No description provided.'}</p>
+              <p style={{ lineHeight: '1.6', color: '#111827' }}>
+                {product.description || 'No description provided.'}
+              </p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Category:</span><br />
+                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Category:</span>
+                <br />
                 <span>{product.category?.name || product.category || 'N/A'}</span>
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Brand:</span><br />
+                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Brand:</span>
+                <br />
                 <span>{product.brand?.name || product.brand || 'N/A'}</span>
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Created:</span><br />
+                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Created:</span>
+                <br />
                 <span>{new Date(product.createdAt).toLocaleDateString()}</span>
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Stock:</span><br />
+                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Stock:</span>
+                <br />
                 <span>{product.stock}</span>
               </div>
             </div>
@@ -157,22 +321,47 @@ const ProductDetailModal = ({ product, onClose }) => {
           <div>
             <div style={{ marginBottom: '1.5rem' }}>
               <h4 style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#4b5563' }}>Overall Rating</h4>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>
-                {product.rating ? `${product.rating} / 5 ★` : 'No ratings yet'}
-              </p>
+              {product.avgRating > 0 ? (
+                <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>
+                  {product.avgRating} / 5 ★ ({product.reviewCount} review{product.reviewCount !== 1 ? 's' : ''})
+                </p>
+              ) : (
+                <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#9ca3af' }}>No ratings yet</p>
+              )}
+              {product.status === 'Rejected' && product.rejectionReason && (
+  <div style={{
+    backgroundColor: '#fef2f2',
+    border: '1px solid #f87171',
+    borderRadius: '8px',
+    padding: '8px 12px',
+    marginTop: '12px',
+  }}>
+    <p style={{ margin: 0, fontSize: '0.85rem', color: '#991b1b', lineHeight: '1.4' }}>
+      ⚠️ {product.rejectionReason}
+    </p>
+  </div>
+)}
             </div>
 
-            {product.reviews && product.reviews.length > 0 ? (
+            {loadingReviews ? (
+              <p style={{ color: '#6b7280' }}>Loading reviews...</p>
+            ) : reviews.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {product.reviews.map((review, idx) => (
-                  <div key={idx} style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px' }}>
+                {reviews.map((review, idx) => (
+                  <div key={review._id || idx} style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 600 }}>{review.user || 'Anonymous'}</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {review.customer?.name || 'Anonymous'}
+                      </span>
                       <span style={{ color: '#f59e0b', fontWeight: 600 }}>
                         {renderStars(review.rating)} {review.rating}
                       </span>
                     </div>
-                    <p style={{ margin: 0, color: '#4b5563', lineHeight: '1.5' }}>{review.comment}</p>
+                    <p style={{ margin: '0 0 0.5rem', color: '#4b5563', lineHeight: '1.5' }}>{review.comment}</p>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#9ca3af' }}>
+                      by {review.customer?.name || 'Anonymous'} on{' '}
+                      {new Date(review.createdAt).toLocaleDateString()}
+                    </p>
                   </div>
                 ))}
               </div>

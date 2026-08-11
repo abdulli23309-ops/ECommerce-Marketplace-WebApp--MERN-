@@ -15,3 +15,6 @@ export const updateStatus = async (id, status, note = '') => {
   shipment.trackingHistory.push({ status, note });
   return shipment.save();
 };
+
+export const updateById = (id, data) =>
+  Shipment.findByIdAndUpdate(id, { $set: data }, { new: true });

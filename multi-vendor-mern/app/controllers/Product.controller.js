@@ -46,6 +46,10 @@ export const getMyProducts = asyncHandler(async (req, res) => {
   const products = await productService.getMyProducts(req.user.id, req.query);
   new ApiResponse(200, products, 'Products retrieved').send(res);
 });
+export const getMyProductById = asyncHandler(async (req, res) => {
+  const product = await productService.getMyProductById(req.user.id, req.params.id);
+  new ApiResponse(200, product, 'Product retrieved').send(res);
+});
 
 export const deleteMyProduct = asyncHandler(async (req, res) => {
   await productService.deleteMyProduct(req.user.id, req.params.id);

@@ -7,11 +7,16 @@ const router = Router();
 
 router.use(authenticate);
 
-// Customer routes
 router.post('/', returnController.createReturn);
 router.get('/mine', returnController.getMyReturns);
-router.post('/upload-image', authenticate, uploadProductImages, returnController.uploadReturnImage);
-// Admin route
-router.put('/:id/process', requireRole('Admin'), returnController.processReturn);
+router.post('/upload-image', uploadProductImages, returnController.uploadReturnImage);
+router.put('/:id/tracking', authenticate, returnController.updateTracking);
+// Seller
+router.get('/seller', requireRole('Seller'), returnController.getSellerReturns);
+router.put('/:id/seller-decision', requireRole('Seller'), returnController.sellerDecision);
+router.put('/:id/process-refund', requireRole('Seller'), returnController.processRefund);
 
+// Admin
+router.get('/admin', requireRole('Admin'), returnController.getAdminReturns);
+router.put('/:id/admin-decision', requireRole('Admin'), returnController.adminDecision);
 export default router;

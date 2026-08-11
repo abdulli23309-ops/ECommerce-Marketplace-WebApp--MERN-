@@ -22,16 +22,16 @@ const ProductModerationPage = () => {
     fetchProducts();
   }, []);
 
-  const handleStatusChange = async (productId, newStatus) => {
-    try {
-      await updateProductStatus(productId, newStatus);
-      setProducts(prev =>
-        prev.map(p => (p._id === productId ? { ...p, status: newStatus } : p))
-      );
-    } catch (err) {
-      console.error('Status update failed', err);
-    }
-  };
+const handleStatusChange = async (productId, newStatus, reason, note) => {
+  try {
+    await updateProductStatus(productId, newStatus, reason, note);
+    setProducts(prev =>
+      prev.map(p => (p._id === productId ? { ...p, status: newStatus } : p))
+    );
+  } catch (err) {
+    console.error('Status update failed', err);
+  }
+};
 
   const metrics = {
     pendingApproval: products.filter(p => p.status === 'PendingApproval').length,

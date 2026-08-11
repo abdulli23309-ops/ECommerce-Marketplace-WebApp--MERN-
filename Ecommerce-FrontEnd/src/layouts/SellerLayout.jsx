@@ -1,7 +1,7 @@
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axiosInstance from "../services/axiosInstance";
 import PermissionGate from "../components/common/PermissionGate";
 import BrandLogo from "../components/common/BrandLogo";
@@ -29,6 +29,34 @@ const SellerLayout = () => {
     fetchStore();
   }, []);
 
+  // ---- Unread orders badge ----
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get('/seller/orders/unread-count');
+      const { count } = res.data.data || res.data;
+      setUnreadCount(count);
+    } catch (err) {
+      console.error('Failed to fetch unread count', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 60000); // poll every 60s
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+
+  const handleOrdersClick = async () => {
+    try {
+      await axiosInstance.post('/seller/orders/mark-read');
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to mark orders as read', err);
+    }
+  };
+
   const handleLogout = () => {
     dispatch(logout());
     dispatch(clearPermissions());
@@ -53,7 +81,7 @@ const SellerLayout = () => {
               borderBottom: "1px solid #e5e7eb",
               boxSizing: "border-box",
               gap: "4px",
-              minWidth: 0,                        // ← allow flex child to shrink
+              minWidth: 0,
             }}
           >
             <div
@@ -130,12 +158,34 @@ const SellerLayout = () => {
               </Link>
             </PermissionGate>
 
+            {/* Orders link with notification badge */}
             <PermissionGate permission="Seller.Orders.View">
-              <Link className="dashboard-nav-link" to="/seller/orders">
-                <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-                Orders
+              <Link
+                className="dashboard-nav-link"
+                to="/seller/orders"
+                onClick={handleOrdersClick}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                  Orders
+                </span>
+                {unreadCount > 0 && (
+                  <span style={{
+                    backgroundColor: '#ef4444',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    padding: '2px 6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    minWidth: '20px',
+                    textAlign: 'center',
+                  }}>
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             </PermissionGate>
 
@@ -148,6 +198,17 @@ const SellerLayout = () => {
                 Shipments
               </Link>
             </PermissionGate>
+
+            {/* Returns – new sidebar link */}
+            {/* Returns */}
+<PermissionGate permission="Seller.Orders.View">
+  <Link className="dashboard-nav-link" to="/seller/returns">
+    <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+    Returns
+  </Link>
+</PermissionGate>
 
             <PermissionGate permission="Seller.Reviews.View">
               <Link className="dashboard-nav-link" to="/seller/reviews">

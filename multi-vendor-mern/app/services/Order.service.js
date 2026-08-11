@@ -168,10 +168,22 @@ export const prepareOrder = async (userId, addressId, session) => {
 };
 
 export const cancelOrder = async (orderId, userId) => {
-  const order = await orderRepo.findByIdForMutation(orderId, userId);
-  if (!order) throw new ApiError(404, 'Order not found');
-  if (order.orderStatus !== 'Pending') throw new ApiError(400, 'Only pending orders can be cancelled');
-  order.orderStatus = 'Cancelled';
-  await order.save();
-  return order;
+  const parentOrder = await orderRepo.findByIdForMutation(orderId, userId);
+  if (!parentOrder) throw new ApiError(404, 'Order not found');
+  if (parentOrder.orderStatus !== 'Pending') {
+    throw new ApiError(400, 'Only pending orders can be cancelled');
+  }
+
+  // Cancel the parent order
+  parentOrder.orderStatus = 'Cancelled';
+  await parentOrder.save();
+
+  // Cancel all seller orders belonging to this parent
+  const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
+  for (const so of sellerOrders) {
+    so.status = 'Cancelled';
+    await so.save();
+  }
+
+  return parentOrder;
 };

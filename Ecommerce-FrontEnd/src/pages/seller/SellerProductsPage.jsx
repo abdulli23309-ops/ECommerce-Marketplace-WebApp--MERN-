@@ -129,12 +129,11 @@ const SellerProductsPage = () => {
                   </td>
                   {/* Rating (placeholder – replace with real data later) */}
                   <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", color: "#f59e0b" }}>
-                    {product.rating ? `${product.rating} ★` : "—"}
-                  </td>
-                  {/* Reviews count */}
-                  <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", color: "#6b7280" }}>
-                    {product.reviews ? product.reviews.length : 0}
-                  </td>
+  {product.avgRating > 0 ? `${product.avgRating} ★` : "No rating"}
+</td>
+<td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", color: "#6b7280" }}>
+  {product.reviewCount || 0}
+</td>
                   {/* Actions */}
                   <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle" }}>
                     <PermissionGate permission="Seller.Products.Edit">

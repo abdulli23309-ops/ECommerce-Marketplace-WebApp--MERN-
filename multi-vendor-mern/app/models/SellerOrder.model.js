@@ -39,6 +39,10 @@ const sellerOrderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    isReadBySeller: {
+  type: Boolean,
+  default: false,
+},
     status: {
       type: String,
       default: 'Pending',

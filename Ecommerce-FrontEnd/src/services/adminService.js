@@ -2,9 +2,8 @@ import axiosInstance from "./axiosInstance";
 
 // Helper to normalize backend paginated response
 const extractItems = (responseData) => {
-  // Backend returns { success, data: { items, ... } } or { success, data: [...] }
   if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
-    return responseData.items || responseData; // { items: [...] } => [...]
+    return responseData.items || responseData;
   }
   return Array.isArray(responseData) ? responseData : [];
 };
@@ -19,8 +18,8 @@ export const getSellers = async () => {
       businessName: s.businessName,
       fullName: s.user?.name || "",
       email: s.user?.email || "",
-      storeName: s.store?.name || "",          // ← store name
-      storeLogoUrl: s.store?.logo || "",       // ← store logo path
+      storeName: s.store?.name || "",
+      storeLogoUrl: s.store?.logo || "",
       storeDescription: s.store?.description || "",
       status: s.status,
     })),
@@ -41,7 +40,6 @@ export const rejectSeller = async (sellerId, reason) => {
 };
 
 // ---------- Products (admin) ----------
-// This uses separate service file now, keep for backward compat if needed
 export const getProducts = async () => {
   const { data } = await axiosInstance.get("/admin/products");
   const products = extractItems(data.data);
@@ -66,33 +64,23 @@ export const updateProductStatus = async (productId, status) => {
 };
 
 // ---------- Returns ----------
-// ---------- Returns ----------
 export const getReturns = async () => {
-  const { data } = await axiosInstance.get("/admin/returns");
-  const returns = extractItems(data.data);
-  return {
-    items: returns.map(r => ({
-      id: r._id,
-      customerEmail: r.customer?.email || "",
-      productName: r.product?.name || "",
-      reason: r.reason,
-      description: r.description || "",   // ← new field
-      images: r.images || [],             // ← new field (array of strings)
-      status: r.status,
-    })),
-    total: returns.length,
-    page: 1,
-    totalPages: 1,
-  };
+  const { data } = await axiosInstance.get("/returns/admin");
+  // The backend returns { success, data: [... ] }
+  return data.data || data;
 };
 
 export const approveReturn = async (returnId) => {
-  const { data } = await axiosInstance.put(`/returns/${returnId}/process`, { status: "Approved" });
+  const { data } = await axiosInstance.put(`/returns/${returnId}/admin-decision`, {
+    decision: 'APPROVE',
+  });
   return data.data;
 };
 
 export const rejectReturn = async (returnId) => {
-  const { data } = await axiosInstance.put(`/returns/${returnId}/process`, { status: "Rejected" });
+  const { data } = await axiosInstance.put(`/returns/${returnId}/admin-decision`, {
+    decision: 'REJECT',
+  });
   return data.data;
 };
 
@@ -125,7 +113,6 @@ export const getPayments = async (params = {}) => {
 export const getAdminOrders = async (params = {}) => {
   const { data } = await axiosInstance.get("/admin/orders", { params });
   const items = extractItems(data.data);
-  // items are already full objects, no mapping needed
   return {
     items,
     total: items.length,
@@ -158,7 +145,7 @@ export const getAdminUsers = async (params = {}) => {
   const { data } = await axiosInstance.get("/admin/users", { params });
   const items = extractItems(data.data);
   return {
-    items, // already have _id, name, email, roles, isActive
+    items,
     total: items.length,
     page: 1,
     totalPages: 1,
@@ -168,5 +155,5 @@ export const getAdminUsers = async (params = {}) => {
 // ---------- Admin Stats ----------
 export const getAdminStats = async () => {
   const { data } = await axiosInstance.get("/admin/stats");
-  return data.data; // single object
+  return data.data;
 };

@@ -1,28 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getImageUrl } from '../../utils/imageHelper';
+import axiosInstance from '../../services/axiosInstance';
 
 const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
-  const [decision, setDecision] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [adminNote, setAdminNote] = useState('');
+  const [internalNote, setInternalNote] = useState('');
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!decision) return;
-    const status = decision === 'approve' ? 'Approved' : 'Rejected';
-    // This calls the parent's handleStatusChange with all four arguments.
-    // Ensure the parent handler accepts (productId, newStatus, reason, note).
-    await onStatusChange(product._id, status, rejectionReason, adminNote);
+  const images = product?.images || [];
+
+  // Fetch reviews when the modal opens
+  useEffect(() => {
+    if (!product?._id) return;
+    const fetchReviews = async () => {
+      setLoadingReviews(true);
+      try {
+        const res = await axiosInstance.get(`/reviews/product/${product._id}`);
+        const data = res.data?.data || res.data;
+        const reviewList = data?.items || (Array.isArray(data) ? data : []);
+        setReviews(reviewList);
+      } catch (err) {
+        console.error('Failed to fetch reviews', err);
+        setReviews([]);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+    fetchReviews();
+  }, [product]);
+
+  const goToPrevImage = () => {
+    setCurrentImgIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const goToNextImage = () => {
+    setCurrentImgIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  // Action handlers – they call the parent's onStatusChange
+  const handleApprove = () => {
+    onStatusChange(product._id, 'Approved', '', internalNote);
+    onClose();
+  };
+
+  const handleReject = () => {
+    if (!internalNote.trim()) return; // must provide a reason
+    onStatusChange(product._id, 'Rejected', internalNote, ''); // note becomes rejection reason
+    onClose();
+  };
+
+  const handleSuspend = () => {
+    onStatusChange(product._id, 'Suspended', '', internalNote);
+    onClose();
+  };
+
+  const handleResume = () => {
+    onStatusChange(product._id, 'Approved', '', internalNote);
     onClose();
   };
 
   const store = product.store || {};
-
-  const rejectionOptions = [
-    'Price Anomaly',
-    'Incomplete Information',
-    'Prohibited Item',
-    'Copyright Violation',
-  ];
+  const status = product.status;
 
   return (
     <>
@@ -37,7 +76,7 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
         }}
       />
 
-      {/* Drawer */}
+      {/* Drawer (full‑height, right‑aligned) */}
       <div
         style={{
           position: 'fixed',
@@ -49,323 +88,459 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
           background: '#fff',
           boxShadow: '-4px 0 24px rgba(0,0,0,0.1)',
           zIndex: 1000,
-          overflowY: 'auto',
-          padding: '2rem',
-          boxSizing: 'border-box',
-          fontFamily: 'Inter, system-ui, sans-serif',
-          color: '#111827',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        {/* Close button */}
-        <button
-          onClick={onClose}
+        {/* Header */}
+        <div
           style={{
-            position: 'absolute',
-            top: '1rem',
-            right: '1rem',
-            background: 'transparent',
-            border: 'none',
-            fontSize: '1.5rem',
-            cursor: 'pointer',
-            color: '#6b7280',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '1.5rem 2rem 1rem',
+            borderBottom: '1px solid #e5e7eb',
           }}
         >
-          ×
-        </button>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+            Product Inspection
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              color: '#6b7280',
+            }}
+          >
+            ×
+          </button>
+        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '2rem' }}>
-          {/* LEFT COLUMN – Product details */}
-          <div>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        {/* Scrollable content area */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+          {/* Image Carousel */}
+          {images.length > 0 && (
+            <>
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '300px',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginBottom: '16px',
+                }}
+              >
                 <img
-                  src={getImageUrl(product.images?.[0]) || '/placeholder.png'}
-                  alt="Primary"
+                  src={getImageUrl(images[currentImgIndex]) || '/placeholder.png'}
+                  alt={product.name}
                   style={{
-                    width: '200px',
-                    height: '200px',
+                    width: '100%',
+                    height: '100%',
                     objectFit: 'cover',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     border: '1px solid #e5e7eb',
                   }}
-                  onError={(e) => {
-                    e.target.src = '/placeholder.png';
-                  }}
+                  onError={(e) => (e.target.src = '/placeholder.png')}
                 />
-                {product.images?.slice(1).map((img, idx) => (
-                  <img
-                    key={idx}
-                    src={getImageUrl(img)}
-                    alt={`Secondary ${idx + 1}`}
-                    style={{
-                      width: '100px',
-                      height: '100px',
-                      objectFit: 'cover',
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb',
-                    }}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                ))}
-                {[...Array(Math.max(0, 2 - (product.images?.length || 1)))].map((_, idx) => (
-                  <div
-                    key={`placeholder-${idx}`}
-                    style={{
-                      width: '100px',
-                      height: '100px',
-                      borderRadius: '8px',
-                      border: '1px dashed #d1d5db',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#9ca3af',
-                      fontSize: '0.75rem',
-                    }}
-                  >
-                    No Image
-                  </div>
-                ))}
+                {images.length > 1 && (
+                  <>
+                    <button
+                      onClick={goToPrevImage}
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '10px',
+                        transform: 'translateY(-50%)',
+                        backgroundColor: 'rgba(255,255,255,0.8)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '36px',
+                        height: '36px',
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        color: '#111827',
+                      }}
+                    >
+                      ‹
+                    </button>
+                    <button
+                      onClick={goToNextImage}
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        right: '10px',
+                        transform: 'translateY(-50%)',
+                        backgroundColor: 'rgba(255,255,255,0.8)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '36px',
+                        height: '36px',
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        fontWeight: 'bold',
+                        color: '#111827',
+                      }}
+                    >
+                      ›
+                    </button>
+                  </>
+                )}
               </div>
+              {images.length > 1 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '8px',
+                    overflowX: 'auto',
+                    paddingBottom: '8px',
+                    marginBottom: '1.5rem',
+                  }}
+                >
+                  {images.map((img, idx) => (
+                    <img
+                      key={idx}
+                      src={getImageUrl(img) || '/placeholder.png'}
+                      alt={`Thumbnail ${idx + 1}`}
+                      onClick={() => setCurrentImgIndex(idx)}
+                      style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        border:
+                          currentImgIndex === idx
+                            ? '2px solid #000'
+                            : '1px solid #e5e7eb',
+                        objectFit: 'cover',
+                      }}
+                      onError={(e) => (e.target.style.display = 'none')}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Product Details */}
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem' }}>
+            {product.name}
+          </h2>
+          <p
+            style={{
+              color: '#4b5563',
+              marginBottom: '0.75rem',
+              lineHeight: '1.6',
+              background: '#f9fafb',
+              padding: '0.75rem',
+              borderRadius: '6px',
+            }}
+          >
+            {product.description || 'No description provided.'}
+          </p>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.5rem',
+              marginBottom: '1.5rem',
+            }}
+          >
+            <div>
+              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>Brand:</span>{' '}
+              {product.brand?.name || 'N/A'}
             </div>
-
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-              {product.name}
-            </h2>
-            <p
-              style={{
-                color: '#4b5563',
-                marginBottom: '0.75rem',
-                lineHeight: '1.5',
-                background: '#f9fafb',
-                padding: '0.75rem',
-                borderRadius: '6px',
-              }}
-            >
-              {product.description || 'No description provided.'}
-            </p>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.5rem',
-                marginBottom: '1.5rem',
-              }}
-            >
-              <div>
-                <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>Brand:</span>{' '}
-                {product.brand?.name || 'N/A'}
-              </div>
-              <div>
-                <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>Condition:</span> New
-              </div>
-              <div>
-                <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>ID:</span>{' '}
-                {product._id.slice(-8)}
-              </div>
-              <div>
-                <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>Created:</span>{' '}
-                {new Date(product.createdAt).toLocaleDateString()}
-              </div>
+            <div>
+              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>Condition:</span> New
+            </div>
+            <div>
+              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>ID:</span>{' '}
+              {product._id.slice(-8)}
+            </div>
+            <div>
+              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>Created:</span>{' '}
+              {new Date(product.createdAt).toLocaleDateString()}
             </div>
           </div>
 
-          {/* RIGHT COLUMN – Seller Dossier & Decision */}
-          <div>
-            {/* Seller Dossier Card */}
-            <div
+          {/* Customer Reviews Section */}
+          <div
+            style={{
+              marginTop: '32px',
+              paddingTop: '24px',
+              borderTop: '1px solid #e5e7eb',
+            }}
+          >
+            <h3
               style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                padding: '1rem',
-                marginBottom: '1.5rem',
-                background: '#fff',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#111827',
+                marginBottom: '16px',
               }}
             >
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem' }}>
-                Seller Dossier
-              </h3>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  marginBottom: '0.75rem',
-                }}
-              >
-                {store.logo ? (
-                  <img
-                    src={getImageUrl(store.logo)}
-                    alt={store.name}
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                    }}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                ) : (
+              Customer Reviews & Feedback
+            </h3>
+            {loadingReviews ? (
+              <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                Loading reviews...
+              </p>
+            ) : reviews.length === 0 ? (
+              <p style={{ color: '#6b7280', fontSize: '14px', fontStyle: 'italic' }}>
+                No reviews yet.
+              </p>
+            ) : (
+              reviews.map((review) => (
+                <div
+                  key={review._id}
+                  style={{
+                    backgroundColor: '#f9fafb',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    marginBottom: '12px',
+                    border: '1px solid #f3f4f6',
+                  }}
+                >
                   <div
                     style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      background: '#f3f4f6',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#9ca3af',
+                      marginBottom: '8px',
                     }}
                   >
-                    ?
+                    <span
+                      style={{
+                        color: '#eab308',
+                        fontWeight: 'bold',
+                        marginRight: '8px',
+                      }}
+                    >
+                      ⭐ {review.rating}
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: '600',
+                        color: '#374151',
+                        fontSize: '14px',
+                      }}
+                    >
+                      {review.customer?.name || 'Anonymous'}
+                    </span>
+                    <span
+                      style={{
+                        marginLeft: 'auto',
+                        color: '#9ca3af',
+                        fontSize: '12px',
+                      }}
+                    >
+                      {new Date(review.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
-                )}
-                <div>
-                  <div style={{ fontWeight: 600 }}>{store.name || 'Unknown'}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                    {store.description?.slice(0, 40) || '—'}
-                  </div>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: '#4b5563',
+                      fontSize: '14px',
+                      lineHeight: '1.5',
+                    }}
+                  >
+                    {review.comment}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Seller Dossier Card */}
+          <div
+            style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginTop: '24px',
+              background: '#fff',
+            }}
+          >
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+              Seller Dossier
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {store.logo ? (
+                <img
+                  src={getImageUrl(store.logo)}
+                  alt={store.name}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => (e.target.style.display = 'none')}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    background: '#f3f4f6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#9ca3af',
+                  }}
+                >
+                  ?
+                </div>
+              )}
+              <div>
+                <div style={{ fontWeight: 600 }}>
+                  {store.name || 'Unknown'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                  {store.description?.slice(0, 40) || '—'}
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Decision Form */}
-            <div
-              style={{
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                padding: '1rem',
-                background: '#fff',
-              }}
-            >
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem' }}>
-                Decision
-              </h3>
-
-              <div
+        {/* Sticky Footer – Decision Area */}
+        <div
+          style={{
+            padding: '24px',
+            borderTop: '1px solid #e5e7eb',
+            backgroundColor: '#fff',
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 10,
+          }}
+        >
+          {/* Dynamic buttons based on status */}
+          {status === 'PendingApproval' && (
+            <>
+              {/* Internal note / rejection reason textarea */}
+              <textarea
+                value={internalNote}
+                onChange={(e) => setInternalNote(e.target.value)}
+                rows={3}
+                placeholder="Write an internal note or rejection reason…"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '0.5rem',
-                  marginBottom: '1rem',
+                  width: '100%',
+                  minHeight: '80px',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  marginBottom: '16px',
+                  fontSize: '0.85rem',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  resize: 'vertical',
                 }}
-              >
+              />
+
+              <div style={{ display: 'flex', gap: '12px' }}>
                 <button
-                  onClick={() => setDecision('approve')}
+                  onClick={handleApprove}
                   style={{
-                    background: decision === 'approve' ? '#166534' : '#f0fdf4',
-                    color: decision === 'approve' ? '#fff' : '#166534',
-                    border: '1px solid #16a34a',
+                    flex: 1,
+                    padding: '10px',
                     borderRadius: '6px',
-                    padding: '0.5rem',
-                    fontWeight: 600,
+                    border: '1px solid #10b981',
+                    backgroundColor: '#ecfdf5',
+                    color: '#047857',
+                    fontWeight: '600',
                     cursor: 'pointer',
                   }}
                 >
                   Approve
                 </button>
                 <button
-                  onClick={() => setDecision('reject')}
+                  onClick={handleReject}
                   style={{
-                    background: decision === 'reject' ? '#991b1b' : '#fef2f2',
-                    color: decision === 'reject' ? '#fff' : '#991b1b',
-                    border: '1px solid #dc2626',
+                    flex: 1,
+                    padding: '10px',
                     borderRadius: '6px',
-                    padding: '0.5rem',
-                    fontWeight: 600,
+                    border: '1px solid #ef4444',
+                    backgroundColor: '#fef2f2',
+                    color: '#b91c1c',
+                    fontWeight: '600',
                     cursor: 'pointer',
                   }}
                 >
                   Reject
                 </button>
               </div>
+            </>
+          )}
 
-              {decision === 'reject' && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label
-                    style={{
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      display: 'block',
-                      marginBottom: '0.25rem',
-                    }}
-                  >
-                    Rejection Reason
-                  </label>
-                  <select
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      borderRadius: '6px',
-                      border: '1px solid #d1d5db',
-                      background: '#fff',
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    <option value="">Select reason...</option>
-                    {rejectionOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+          {status === 'Approved' && (
+            <button
+              onClick={handleSuspend}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#ef4444',
+                color: '#fff',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              Suspend Product
+            </button>
+          )}
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label
-                  style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    display: 'block',
-                    marginBottom: '0.25rem',
-                  }}
-                >
-                  Internal Note
-                </label>
-                <textarea
-                  value={adminNote}
-                  onChange={(e) => setAdminNote(e.target.value)}
-                  rows={3}
-                  placeholder="Private audit comments..."
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    borderRadius: '6px',
-                    border: '1px solid #d1d5db',
-                    resize: 'vertical',
-                    fontSize: '0.85rem',
-                    fontFamily: 'Inter, system-ui, sans-serif',
-                  }}
-                />
-              </div>
+          {status === 'Suspended' && (
+            <button
+              onClick={handleResume}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#10b981',
+                color: '#fff',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              Resume Product
+            </button>
+          )}
 
-              <button
-                onClick={handleSubmit}
-                disabled={!decision}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  background: decision ? '#111827' : '#e5e7eb',
-                  color: decision ? '#fff' : '#9ca3af',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  cursor: decision ? 'pointer' : 'not-allowed',
-                }}
-              >
-                Submit Decision
-              </button>
+          {status === 'Rejected' && (
+            <div
+              style={{
+                padding: '12px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #f87171',
+                color: '#991b1b',
+                borderRadius: '8px',
+                textAlign: 'center',
+                fontWeight: 'bold',
+              }}
+            >
+              This product has been permanently rejected.
             </div>
-          </div>
+          )}
         </div>
       </div>
     </>

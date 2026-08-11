@@ -3,8 +3,9 @@ import { ApiResponse } from '../utils/ApiResponse.util.js';
 import { asyncHandler } from '../utils/AsyncHandler.util.js';
 
 export const createShipment = asyncHandler(async (req, res) => {
+  const sellerOrderId = req.body.sellerOrderId || req.body.sellerOrder; // accept either
   const shipment = await shipmentService.createShipment(
-    req.body.sellerOrderId,
+    sellerOrderId,
     req.body,
     req.user.id
   );
@@ -20,6 +21,16 @@ export const updateShipmentStatus = asyncHandler(async (req, res) => {
     req.user.id
   );
   new ApiResponse(200, shipment, 'Shipment status updated').send(res);
+});
+
+// NEW – update shipment info (carrier, tracking)
+export const updateShipmentInfo = asyncHandler(async (req, res) => {
+  const shipment = await shipmentService.updateShipmentInfo(
+    req.params.id,
+    req.body,
+    req.user.id
+  );
+  new ApiResponse(200, shipment, 'Shipment updated').send(res);
 });
 
 export const getShipment = asyncHandler(async (req, res) => {

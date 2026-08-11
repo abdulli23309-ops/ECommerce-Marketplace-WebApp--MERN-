@@ -73,6 +73,7 @@ const CustomerLayout = () => {
     <Link to="/orders">Orders</Link>
     <Link to="/profile">Profile</Link>
     <Link to="/reviews/my">Reviews</Link>
+    <Link to="/returns">Returns</Link> 
   </div>
 ) : (
   <div className="navbar-links">

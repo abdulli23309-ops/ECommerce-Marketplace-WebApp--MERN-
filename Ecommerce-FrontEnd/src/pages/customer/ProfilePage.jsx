@@ -32,6 +32,29 @@ const ProfilePage = () => {
         .finally(() => setLoadingAddresses(false));
     }
   }, [user]);
+  // Fetch full profile (including avatar) and update Redux if needed
+useEffect(() => {
+  if (!user) return;
+  const fetchProfile = async () => {
+    try {
+      const { data } = await axiosInstance.get('/account/profile');
+      const profile = data.data || data;
+      // If the avatar in Redux is missing or different from the server, update it
+      if (profile.avatar && profile.avatar !== user.avatar) {
+        dispatch(
+          setCredentials({
+            user: { ...user, avatar: profile.avatar },
+            accessToken,
+            refreshToken,
+          })
+        );
+      }
+    } catch (err) {
+      // ignore – the page still works without the avatar update
+    }
+  };
+  fetchProfile();
+}, [user?.id]); // re-run if user changes (e.g., login)
 
   // Upload avatar when a file is selected
   useEffect(() => {

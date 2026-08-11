@@ -19,16 +19,24 @@ const PackageIcon = () => (
 // ---------- Helper: display status ----------
 const getDisplayStatus = (order) => {
   if (!order) return "Pending";
+
+  // If the parent order is Cancelled, return immediately
+  if (order.orderStatus === 'Cancelled') return 'Cancelled';
+
+  // If the parent order is already advanced, use it
   if (["Shipped", "OutForDelivery", "Delivered"].includes(order.orderStatus)) {
     return order.orderStatus;
   }
+
+  // Otherwise, check all seller order statuses
   const sellerStatuses = (order.sellerOrders || []).map(so => so.status);
+  if (sellerStatuses.includes("Cancelled")) return "Cancelled";
   if (sellerStatuses.includes("Delivered")) return "Delivered";
   if (sellerStatuses.includes("OutForDelivery") || sellerStatuses.includes("Shipped")) return "OutForDelivery";
   if (sellerStatuses.includes("Processing")) return "Processing";
+
   return "Pending";
 };
-
 // ---------- Status badge color ----------
 const getStatusBadgeStyle = (status) => {
   switch (status) {
@@ -86,8 +94,13 @@ const OrderHistoryPage = () => {
   const heading = { fontSize: "1.5rem", fontWeight: 800, color: "#111827", margin: 0 };
   const filterRow = { display: "flex", gap: "12px", flexWrap: "wrap" };
   const filterBtnBase = { padding: "8px 16px", borderRadius: "20px", border: "1px solid #e5e7eb", cursor: "pointer", fontSize: "14px", fontWeight: 600, backgroundColor: "#fff", color: "#6b7280", transition: "all 0.2s" };
-  const filterBtnActive = { ...filterBtnBase, backgroundColor: "#000", color: "#fff", borderColor: "#000" };
-  const card = { backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", overflow: "hidden", marginBottom: "20px" };
+  const filterBtnActive = {
+  ...filterBtnBase,
+  backgroundColor: "#000",
+  color: "#fff",
+  border: "1px solid #000",   // was: borderColor: "#000"
+};
+ const card = { backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", overflow: "hidden", marginBottom: "20px" };
   const cardHeader = { backgroundColor: "#f8fafc", padding: "16px 24px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" };
   const orderIdStyle = { fontFamily: "monospace", fontWeight: "bold", color: "#111827", fontSize: "0.95rem" };
   const totalStyle = { fontWeight: 800, fontSize: "16px", color: "#111827" };

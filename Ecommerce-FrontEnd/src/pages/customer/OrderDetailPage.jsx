@@ -5,65 +5,81 @@ import { fetchMyReviews } from "../../services/reviewService";
 
 const statusSteps = ["Pending", "Processing", "Shipped", "Delivered"];
 
-const StepProgress = ({ currentStep }) => (
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
-    {statusSteps.map((step, idx) => {
-      const isFinalStep = idx === statusSteps.length - 1;
-      const isCompleted =
-        idx < currentStep || (idx === currentStep && isFinalStep);
-      const isActive = idx === currentStep && !isFinalStep;
-      const lineColor = isCompleted && idx > 0 ? "#10b981" : "#e5e7eb";
+// ---------- Stepper Component ----------
+const StepProgress = ({ currentStep, isCancelled }) => {
+  if (isCancelled) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: '2rem', padding: '1rem',
+        backgroundColor: '#fef2f2', borderRadius: '12px',
+        border: '1px solid #fecaca', color: '#991b1b',
+        fontWeight: 600, fontSize: '1rem',
+      }}>
+        🚫 This order has been cancelled.
+      </div>
+    );
+  }
 
-      let dotBg = isCompleted ? "#10b981" : "#e5e7eb";
-      let dotBorder = "none";
-      let icon = null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "2rem" }}>
+      {statusSteps.map((step, idx) => {
+        const isCompleted = idx < currentStep;
+        const isActive = idx === currentStep && currentStep < statusSteps.length;
+        const lineColor = idx > 0 && idx <= currentStep ? "#10b981" : "#e5e7eb";
 
-      if (isActive) {
-        dotBg = "#fff";
-        dotBorder = "3px solid #10b981";
-      }
+        let dotBg = isCompleted ? "#10b981" : "#e5e7eb";
+        let dotBorder = "none";
+        let icon = null;
 
-      if (isCompleted) {
-        icon = (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        );
-      }
+        if (isActive) {
+          dotBg = "#fff";
+          dotBorder = "3px solid #10b981";
+        }
 
-      return (
-        <div key={step} style={{ flex: 1, textAlign: "center", position: "relative" }}>
-          {idx > 0 && (
+        if (isCompleted) {
+          icon = (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          );
+        }
+
+        return (
+          <div key={step} style={{ flex: 1, textAlign: "center", position: "relative" }}>
+            {idx > 0 && (
+              <div style={{
+                position: "absolute", top: "14px", left: "-50%", right: "50%",
+                height: "2px", background: lineColor,
+              }} />
+            )}
             <div style={{
-              position: "absolute", top: "14px", left: "-50%", right: "50%",
-              height: "2px", background: lineColor,
-            }} />
-          )}
-          <div style={{
-            width: "28px", height: "28px", borderRadius: "50%",
-            background: dotBg, border: dotBorder,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 0.5rem", fontSize: "0.8rem",
-          }}>
-            {icon || (isActive ? (
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="#10b981" stroke="none">
-                <circle cx="12" cy="12" r="6" />
-              </svg>
-            ) : null)}
+              width: "28px", height: "28px", borderRadius: "50%",
+              background: dotBg, border: dotBorder,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 0.5rem", fontSize: "0.8rem",
+            }}>
+              {icon || (isActive ? (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#10b981" stroke="none">
+                  <circle cx="12" cy="12" r="6" />
+                </svg>
+              ) : null)}
+            </div>
+            <span style={{
+              fontSize: "0.8rem",
+              color: isCompleted ? "#10b981" : isActive ? "#000" : "#d1d5db",
+              fontWeight: isCompleted || isActive ? 600 : 400,
+            }}>
+              {step}
+            </span>
           </div>
-          <span style={{
-            fontSize: "0.8rem",
-            color: isCompleted ? "#10b981" : isActive ? "#000" : "#d1d5db",
-            fontWeight: isCompleted || isActive ? 600 : 400,
-          }}>
-            {step}
-          </span>
-        </div>
-      );
-    })}
-  </div>
-);
+        );
+      })}
+    </div>
+  );
+};
 
+// ---------- Shipment Info ----------
 const ShipmentInfo = ({ shipment }) => {
   if (!shipment) {
     return (
@@ -99,13 +115,14 @@ const ShipmentInfo = ({ shipment }) => {
   );
 };
 
+// ---------- Main Component ----------
 const OrderDetailPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
-  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);   // custom modal state
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -127,12 +144,10 @@ const OrderDetailPage = () => {
     load();
   }, [orderId]);
 
-  // Opens the custom modal instead of window.confirm
   const handleCancelClick = () => {
     setIsCancelModalOpen(true);
   };
 
-  // Called when user confirms cancellation in the modal
   const handleConfirmCancel = async () => {
     setIsCancelModalOpen(false);
     setCancelling(true);
@@ -148,33 +163,38 @@ const OrderDetailPage = () => {
     }
   };
 
-// Helper: get the most advanced status across parent and seller orders
-const getEffectiveStatus = (order) => {
-  if (!order) return 'Pending';
-  // If parent order is already advanced, use it
-  if (['Shipped', 'OutForDelivery', 'Delivered'].includes(order.orderStatus)) {
-    return order.orderStatus;
-  }
-  // Otherwise, check all seller order statuses
-  const sellerStatuses = (order.sellerOrders || []).map(so => so.status);
-  if (sellerStatuses.includes('Delivered')) return 'Delivered';
-  if (sellerStatuses.includes('OutForDelivery') || sellerStatuses.includes('Shipped')) return 'OutForDelivery';
-  if (sellerStatuses.includes('Processing')) return 'Processing';
-  return 'Pending';
-};
+  const getEffectiveStatus = (order) => {
+    if (!order || order.orderStatus === 'Cancelled') return 'Cancelled';
+    if (['Shipped', 'OutForDelivery', 'Delivered'].includes(order.orderStatus)) {
+      return order.orderStatus;
+    }
+    const sellerStatuses = (order.sellerOrders || []).flatMap(so => {
+      const statuses = [so.status];
+      if (so.shipment?.status) statuses.push(so.shipment.status);
+      return statuses;
+    });
+    if (sellerStatuses.includes('Delivered')) return 'Delivered';
+    if (sellerStatuses.includes('OutForDelivery') || sellerStatuses.includes('Dispatched') || sellerStatuses.includes('Shipped'))
+      return 'OutForDelivery';
+    if (sellerStatuses.includes('Processing')) return 'Processing';
+    return 'Pending';
+  };
 
-const getActiveIndex = (status) => {
-  switch (status) {
-    case 'Pending':   return 0;
-    case 'Processing':return 1;
-    case 'Shipped':
-    case 'OutForDelivery': return 2;
-    case 'Delivered': return 3;
-    default:          return 0;
-  }
-};
+  const getActiveIndex = (status) => {
+    switch (status) {
+      case 'Pending':    return 0;
+      case 'Processing': return 1;
+      case 'Shipped':
+      case 'Dispatched':
+      case 'OutForDelivery': return 3;
+      case 'Delivered':  return 4;
+      default:           return 0;
+    }
+  };
 
-const currentStep = getActiveIndex(getEffectiveStatus(order));
+  const effectiveStatus = getEffectiveStatus(order);
+  const isCancelled = effectiveStatus === 'Cancelled';
+  const currentStep = getActiveIndex(effectiveStatus);
 
   if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading order...</div>;
   if (!order) return <div style={{ padding: "2rem", color: "#666" }}>Order not found.</div>;
@@ -203,11 +223,16 @@ const currentStep = getActiveIndex(getEffectiveStatus(order));
         <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", color: "#4b5563", fontSize: "0.9rem" }}>
           <span>Placed: {new Date(order.createdAt).toLocaleString()}</span>
           <span>Total: <strong style={{ color: "#111827" }}>PKR {order.totalAmount.toLocaleString()}</strong></span>
+          {isCancelled && (
+            <span style={{ color: '#dc2626', fontWeight: 600 }}>
+              (Cancelled)
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Progress stepper */}
-      <StepProgress currentStep={currentStep} />
+      {/* Progress stepper – shows cancelled message when appropriate */}
+      <StepProgress currentStep={currentStep} isCancelled={isCancelled} />
 
       {/* Multi‑vendor cards */}
       {order.sellerOrders?.map((so) => (
@@ -228,8 +253,8 @@ const currentStep = getActiveIndex(getEffectiveStatus(order));
             </span>
             <span style={{
               padding: "2px 10px", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 600,
-              color: so.status === "Delivered" ? "#065f46" : "#92400e",
-              background: so.status === "Delivered" ? "#d1fae5" : "#ffedd5",
+              color: so.status === "Delivered" ? "#065f46" : so.status === "Cancelled" ? "#991b1b" : "#92400e",
+              background: so.status === "Delivered" ? "#d1fae5" : so.status === "Cancelled" ? "#fee2e2" : "#ffedd5",
             }}>
               {so.status}
             </span>
@@ -270,148 +295,108 @@ const currentStep = getActiveIndex(getEffectiveStatus(order));
           </div>
 
           {/* Actions footer */}
-          <div style={{
-            display: "flex", justifyContent: "flex-end", gap: "0.75rem",
-            padding: "0.75rem 1.25rem", borderTop: "1px solid #f3f4f6", background: "#f9fafb",
-          }}>
-            {so.status === "Delivered" && !order.reviewedSellerOrderIds?.has(so._id.toString()) && (
-              <Link
-                to={`/review/new/${so._id}`}
-                style={{
-                  padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #d1d5db",
-                  color: "#111827", textDecoration: "none", fontSize: "0.85rem", fontWeight: 500,
-                  background: "#fff", transition: "background 0.2s",
-                }}
-                onMouseEnter={(e) => e.target.style.background = "#f3f4f6"}
-                onMouseLeave={(e) => e.target.style.background = "#fff"}
-              >
-                Write a Review
-              </Link>
-            )}
-            {so.status === "Delivered" && order.reviewedSellerOrderIds?.has(so._id.toString()) && (
-              <span style={{ fontSize: "0.8rem", color: "#9ca3af", alignSelf: "center" }}>
-                Review submitted ✓
-              </span>
-            )}
-            {so.status === "Delivered" && (
-              <Link
-                to={`/returns/new/${so._id}`}
-                style={{
-                  padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #e5e7eb",
-                  color: "#4b5563", textDecoration: "none", fontSize: "0.85rem", fontWeight: 400,
-                  background: "#fff", transition: "background 0.2s",
-                }}
-                onMouseEnter={(e) => e.target.style.background = "#f3f4f6"}
-                onMouseLeave={(e) => e.target.style.background = "#fff"}
-              >
-                Request Return
-              </Link>
-            )}
-            {order.orderStatus === "Pending" && (
-              <button
-                onClick={handleCancelClick}
-                disabled={cancelling}
-                style={{
-                  padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #fca5a5",
-                  color: "#b91c1c", background: cancelling ? "#fef2f2" : "#fff",
-                  fontSize: "0.85rem", fontWeight: 500,
-                  cursor: cancelling ? "not-allowed" : "pointer",
-                  opacity: cancelling ? 0.6 : 1,
-                  transition: "background 0.2s",
-                }}
-                onMouseEnter={(e) => { if (!cancelling) e.target.style.background = "#fef2f2" }}
-                onMouseLeave={(e) => { if (!cancelling) e.target.style.background = "#fff" }}
-              >
-                {cancelling ? "Cancelling..." : "Cancel Order"}
-              </button>
-            )}
-          </div>
+          {!isCancelled && (
+            <div style={{
+              display: "flex", justifyContent: "flex-end", gap: "0.75rem",
+              padding: "0.75rem 1.25rem", borderTop: "1px solid #f3f4f6", background: "#f9fafb",
+            }}>
+              {so.status === "Delivered" && !order.reviewedSellerOrderIds?.has(so._id.toString()) && (
+                <Link
+                  to={`/review/new/${so._id}`}
+                  style={{
+                    padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #d1d5db",
+                    color: "#111827", textDecoration: "none", fontSize: "0.85rem", fontWeight: 500,
+                    background: "#fff", transition: "background 0.2s",
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = "#f3f4f6"}
+                  onMouseLeave={(e) => e.target.style.background = "#fff"}
+                >
+                  Write a Review
+                </Link>
+              )}
+              {so.status === "Delivered" && order.reviewedSellerOrderIds?.has(so._id.toString()) && (
+                <span style={{ fontSize: "0.8rem", color: "#9ca3af", alignSelf: "center" }}>
+                  Review submitted ✓
+                </span>
+              )}
+              {so.status === "Delivered" && (
+                <Link
+                  to={`/returns/new/${so._id}`}
+                  style={{
+                    padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #e5e7eb",
+                    color: "#4b5563", textDecoration: "none", fontSize: "0.85rem", fontWeight: 400,
+                    background: "#fff", transition: "background 0.2s",
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = "#f3f4f6"}
+                  onMouseLeave={(e) => e.target.style.background = "#fff"}
+                >
+                  Request Return
+                </Link>
+              )}
+              {order.orderStatus === "Pending" && (
+                <button
+                  onClick={handleCancelClick}
+                  disabled={cancelling}
+                  style={{
+                    padding: "0.4rem 1rem", borderRadius: "6px", border: "1px solid #fca5a5",
+                    color: "#b91c1c", background: cancelling ? "#fef2f2" : "#fff",
+                    fontSize: "0.85rem", fontWeight: 500,
+                    cursor: cancelling ? "not-allowed" : "pointer",
+                    opacity: cancelling ? 0.6 : 1,
+                    transition: "background 0.2s",
+                  }}
+                  onMouseEnter={(e) => { if (!cancelling) e.target.style.background = "#fef2f2" }}
+                  onMouseLeave={(e) => { if (!cancelling) e.target.style.background = "#fff" }}
+                >
+                  {cancelling ? "Cancelling..." : "Cancel Order"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ))}
 
-      {/* ---------- Custom Cancel Confirmation Modal ---------- */}
+      {/* Cancel Confirmation Modal */}
       {isCancelModalOpen && (
         <div
           style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+            display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999,
           }}
-          onClick={() => setIsCancelModalOpen(false)}   // close on backdrop click
+          onClick={() => setIsCancelModalOpen(false)}
         >
           <div
             style={{
-              backgroundColor: "#fff",
-              padding: "32px",
-              borderRadius: "16px",
-              width: "90%",
-              maxWidth: "400px",
+              backgroundColor: "#fff", padding: "32px", borderRadius: "16px",
+              width: "90%", maxWidth: "400px",
               boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
+              display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center",
             }}
-            onClick={(e) => e.stopPropagation()}   // prevent backdrop click from closing when clicking inside modal
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Warning icon */}
             <svg
               style={{ width: 48, height: 48, color: "#ef4444", marginBottom: 16 }}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-
             <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", margin: "0 0 8px" }}>
               Cancel this order?
             </h3>
             <p style={{ fontSize: "0.9rem", color: "#6b7280", margin: 0 }}>
               Are you sure you want to cancel this order? This action cannot be undone and the seller will be notified.
             </p>
-
             <div style={{ display: "flex", gap: 12, width: "100%", marginTop: 24 }}>
               <button
                 onClick={() => setIsCancelModalOpen(false)}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  borderRadius: "8px",
-                  border: "1px solid #e5e7eb",
-                  backgroundColor: "#f9fafb",
-                  color: "#374151",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
+                style={{ flex: 1, padding: "12px", borderRadius: "8px", border: "1px solid #e5e7eb", backgroundColor: "#f9fafb", color: "#374151", cursor: "pointer", fontWeight: 600 }}
               >
                 Nevermind
               </button>
               <button
                 onClick={handleConfirmCancel}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "#ef4444",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
+                style={{ flex: 1, padding: "12px", borderRadius: "8px", border: "none", backgroundColor: "#ef4444", color: "#fff", cursor: "pointer", fontWeight: 600 }}
               >
                 Cancel Order
               </button>

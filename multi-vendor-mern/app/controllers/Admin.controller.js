@@ -56,9 +56,14 @@ export const getReturns = asyncHandler(async (req, res) => {
   new ApiResponse(200, data, 'Returns retrieved').send(res);
 });
 export const processReturn = asyncHandler(async (req, res) => {
-  const { status, rejectionReason } = req.body;
-  await adminService.processReturn(req.params.id, status, req.user.id, rejectionReason);
-  new ApiResponse(200, null, 'Return processed').send(res);
+  const { decision, reason } = req.body;   // frontend may send 'reason' as adminNotes
+  const returnReq = await adminService.adminDecision(
+    req.params.id,
+    decision,
+    req.user.id,
+    reason
+  );
+  new ApiResponse(200, returnReq, 'Return processed').send(res);
 });
 
 // Refunds

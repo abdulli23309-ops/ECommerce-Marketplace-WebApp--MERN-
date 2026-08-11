@@ -1,11 +1,28 @@
+import mongoose from 'mongoose';
 import Product from '../models/Product.model.js';
+import Review from '../models/Review.model.js';
 import * as storeRepo from './Store.repository.js';
 
 export const create = (data) => Product.create(data);
 
 export const findById = (id) => Product.findOne({ _id: id, isDeleted: false });
+export const findByIdWithRating = async (productId, storeId) => {
+  const product = await Product.findOne({ _id: productId, store: storeId, isDeleted: false })
+    .populate('category', 'name')
+    .populate('subCategory', 'name')
+    .populate('brand', 'name')
+    .lean();
 
-// Paginated version for seller's own products
+  if (!product) return null;
+
+  const stats = await getRatingStats(productId);
+  return {
+    ...product,
+    avgRating: stats.avgRating,
+    reviewCount: stats.reviewCount,
+  };
+};
+
 export const findByStore = async (storeId, options = {}) => {
   const { page = 1, pageSize = 12, ...query } = options;
   const filter = { ...query, store: storeId, isDeleted: false };
@@ -49,18 +66,33 @@ export const findPublicById = (id) =>
 
 export const findPublicWithFilters = async (filters = {}) => {
   const allowedStoreIds = await storeRepo.getActiveStoreIdsForApprovedSellers();
-  const { search, category, subCategory, brand, minPrice, maxPrice, sort, page = 1, pageSize = 12 } = filters;
+  const {
+    search,
+    categoryId,
+    subCategoryId,
+    brandId,
+    minPrice,
+    maxPrice,
+    sortBy,
+    page = 1,
+    pageSize = 12
+  } = filters;
 
-  const query = { isDeleted: false, status: 'Approved', store: { $in: allowedStoreIds } };
+  const query = {
+    isDeleted: false,
+    status: 'Approved',
+    store: { $in: allowedStoreIds }
+  };
+
   if (search) {
     query.$or = [
       { name: { $regex: search, $options: 'i' } },
       { description: { $regex: search, $options: 'i' } },
     ];
   }
-  if (category) query.category = category;
-  if (subCategory) query.subCategory = subCategory;
-  if (brand) query.brand = brand;
+  if (categoryId)   query.category = categoryId;
+  if (subCategoryId) query.subCategory = subCategoryId;
+  if (brandId)       query.brand = brandId;
   if (minPrice || maxPrice) {
     query.price = {};
     if (minPrice) query.price.$gte = Number(minPrice);
@@ -68,9 +100,9 @@ export const findPublicWithFilters = async (filters = {}) => {
   }
 
   let sortOption = { createdAt: -1 };
-  if (sort === 'price') sortOption = { price: 1 };
-  else if (sort === '-price') sortOption = { price: -1 };
-  else if (sort === 'newest') sortOption = { createdAt: -1 };
+  if (sortBy === 'price_asc')    sortOption = { price: 1 };
+  else if (sortBy === 'price_desc') sortOption = { price: -1 };
+  else if (sortBy === 'newest')    sortOption = { createdAt: -1 };
 
   const skip = (Number(page) - 1) * Number(pageSize);
   const limit = Number(pageSize);
@@ -87,7 +119,13 @@ export const findPublicWithFilters = async (filters = {}) => {
     Product.countDocuments(query),
   ]);
 
-  return { products, page: Number(page), pageSize: limit, total, totalPages: Math.ceil(total / limit) };
+  return {
+    products,
+    page: Number(page),
+    pageSize: limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+  };
 };
 
 export const deductStock = async (productId, quantity, session) => {
@@ -97,7 +135,6 @@ export const deductStock = async (productId, quantity, session) => {
   return product.save({ session });
 };
 
-// Admin functions (unchanged)
 export const findAllAdmin = async (filters = {}) => {
   const { page = 1, pageSize = 50, status } = filters;
   const query = { isDeleted: false };
@@ -128,3 +165,21 @@ export const findByIdAdmin = (productId) =>
     .populate('subCategory', 'name')
     .populate('brand', 'name')
     .lean();
+
+export const getRatingStats = async (productId) => {
+  const result = await Review.aggregate([
+    { $match: { product: new mongoose.Types.ObjectId(productId) } },
+    {
+      $group: {
+        _id: null,
+        avgRating: { $avg: '$rating' },
+        reviewCount: { $sum: 1 },
+      },
+    },
+  ]);
+  if (result.length === 0) return { avgRating: 0, reviewCount: 0 };
+  return {
+    avgRating: Math.round(result[0].avgRating * 10) / 10,
+    reviewCount: result[0].reviewCount,
+  };
+};

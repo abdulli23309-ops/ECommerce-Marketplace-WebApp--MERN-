@@ -85,33 +85,67 @@ const ReviewDetailPage = () => {
         }}
       >
         {/* Product name + star rating + verified badge */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-          <div>
-            <h2 style={{ fontSize: "1.4rem", fontWeight: 700, margin: "0 0 0.5rem" }}>
-              {review.product?.name || "Deleted Product"}
-            </h2>
-            <StarRating rating={review.rating} />
-          </div>
-          {/* Verified Purchase badge */}
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.25rem",
-              background: "#ecfdf5",
-              color: "#065f46",
-              padding: "3px 10px",
-              borderRadius: "999px",
-              fontSize: "0.75rem",
-              fontWeight: 600,
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#065f46" strokeWidth="2.5">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            Verified Purchase
-          </span>
-        </div>
+        {/* Product name + star rating + verified badge */}
+<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+    {/* Product thumbnail */}
+    {review.product?.images?.length > 0 ? (
+      <img
+        src={getImageUrl(review.product.images[0])}
+        alt={review.product.name}
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: "8px",
+          objectFit: "cover",
+          border: "1px solid #e5e7eb",
+          flexShrink: 0,
+        }}
+        onError={(e) => { e.target.style.display = "none"; }}
+      />
+    ) : (
+      <div style={{
+        width: 64, height: 64,
+        borderRadius: "8px",
+        backgroundColor: "#f3f4f6",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#9ca3af",
+        flexShrink: 0,
+      }}>
+        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+    )}
+    <div>
+      <h2 style={{ fontSize: "1.4rem", fontWeight: 700, margin: "0 0 0.5rem" }}>
+        {review.product?.name || "Deleted Product"}
+      </h2>
+      <StarRating rating={review.rating} />
+    </div>
+  </div>
+  {/* Verified Purchase badge */}
+  <span
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "0.25rem",
+      background: "#ecfdf5",
+      color: "#065f46",
+      padding: "3px 10px",
+      borderRadius: "999px",
+      fontSize: "0.75rem",
+      fontWeight: 600,
+    }}
+  >
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#065f46" strokeWidth="2.5">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+    Verified Purchase
+  </span>
+</div>
 
         {/* Review comment */}
         {review.comment ? (

@@ -16,20 +16,53 @@ export const createProduct = async (userId, data) => {
   const store = await resolveStore(userId);
   return productRepo.create({ ...data, store: store._id });
 };
+export const getMyProductById = async (userId, productId) => {
+  const store = await resolveStore(userId);
+  const product = await productRepo.findByIdWithRating(productId, store._id);
+  if (!product) throw new ApiError(404, 'Product not found');
+  return product;
+};
 
 export const getMyProducts = async (userId, queryParams = {}) => {
   const store = await resolveStore(userId);
   const { page, pageSize, ...otherFilters } = queryParams;
-  return productRepo.findByStore(store._id, { page, pageSize, ...otherFilters });
+  const result = await productRepo.findByStore(store._id, { page, pageSize, ...otherFilters });
+
+  // Attach rating stats to each product
+  const productsWithRating = await Promise.all(
+    result.products.map(async (product) => {
+      const stats = await productRepo.getRatingStats(product._id);
+      return {
+        ...product,
+        avgRating: stats.avgRating,
+        reviewCount: stats.reviewCount,
+      };
+    })
+  );
+
+  return {
+    ...result,
+    products: productsWithRating,
+  };
 };
 
 export const updateMyProduct = async (userId, productId, data) => {
   const store = await resolveStore(userId);
-  const product = await productRepo.findById(productId);
+  const product = await productRepo.findById(productId);   // full Mongoose document
   if (!product || product.store.toString() !== store._id.toString()) {
     throw new ApiError(404, 'Product not found');
   }
+
+  // Prevent seller from overriding the status directly
   delete data.status;
+
+  // Auto‑transition Rejected/Suspended → PendingApproval
+  if (['Rejected', 'Suspended'].includes(product.status)) {
+    data.status = 'PendingApproval';
+    data.rejectionReason = null;
+    data.internalNote = null;
+  }
+
   return productRepo.updateById(productId, data);
 };
 

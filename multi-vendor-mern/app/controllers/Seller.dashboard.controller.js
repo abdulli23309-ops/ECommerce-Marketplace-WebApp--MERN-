@@ -16,3 +16,14 @@ export const getReviews = asyncHandler(async (req, res) => {
   const data = await sellerDashboardService.getSellerReviews(req.user.id, req.query);
   new ApiResponse(200, data, 'Seller reviews retrieved').send(res);
 });
+
+// ---------- NEW ----------
+export const getUnreadOrderCount = asyncHandler(async (req, res) => {
+  const count = await sellerDashboardService.getUnreadCount(req.user.id);
+  new ApiResponse(200, { count }, 'Unread count retrieved').send(res);
+});
+
+export const markOrdersAsRead = asyncHandler(async (req, res) => {
+  await sellerDashboardService.markAllAsRead(req.user.id);
+  new ApiResponse(200, null, 'Orders marked as read').send(res);
+});

@@ -27,7 +27,7 @@ const consumeRefreshToken = (tokenHash) =>
 
 const findUserAuthorization = (userId) =>
   User.findById(userId)
-    .select('name email role isActive')
+    .select('name email role isActive avatar')
     .lean();
 
 export {

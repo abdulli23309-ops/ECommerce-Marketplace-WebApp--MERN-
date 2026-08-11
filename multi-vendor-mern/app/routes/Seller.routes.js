@@ -10,10 +10,11 @@ const router = Router();
 router.get('/status', authenticate, sellerController.getStatus);
 router.post('/profile', authenticate, sellerController.createProfile);
 router.post('/store/logo', authenticate, requireRole('Seller'), uploadProductImages, sellerController.uploadStoreLogo);
-// All other seller routes require the Seller role
 router.use(authenticate, requireRole('Seller'));
 
 router.get('/seller-orders/:id', authenticate, requireRole('Seller'), sellerController.getSellerOrderById);
+router.get('/orders/unread-count', authenticate, requireRole('Seller'), sellerDashboardController.getUnreadOrderCount);
+router.post('/orders/mark-read', authenticate, requireRole('Seller'), sellerDashboardController.markOrdersAsRead);
 router.get('/dashboard', sellerDashboardController.getDashboard);
 router.get('/orders', sellerDashboardController.getOrders);
 router.get('/reviews', sellerDashboardController.getReviews);

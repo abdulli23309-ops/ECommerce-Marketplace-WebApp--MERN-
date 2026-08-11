@@ -8,9 +8,8 @@ router.use((req, res, next) => {
   next();
 });
 router.use(authenticate, requireRole('Admin'));
-
+router.put('/:id/status', authenticate, requireRole('Admin'), adminProductController.updateProductStatus);
 router.get('/', adminProductController.getAllProducts);
 router.get('/:id', adminProductController.getProductById);
-router.put('/:id/status', adminProductController.updateProductStatus);
 
 export default router;

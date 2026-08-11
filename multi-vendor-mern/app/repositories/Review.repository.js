@@ -25,7 +25,7 @@ export const findByCustomer = async (customerId, { page = 1, pageSize = 10 } = {
 
   const [reviews, total] = await Promise.all([
     Review.find({ customer: customerId })
-      .populate('product', 'name')
+      .populate('product', 'name images')   // ← include images
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -41,5 +41,6 @@ export const checkExisting = (customerId, productId, sellerOrderId) =>
 
 export const findById = (reviewId) =>
   Review.findById(reviewId)
-    .populate('product', 'name')
-    .populate('customer', 'name');
+    .populate('product', 'name images')   // ← include images
+    .populate('customer', 'name')
+    .lean();

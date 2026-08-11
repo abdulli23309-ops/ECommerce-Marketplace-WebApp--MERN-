@@ -35,7 +35,7 @@ const issueSession = async (user) => {
   await createRefreshToken(user._id, hashToken(refreshToken), getRefreshTokenExpiry());
 
   return {
-    user: { id: user._id, name: user.name, email: user.email, roles, permissions },
+    user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar,  roles, permissions },
     accessToken,
     refreshToken,
   };

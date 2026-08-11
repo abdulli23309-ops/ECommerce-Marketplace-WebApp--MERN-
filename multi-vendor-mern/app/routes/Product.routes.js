@@ -38,5 +38,6 @@ router.delete(
   requirePermission('Seller.Products.Delete'),
   productController.deleteMyProduct
 );
+router.get('/:id', productController.getMyProductById);
 
 export default router;

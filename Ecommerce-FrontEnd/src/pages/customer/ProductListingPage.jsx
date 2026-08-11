@@ -29,21 +29,19 @@ const ProductListingPage = () => {
   });
 
   // Load categories, brands on mount
-  useEffect(() => {
-    fetchCategories().then(setCategories).catch(console.error);
-    fetchBrands().then(setBrands).catch(console.error);
-  }, []);
+useEffect(() => {
+  fetchCategories().then(setCategories).catch(console.error);
+  fetchBrands().then(setBrands).catch(console.error);
+}, []);
 
-  // Load subcategories when category changes
-  useEffect(() => {
-    if (filters.categoryId) {
-      fetchSubCategories(filters.categoryId).then(setSubCategories).catch(console.error);
-    } else {
-      setSubCategories([]);
-      setFilters(prev => ({ ...prev, subCategoryId: "" }));
-    }
-  }, [filters.categoryId]);
-
+useEffect(() => {
+  if (filters.categoryId) {
+    fetchSubCategories(filters.categoryId).then(setSubCategories).catch(console.error);
+  } else {
+    setSubCategories([]);
+    setFilters(prev => ({ ...prev, subCategoryId: '' }));
+  }
+}, [filters.categoryId]);
   // Fetch products when filters or page change
   useEffect(() => {
     const load = async () => {

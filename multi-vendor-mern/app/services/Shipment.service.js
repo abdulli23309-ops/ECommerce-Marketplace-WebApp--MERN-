@@ -74,6 +74,18 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
 
   return updated;
 };
+export const updateShipmentInfo = async (shipmentId, data, userId) => {
+  const shipment = await shipmentRepo.findById(shipmentId);
+  if (!shipment) throw new ApiError(404, 'Shipment not found');
+
+  await verifySellerOwnership(shipment.sellerOrder.toString(), userId);
+
+  const update = {};
+  if (data.carrier !== undefined) update.carrier = data.carrier;
+  if (data.trackingNumber !== undefined) update.trackingNumber = data.trackingNumber;
+
+  return shipmentRepo.updateById(shipmentId, update);
+};
 
 export const getShipment = async (sellerOrderId, userId) => {
   await verifySellerOwnership(sellerOrderId, userId);

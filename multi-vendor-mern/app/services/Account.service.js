@@ -3,11 +3,11 @@ import { ApiError } from '../utils/ApiError.util.js';
 import bcrypt from 'bcrypt'; // make sure this is imported
 
 export const getProfile = async (userId) => {
-  const user = await User.findById(userId).populate('roles', 'name').lean();
+  const user = await User.findById(userId)
+    .select('name email role avatar isActive')   // include avatar
+    .lean();
   if (!user) throw new ApiError(404, 'User not found');
-  // remove sensitive fields
-  const { password, refreshTokens, ...profile } = user;
-  return profile;
+  return user;
 };
 
 export const updateProfile = async (userId, data) => {

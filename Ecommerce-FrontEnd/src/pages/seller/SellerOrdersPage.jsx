@@ -1,26 +1,71 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { fetchSellerOrders } from "../../services/sellerOrderService";
-import ShipmentModal from "./ShipmentModal";
+
+const statusPillStyle = (status) => {
+  const base = {
+    padding: "4px 12px",
+    borderRadius: "999px",
+    fontSize: "0.75rem",
+    fontWeight: 600,
+    display: "inline-block",
+    whiteSpace: "nowrap",
+  };
+  switch (status) {
+    case "Delivered":
+      return { ...base, backgroundColor: "#d1fae5", color: "#065f46" };
+    case "Processing":
+    case "Pending":
+    case "OutForDelivery":
+      return { ...base, backgroundColor: "#fef3c7", color: "#92400e" };
+    case "Cancelled":
+      return { ...base, backgroundColor: "#fee2e2", color: "#991b1b" };
+    default:
+      return { ...base, backgroundColor: "#f3f4f6", color: "#1f2937" };
+  }
+};
+
+// Helper to render item summary
+const renderItemSummary = (sellerOrders) => {
+  const allItems = sellerOrders.flatMap(so => so.items || []);
+  if (allItems.length === 0) return "No items";
+  const first = allItems[0];
+  const restCount = allItems.length - 1;
+  return (
+    <div style={{ fontSize: "0.85rem", color: "#374151" }}>
+      <span style={{ fontWeight: 500 }}>
+        {first.productNameSnapshot || first.product?.name || "Product"}
+      </span>
+      <span style={{ color: "#6b7280" }}> (x{first.quantity})</span>
+      {restCount > 0 && (
+        <span style={{ color: "#2563eb", fontWeight: 500, marginLeft: "0.25rem" }}>
+          + {restCount} more item{restCount > 1 ? "s" : ""}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// Payment method icon
+const PaymentIcon = ({ method }) => {
+  if (method === 'Stripe') return '💳 Card';
+  if (method === 'CashOnDelivery') return '💵 COD';
+  if (method === 'Dummy') return '🧪 Dummy';
+  return '💳 ' + method;
+};
 
 const SellerOrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
-  // Shipment modal state
-  const [selectedSellerOrderId, setSelectedSellerOrderId] = useState(null);
-  const [selectedParentOrderId, setSelectedParentOrderId] = useState("");
-  const [selectedShipment, setSelectedShipment] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
 
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const data = await fetchSellerOrders({ page, pageSize: 10 });
-      setOrders(data.items || []);
-      setTotalPages(data.totalPages || 1);
+      const res = await fetchSellerOrders({ page, pageSize: 10 });
+      setOrders(res.items || []);
+      setTotalPages(res.totalPages || 1);
     } catch (err) {
       console.error("Failed to load seller orders", err);
     } finally {
@@ -32,204 +77,107 @@ const SellerOrdersPage = () => {
     loadOrders();
   }, [page]);
 
-  const toggleOrder = (orderId) => {
-    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
-  };
-
-  const openShipmentModal = (so) => {
-    setSelectedSellerOrderId(so._id);
-    setSelectedParentOrderId(so._id.slice(0, 8).toUpperCase());
-    setSelectedShipment(so.shipment || null);
-    setModalOpen(true);
-  };
-
-  const handleShipmentSaved = (updatedShipment) => {
-    // Refresh orders to reflect updated shipment status
-    loadOrders();
-    setSelectedShipment(updatedShipment);
-  };
-
   if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading orders...</div>;
+  if (orders.length === 0) {
+    return (
+      <div style={{ padding: "3rem", textAlign: "center", color: "#6b7280" }}>
+        No orders yet.
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2 className="section-title">Orders</h2>
+    <div style={{ padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "#111827" }}>
+      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem" }}>Your Orders</h2>
 
-      {orders.length === 0 ? (
-        <div className="empty-state">No orders yet.</div>
-      ) : (
-        <>
-          {orders.map((order) => (
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        {orders.map((order) => {
+          const sellerOrders = order.sellerOrders || [];
+          const displayStatus = order.orderStatus;
+
+          return (
             <div
-              className="order-card"
               key={order._id}
               style={{
-                marginBottom: "1rem",
-                border: "1px solid #eaeaea",
-                borderRadius: "0.5rem",
-                padding: "1rem",
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "12px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                padding: "1.25rem 1.5rem",
+                transition: "box-shadow 0.2s, transform 0.1s",
+                cursor: "default",
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.05)")}
             >
-              <div
-                className="order-card-header"
-                onClick={() => toggleOrder(order._id)}
-                style={{
-                  cursor: "pointer",
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <span>Order #{order._id.slice(0, 8).toUpperCase()}</span>
-                  <span> · {new Date(order.createdAt).toLocaleDateString()}</span>
+              {/* Three-column grid */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+                {/* Left – Order Meta */}
+                <div style={{ flex: "1 1 200px" }}>
+                  <div style={{ fontWeight: 700, fontSize: "1rem", color: "#111827" }}>
+                    Order #{order._id.toString().slice(-8).toUpperCase()}
+                  </div>
+                  <div style={{ color: "#6b7280", fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                    <PaymentIcon method={order.paymentMethod} />
+                  </div>
                 </div>
-                <div>
-                  <span style={{ fontWeight: 600, marginRight: "1rem" }}>
-                    {order.orderStatus || order.status || "Unknown"}
-                  </span>
-                  <span>PKR {Number(order.totalAmount ?? 0).toLocaleString()}</span>
+
+                {/* Middle – Fulfillment Context */}
+                <div style={{ flex: "1 1 200px" }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#111827" }}>
+                    {order.customerName}
+                  </div>
+                  <div style={{ color: "#6b7280", fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                    📍 {order.shippingLocation || '—'}
+                  </div>
+                  <div style={{ marginTop: "0.5rem" }}>
+                    {renderItemSummary(sellerOrders)}
+                  </div>
+                </div>
+
+                {/* Right – Financials & Status */}
+                <div style={{ flex: "0 0 auto", textAlign: "right" }}>
+                  <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "#111827" }}>
+                    PKR {order.totalAmount?.toLocaleString()}
+                  </div>
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <span style={statusPillStyle(displayStatus)}>
+                      {displayStatus}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: "0.75rem" }}>
+                  </div>
                 </div>
               </div>
-
-              {expandedOrderId === order._id && (
-                <div className="order-card-body" style={{ marginTop: "1rem" }}>
-                  {order.sellerOrders.map((so) => (
-                    <div
-                      className="seller-order"
-                      key={so._id}
-                      style={{
-                        marginBottom: "1rem",
-                        padding: "0.5rem",
-                        background: "#f9fafb",
-                        borderRadius: "0.25rem",
-                      }}
-                    >
-                      <div
-                        className="seller-order-header"
-                        style={{ display: "flex", justifyContent: "space-between" }}
-                      >
-                        <span>{so.store?.name || "Store"}</span>
-                        <span>{so.status}</span>
-                      </div>
-                      {so.items.map((item, idx) => (
-                        <div
-                          className="order-item"
-                          key={idx}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: "0.9rem",
-                          }}
-                        >
-                          <span>
-                            {item.productNameSnapshot || item.productName} × {item.quantity}
-                          </span>
-                          <span>
-                            PKR{" "}
-                            {Number(
-                              (item.unitPriceSnapshot ?? item.unitPrice ?? 0) *
-                                item.quantity
-                            ).toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
-                      <div
-                        style={{
-                          textAlign: "right",
-                          fontWeight: 600,
-                          marginTop: "0.5rem",
-                        }}
-                      >
-                        Subtotal: PKR {Number(so.subTotal ?? 0).toLocaleString()}
-                      </div>
-
-                      {/* Shipment info or button to open modal */}
-                      {so.shipment ? (
-                        <div
-                          style={{
-                            marginTop: "0.5rem",
-                            padding: "0.5rem",
-                            background: "#fff",
-                            borderRadius: "0.25rem",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                          }}
-                        >
-                          <span>
-                            Tracking: {so.shipment.trackingNumber || "N/A"} (
-                            {so.shipment.status})
-                          </span>
-                          <button
-                            className="btn-edit"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openShipmentModal(so);
-                            }}
-                          >
-                            Manage Shipment
-                          </button>
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            marginTop: "0.5rem",
-                            padding: "0.5rem",
-                            background: "#fff",
-                            borderRadius: "0.25rem",
-                            textAlign: "right",
-                          }}
-                        >
-                          <button
-                            className="btn-edit"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openShipmentModal(so);
-                            }}
-                          >
-                            Create Shipment
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-          ))}
+          );
+        })}
+      </div>
 
-          {totalPages > 1 && (
-            <div className="pagination">
-              <button
-                className="page-btn"
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-              >
-                Previous
-              </button>
-              <span>
-                Page {page} of {totalPages}
-              </span>
-              <button
-                className="page-btn"
-                disabled={page >= totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
-      )}
-
-      {modalOpen && (
-        <ShipmentModal
-          sellerOrderId={selectedSellerOrderId}
-          parentOrderId={selectedParentOrderId}
-          shipment={selectedShipment}
-          onClose={() => setModalOpen(false)}
-          onSaved={handleShipmentSaved}
-        />
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "2rem" }}>
+          <button
+            className="page-btn"
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+          >
+            Previous
+          </button>
+          <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "#6b7280" }}>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            className="page-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            Next
+          </button>
+        </div>
       )}
     </div>
   );
