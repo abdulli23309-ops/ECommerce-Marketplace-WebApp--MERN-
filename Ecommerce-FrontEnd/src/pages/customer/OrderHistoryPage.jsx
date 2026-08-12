@@ -23,16 +23,21 @@ const getDisplayStatus = (order) => {
   // If the parent order is Cancelled, return immediately
   if (order.orderStatus === 'Cancelled') return 'Cancelled';
 
-  // If the parent order is already advanced, use it
-  if (["Shipped", "OutForDelivery", "Delivered"].includes(order.orderStatus)) {
-    return order.orderStatus;
-  }
+  // If the parent order is already Delivered, use it
+  if (order.orderStatus === 'Delivered') return 'Delivered';
 
-  // Otherwise, check all seller order statuses
+  // Check seller order statuses for more detail
   const sellerStatuses = (order.sellerOrders || []).map(so => so.status);
   if (sellerStatuses.includes("Cancelled")) return "Cancelled";
   if (sellerStatuses.includes("Delivered")) return "Delivered";
-  if (sellerStatuses.includes("OutForDelivery") || sellerStatuses.includes("Shipped")) return "OutForDelivery";
+  
+  // Explicitly show Out for Delivery if present
+  if (sellerStatuses.includes("OutForDelivery")) return "Out for Delivery";
+  
+  // Other shipped-like statuses map to "Shipped"
+  if (sellerStatuses.some(s => ["Shipped", "Dispatched"].includes(s))) {
+    return "Shipped";
+  }
   if (sellerStatuses.includes("Processing")) return "Processing";
 
   return "Pending";
@@ -42,12 +47,14 @@ const getStatusBadgeStyle = (status) => {
   switch (status) {
     case "Pending":
     case "Processing":
+      return { backgroundColor: "#fef3c7", color: "#d97706" }; // yellow
+    case "Shipped":
     case "OutForDelivery":
-      return { backgroundColor: "#fef3c7", color: "#d97706" };
+      return { backgroundColor: "#dbeafe", color: "#1e40af" }; // blue
     case "Delivered":
-      return { backgroundColor: "#d1fae5", color: "#059669" };
+      return { backgroundColor: "#d1fae5", color: "#059669" }; // green
     case "Cancelled":
-      return { backgroundColor: "#fee2e2", color: "#dc2626" };
+      return { backgroundColor: "#fee2e2", color: "#dc2626" }; // red
     default:
       return { backgroundColor: "#f3f4f6", color: "#6b7280" };
   }
@@ -65,7 +72,6 @@ const OrderHistoryPage = () => {
   const load = async () => {
     setLoading(true);
     try {
-      // Backend currently doesn't support filtering; we filter client‑side
       const res = await fetchOrders({ page, pageSize: 10 });
       setOrders(res.items || []);
       setTotalPages(res.totalPages || 1);
@@ -82,7 +88,7 @@ const OrderHistoryPage = () => {
   const filteredOrders = orders.filter(order => {
     if (activeFilter === "All Orders") return true;
     const status = getDisplayStatus(order);
-    if (activeFilter === "Processing") return status === "Pending" || status === "Processing" || status === "OutForDelivery";
+    if (activeFilter === "Processing") return status === "Pending" || status === "Processing" || status === "Shipped" || status === "OutForDelivery";
     if (activeFilter === "Delivered") return status === "Delivered";
     if (activeFilter === "Cancelled") return status === "Cancelled";
     return true;
@@ -95,12 +101,12 @@ const OrderHistoryPage = () => {
   const filterRow = { display: "flex", gap: "12px", flexWrap: "wrap" };
   const filterBtnBase = { padding: "8px 16px", borderRadius: "20px", border: "1px solid #e5e7eb", cursor: "pointer", fontSize: "14px", fontWeight: 600, backgroundColor: "#fff", color: "#6b7280", transition: "all 0.2s" };
   const filterBtnActive = {
-  ...filterBtnBase,
-  backgroundColor: "#000",
-  color: "#fff",
-  border: "1px solid #000",   // was: borderColor: "#000"
-};
- const card = { backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", overflow: "hidden", marginBottom: "20px" };
+    ...filterBtnBase,
+    backgroundColor: "#000",
+    color: "#fff",
+    border: "1px solid #000",
+  };
+  const card = { backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", overflow: "hidden", marginBottom: "20px" };
   const cardHeader = { backgroundColor: "#f8fafc", padding: "16px 24px", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" };
   const orderIdStyle = { fontFamily: "monospace", fontWeight: "bold", color: "#111827", fontSize: "0.95rem" };
   const totalStyle = { fontWeight: 800, fontSize: "16px", color: "#111827" };
@@ -174,7 +180,6 @@ const OrderHistoryPage = () => {
 
               {/* Card Body */}
               <div style={cardBody}>
-                {/* Single vendor (simplified; for multi-vendor, map sellerOrders) */}
                 <div style={storeNameStyle}>
                   <StoreIcon />
                   {firstStore}
@@ -182,7 +187,6 @@ const OrderHistoryPage = () => {
                 {(order.sellerOrders || []).flatMap(so =>
                   (so.items || []).map((item, idx) => (
                     <div style={productRow} key={`${so._id}-${idx}`}>
-                      {/* Thumbnail placeholder */}
                       <div style={thumbnailPlaceholder}>
                         <PackageIcon />
                       </div>

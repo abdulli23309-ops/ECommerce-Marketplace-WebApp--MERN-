@@ -2,12 +2,12 @@ import express from 'express';
 import authRoutes from './routes/Auth.routes.js';
 import authorizationTestRoutes from './routes/AuthorizationTest.routes.js';
 import { setupAppMiddleware, errorHandler } from './middleware/init.js';
-import productRoutes from './routes/Product.routes.js';
+import productRoutes from './routes/Product.routes.js';            // seller product routes
 import storeRoutes from './routes/Store.routes.js';
 import categoryRoutes from './routes/Category.routes.js';
 import subCategoryRoutes from './routes/SubCategory.routes.js';
 import brandRoutes from './routes/Brand.routes.js';
-import publicProductRoutes from './routes/Product.public.routes.js';
+import publicProductRoutes from './routes/Product.public.routes.js'; // public product routes
 import cartRoutes from './routes/Cart.routes.js';
 import wishlistRoutes from './routes/Wishlist.routes.js';
 import addressRoutes from './routes/Address.routes.js';
@@ -38,12 +38,17 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is running' });
 });
 
-// ---------- Other routes ----------
+// ---------- Routes ----------
 app.use('/api/v1/stores', storeRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/test', authorizationTestRoutes);
-app.use('/api/v1/products/public', publicProductRoutes);
-app.use('/api/v1/products', productRoutes);
+
+// Public product listing – no authentication required
+app.use('/api/v1/products', publicProductRoutes);
+
+// Seller product management – authentication + Seller role required
+app.use('/api/v1/seller/products', productRoutes);
+
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/subcategories', subCategoryRoutes);
 app.use('/api/v1/brands', brandRoutes);
@@ -54,7 +59,6 @@ app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/shipments', shipmentRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
-// (No duplicate webhook mount here)
 app.use('/api/v1/returns', returnRoutes);
 app.use('/api/v1/refunds', refundRoutes);
 app.use('/api/v1/admin/products', adminProductRoutes);

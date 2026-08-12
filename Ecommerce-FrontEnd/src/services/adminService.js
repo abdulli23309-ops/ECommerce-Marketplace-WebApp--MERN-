@@ -21,6 +21,10 @@ export const getSellers = async () => {
       storeName: s.store?.name || "",
       storeLogoUrl: s.store?.logo || "",
       storeDescription: s.store?.description || "",
+      phone: s.phone || "",           // <-- new
+      address: s.address || "",       // <-- new
+      taxId: s.taxId || "",           // <-- new
+      city: s.store?.city || "",      // <-- new
       status: s.status,
     })),
     total: sellers.length,

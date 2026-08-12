@@ -1,6 +1,7 @@
 import * as shipmentRepo from '../repositories/Shipment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import * as sellerProfileRepo from '../repositories/SellerProfile.repository.js';
+import Payment from '../models/Payment.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
 // Check that the seller order belongs to a store owned by the logged‑in seller
@@ -61,15 +62,31 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
     await orderRepo.updateSellerOrderStatus(shipment.sellerOrder, sellerOrderStatus);
   }
 
-  // If delivered, also check parent order
-  if (status === 'Delivered') {
-    const sellerOrder = await orderRepo.findSellerOrderById(shipment.sellerOrder);
-    const allSellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(sellerOrder.parentOrder);
-    const allDelivered = allSellerOrders.every(so => so.status === 'Delivered');
+  // Propagate to parent order when shipped or delivered
+  const sellerOrder = await orderRepo.findSellerOrderById(shipment.sellerOrder);
+  const parentOrderId = sellerOrder.parentOrder;
 
-    if (allDelivered) {
-      await orderRepo.updateStatus(sellerOrder.parentOrder.toString(), 'Delivered');
+  if (['Dispatched', 'Shipped', 'OutForDelivery'].includes(status)) {
+    // Only upgrade parent to Shipped if it's currently Pending or Processing
+    const parentOrder = await orderRepo.findById(parentOrderId);
+    if (parentOrder && !['Shipped', 'Delivered', 'Cancelled'].includes(parentOrder.status)) {
+      await orderRepo.updateStatus(parentOrderId, 'Shipped');
     }
+  }
+
+  if (status === 'Delivered') {
+    const allSellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(parentOrderId);
+    const allDelivered = allSellerOrders.every(so => so.status === 'Delivered');
+    if (allDelivered) {
+      await orderRepo.updateStatus(parentOrderId, 'Delivered');
+    }
+    // Mark COD payment as Completed
+const payment = await Payment.findOne({ parentOrder: parentOrderId, method: 'CashOnDelivery', status: 'Pending' });
+if (payment) {
+  payment.status = 'Completed';
+  payment.paidAt = new Date();
+  await payment.save();
+}
   }
 
   return updated;

@@ -70,7 +70,7 @@ const orderSummaryItem = { display: 'flex', alignItems: 'center', gap: '12px', m
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();                        // <-- added
+  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const stripe = useStripe();
   const elements = useElements();
@@ -135,14 +135,18 @@ const CheckoutPage = () => {
           return;
         }
 
-        const { clientSecret } = await createPaymentIntent(selectedAddressId, "Stripe");
+        // Create payment intent and get client secret
+        const result = await createPaymentIntent(selectedAddressId, "Stripe");
+        const { clientSecret, order } = result;
 
+        // Stripe confirmCardPayment with return_url for 3DS
         const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
           clientSecret,
           {
             payment_method: {
               card: elements.getElement(CardElement),
             },
+            return_url: `${window.location.origin}/order-confirmation/${order._id}`,
           }
         );
 
@@ -152,16 +156,19 @@ const CheckoutPage = () => {
           return;
         }
 
+        // If no redirect (no 3DS), go directly to confirmation
         if (paymentIntent.status === "succeeded") {
-          dispatch(emptyCart());                     // <-- clear Redux cart
-          navigate("/orders");
+          dispatch(emptyCart());
+          navigate(`/order-confirmation/${order._id}?payment_intent=${paymentIntent.id}`);
         } else {
-          setError("Payment failed. Please try again.");
+          // For requires_action or processing, Stripe will redirect automatically
+          // Do nothing – the return_url will handle the redirect
         }
       } else {
-        await createPaymentIntent(selectedAddressId, "CashOnDelivery");
-        dispatch(emptyCart());                       // <-- clear Redux cart for COD
-        navigate("/orders");
+        // Cash on Delivery
+        const result = await createPaymentIntent(selectedAddressId, "CashOnDelivery");
+        dispatch(emptyCart());
+        navigate(`/order-confirmation/${result.order._id}`);
       }
     } catch (err) {
       console.error("Failed to place order", err);

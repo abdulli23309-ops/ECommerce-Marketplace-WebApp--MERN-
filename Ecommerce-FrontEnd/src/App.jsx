@@ -47,6 +47,7 @@ import RequestReturnPage from "./pages/customer/RequestReturnPage";   // single 
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminShipmentsPage from "./pages/admin/AdminShipmentsPage";
 import ProductGrid from "./pages/seller/ProductGrid";
+import OrderConfirmationPage from "./pages/customer/OrderConfirmationPage";
 import CustomerReturnsPage from "./pages/customer/CustomerReturnsPage";
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
 import SellerReturnsPage from "./pages/seller/SellerReturnsPage";
@@ -92,6 +93,7 @@ const App = () => {
           <Route path="/returns/new/:sellerOrderId" element={<RequestReturnPage />} /> 
           <Route path="/returns" element={<CustomerReturnsPage />} />   {/* single route */}
           <Route path="/reviews/my" element={<MyReviewsPage />} />
+          <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
           <Route path="/reviews/:reviewId" element={<ReviewDetailPage />} />
         </Route>
       </Route>

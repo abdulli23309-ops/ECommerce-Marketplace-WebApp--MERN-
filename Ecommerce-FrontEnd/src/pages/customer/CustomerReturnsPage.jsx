@@ -12,6 +12,7 @@ const getStatusLabel = (status) => {
     APPROVED_PENDING_SHIPMENT: "Action Required: Ship Item",
     REJECTED_BY_SELLER: "Declined by Seller",
     ITEM_IN_TRANSIT: "Return In Transit",
+    SELLER_RECEIVED: "Received by Seller",          // ← new
     INSPECTED_AND_REFUNDED: "Refund Completed",
   };
   return labels[status] || status;
@@ -25,6 +26,7 @@ const getStatusStyle = (status) => {
     APPROVED_PENDING_SHIPMENT: { backgroundColor: "#fef3c7", color: "#b45309" },
     REJECTED_BY_SELLER: { backgroundColor: "#fee2e2", color: "#991b1b" },
     ITEM_IN_TRANSIT: { backgroundColor: "#e0e7ff", color: "#3730a3" },
+    SELLER_RECEIVED: { backgroundColor: "#f3e8ff", color: "#6b21a8" },  // soft purple
     INSPECTED_AND_REFUNDED: { backgroundColor: "#d1fae5", color: "#065f46" },
   };
   return styles[status] || { backgroundColor: "#f3f4f6", color: "#1f2937" };

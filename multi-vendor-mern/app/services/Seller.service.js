@@ -64,3 +64,100 @@ export const getSellerOrders = async (userId) => {
 
   return Array.from(grouped.values());
 };
+
+// ---------- Apply as Seller (create or update) ----------
+export const applyAsSeller = async (userId, body, files) => {
+  const {
+    businessName,
+    description,
+    phone,
+    address,
+    taxId,
+    storeName,
+    storeDescription,
+    city,
+  } = body;
+
+  if (!businessName || !storeName) {
+    throw new ApiError(400, 'Business name and store name are required');
+  }
+
+  // Check if seller profile already exists for this user
+  let profile = await sellerProfileRepo.findByUser(userId);
+
+  // Prepare store data
+  const storeData = {
+    name: storeName,
+    description: storeDescription || '',
+    city: city || null,
+    isActive: false,
+  };
+
+  if (files && files.length > 0) {
+    storeData.logo = `/uploads/products/${files[0].filename}`;
+  }
+
+  if (profile) {
+    // Update existing profile
+    profile.businessName = businessName;
+    profile.description = description || '';
+    profile.phone = phone || profile.phone || '';
+    profile.address = address || profile.address || '';
+    profile.taxId = taxId || profile.taxId || '';
+    profile.status = 'Pending';               // reset to Pending
+    profile.rejectionReason = null;           // clear any previous rejection reason
+    await profile.save();
+
+    // Update associated store
+    let store = await Store.findOne({ sellerProfile: profile._id });
+    if (store) {
+      store.name = storeData.name;
+      store.description = storeData.description;
+      store.city = storeData.city || store.city;
+      if (storeData.logo) store.logo = storeData.logo;
+      await store.save();
+    } else {
+      // If for some reason the store was deleted, create a new one
+      store = await Store.create({ ...storeData, sellerProfile: profile._id });
+    }
+
+    return { profile, store };
+  }
+
+  // No existing profile – create new profile and store
+  profile = await sellerProfileRepo.create({
+    user: userId,
+    businessName,
+    description: description || '',
+    phone: phone || '',
+    address: address || '',
+    taxId: taxId || '',
+    status: 'Pending',
+  });
+
+  const store = await Store.create({
+    ...storeData,
+    sellerProfile: profile._id,
+  });
+
+  return { profile, store };
+};
+
+// ---------- Get / Update seller profile ----------
+export const getSellerProfile = async (userId) => {
+  const profile = await sellerProfileRepo.findByUser(userId);
+  if (!profile) throw new ApiError(404, 'Seller profile not found');
+  return profile;
+};
+
+export const updateSellerProfile = async (userId, data) => {
+  const profile = await sellerProfileRepo.findByUser(userId);
+  if (!profile) throw new ApiError(404, 'Seller profile not found');
+
+  if (data.phone !== undefined) profile.phone = data.phone;
+  if (data.address !== undefined) profile.address = data.address;
+  if (data.taxId !== undefined) profile.taxId = data.taxId;
+
+  await profile.save();
+  return profile;
+};

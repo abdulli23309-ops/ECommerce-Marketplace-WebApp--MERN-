@@ -71,12 +71,12 @@ returnSchema.index(
 );
 
 // Auto‑generate unique returnNumber before saving
-returnSchema.pre('save', async function (next) {
+// Auto‑generate unique returnNumber before saving
+returnSchema.pre('save', async function () {
   if (!this.returnNumber) {
     const count = await mongoose.model('ReturnRequest').countDocuments();
     this.returnNumber = `RET-${String(count + 1).padStart(6, '0')}`;
   }
-  next();
 });
 
 const ReturnRequest = mongoose.model('ReturnRequest', returnSchema);

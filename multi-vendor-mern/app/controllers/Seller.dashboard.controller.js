@@ -27,3 +27,12 @@ export const markOrdersAsRead = asyncHandler(async (req, res) => {
   await sellerDashboardService.markAllAsRead(req.user.id);
   new ApiResponse(200, null, 'Orders marked as read').send(res);
 });
+export const replyToReview = asyncHandler(async (req, res) => {
+  const { replyText } = req.body;
+  const updatedReview = await sellerDashboardService.replyToReview(
+    req.user.id,
+    req.params.reviewId,
+    replyText
+  );
+  new ApiResponse(200, updatedReview, 'Reply saved').send(res);
+});

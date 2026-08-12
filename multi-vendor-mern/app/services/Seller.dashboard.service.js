@@ -184,7 +184,7 @@ export const getSellerReviews = async (userId, { page = 1, pageSize = 10 } = {})
   const [reviews, total] = await Promise.all([
     Review.find({ product: { $in: productIds } })
       .populate('customer', 'name')
-      .populate('product', 'name')
+      .populate('product', 'name images')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -199,4 +199,15 @@ export const getSellerReviews = async (userId, { page = 1, pageSize = 10 } = {})
     pageSize: limit,
     totalPages: Math.ceil(total / limit),
   };
+};
+export const replyToReview = async (userId, reviewId, replyText) => {
+  const { store } = await getStoreId(userId);
+  const review = await Review.findById(reviewId).populate('product', 'store');
+  if (!review) throw new ApiError(404, 'Review not found');
+  if (review.product?.store?.toString() !== store._id.toString()) {
+    throw new ApiError(403, 'You can only reply to reviews of your own products');
+  }
+  review.sellerReply = replyText;
+  await review.save();
+  return review;
 };

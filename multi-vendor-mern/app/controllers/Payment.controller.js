@@ -18,3 +18,8 @@ export const createPaymentIntent = asyncHandler(async (req, res) => {
   const result = await paymentService.createPaymentIntent(userId, addressId, paymentMethod);
   new ApiResponse(200, result, 'Payment intent created').send(res);
 });
+
+export const getPaymentByOrder = asyncHandler(async (req, res) => {
+  const payment = await paymentService.getPaymentByOrderId(req.params.orderId, req.user.id);
+  new ApiResponse(200, payment, 'Payment retrieved').send(res);
+});

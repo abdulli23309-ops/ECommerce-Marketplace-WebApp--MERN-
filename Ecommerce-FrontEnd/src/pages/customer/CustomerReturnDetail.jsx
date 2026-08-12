@@ -59,9 +59,20 @@ const CustomerReturnDetail = ({ returnReq, onClose, onUpdate }) => {
   };
 
   const currentStatusLabel = statusLabels[returnReq.status] || returnReq.status;
-  const activeStepIndex = returnReq.status === "INSPECTED_AND_REFUNDED"
-    ? stepOrder.length  // all steps completed
-    : stepOrder.indexOf(currentStatusLabel);
+  
+  let activeStepIndex;
+  if (returnReq.status === "INSPECTED_AND_REFUNDED") {
+    activeStepIndex = stepOrder.length; // All 4 steps completed
+  } else if (returnReq.status === "SELLER_RECEIVED") {
+    // First three steps completed, waiting on "Refund Completed" (index 3)
+    activeStepIndex = 3;
+  } else if (returnReq.status === "REJECTED_BY_ADMIN" || returnReq.status === "REJECTED_BY_SELLER") {
+    // Rejected – we can still light up the steps up to the rejection point
+    activeStepIndex = stepOrder.indexOf(currentStatusLabel); // will be 1 (Approved) for rejections
+  } else {
+    // For Request Submitted (0), Approved (1), Item Shipped (2)
+    activeStepIndex = stepOrder.indexOf(currentStatusLabel);
+  }
 
   return (
     <>

@@ -413,79 +413,87 @@ const ShipmentManagementPage = () => {
               <div>
                 <h4 style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Shipment Details</h4>
                 <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem" }}>Courier</label>
-                  <input
-                    type="text"
-                    value={courier}
-                    onChange={(e) => setCourier(e.target.value)}
-                    placeholder="e.g., Leopard, TCS"
-                    style={{
-                      width: "100%",
-                      padding: "0.5rem",
-                      borderRadius: "6px",
-                      border: "1px solid #d1d5db",
-                      fontSize: "0.9rem",
-                    }}
-                  />
-                </div>
-                <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem" }}>Tracking Number</label>
-                  <input
-                    type="text"
-                    value={trackingNumber}
-                    onChange={(e) => setTrackingNumber(e.target.value)}
-                    placeholder="Tracking ID"
-                    style={{
-                      width: "100%",
-                      padding: "0.5rem",
-                      borderRadius: "6px",
-                      border: "1px solid #d1d5db",
-                      fontSize: "0.9rem",
-                    }}
-                  />
-                </div>
+  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem" }}>Courier</label>
+  <input
+    type="text"
+    value={courier}
+    onChange={(e) => setCourier(e.target.value)}
+    placeholder="e.g., Leopard, TCS"
+    disabled={selectedOrder.sellerOrders[0]?.shipment?._id ? true : false}
+    style={{
+      width: "100%",
+      padding: "0.5rem",
+      borderRadius: "6px",
+      border: "1px solid #d1d5db",
+      fontSize: "0.9rem",
+      opacity: selectedOrder.sellerOrders[0]?.shipment?._id ? 0.6 : 1,
+      backgroundColor: selectedOrder.sellerOrders[0]?.shipment?._id ? "#f3f4f6" : "#fff",
+    }}
+  />
+</div>
+<div style={{ marginBottom: "1rem" }}>
+  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem" }}>Tracking Number</label>
+  <input
+    type="text"
+    value={trackingNumber}
+    onChange={(e) => setTrackingNumber(e.target.value)}
+    placeholder="Tracking ID"
+    disabled={selectedOrder.sellerOrders[0]?.shipment?._id ? true : false}
+    style={{
+      width: "100%",
+      padding: "0.5rem",
+      borderRadius: "6px",
+      border: "1px solid #d1d5db",
+      fontSize: "0.9rem",
+      opacity: selectedOrder.sellerOrders[0]?.shipment?._id ? 0.6 : 1,
+      backgroundColor: selectedOrder.sellerOrders[0]?.shipment?._id ? "#f3f4f6" : "#fff",
+    }}
+  />
+</div>
 
                 {selectedOrder.sellerOrders[0]?.shipment?._id && (
-                  <div style={{ marginBottom: "1rem" }}>
-                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem" }}>Update Status</label>
-                    <select
-                      value={shipmentStatus}
-                      onChange={(e) => setShipmentStatus(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "0.5rem",
-                        borderRadius: "6px",
-                        border: "1px solid #d1d5db",
-                        fontSize: "0.9rem",
-                        background: "#fff",
-                      }}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Packed">Packed</option>
-                      <option value="Dispatched">Dispatched</option>
-                      <option value="OutForDelivery">Out For Delivery</option>
-                      <option value="Delivered">Delivered</option>
-                    </select>
-                    <button
-                      onClick={handleUpdateStatus}
-                      disabled={updatingStatus}
-                      style={{
-                        marginTop: "0.75rem",
-                        width: "100%",
-                        padding: "0.5rem",
-                        borderRadius: "6px",
-                        border: "none",
-                        backgroundColor: "#2563eb",
-                        color: "#fff",
-                        fontWeight: 600,
-                        cursor: updatingStatus ? "not-allowed" : "pointer",
-                        opacity: updatingStatus ? 0.6 : 1,
-                      }}
-                    >
-                      {updatingStatus ? "Updating..." : "Update Status"}
-                    </button>
-                  </div>
-                )}
+  <div style={{ marginBottom: "1rem" }}>
+    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem" }}>Update Status</label>
+    <select
+      value={shipmentStatus}
+      onChange={(e) => setShipmentStatus(e.target.value)}
+      disabled={selectedOrder.sellerOrders[0]?.shipment?.status === "Delivered"}
+      style={{
+        width: "100%",
+        padding: "0.5rem",
+        borderRadius: "6px",
+        border: "1px solid #d1d5db",
+        fontSize: "0.9rem",
+        background: "#fff",
+        opacity: selectedOrder.sellerOrders[0]?.shipment?.status === "Delivered" ? 0.6 : 1,
+      }}
+    >
+      <option value="Pending">Pending</option>
+      <option value="Packed">Packed</option>
+      <option value="Dispatched">Dispatched</option>
+      <option value="OutForDelivery">Out For Delivery</option>
+      <option value="Delivered">Delivered</option>
+    </select>
+    <button
+      onClick={handleUpdateStatus}
+      disabled={updatingStatus || selectedOrder.sellerOrders[0]?.shipment?.status === "Delivered"}
+      style={{
+        marginTop: "0.75rem",
+        width: "100%",
+        padding: "0.5rem",
+        borderRadius: "6px",
+        border: "none",
+        backgroundColor: "#2563eb",
+        color: "#fff",
+        fontWeight: 600,
+        cursor: (updatingStatus || selectedOrder.sellerOrders[0]?.shipment?.status === "Delivered") ? "not-allowed" : "pointer",
+        opacity: (updatingStatus || selectedOrder.sellerOrders[0]?.shipment?.status === "Delivered") ? 0.6 : 1,
+      }}
+    >
+      {updatingStatus ? "Updating..." : "Update Status"}
+    </button>
+  </div>
+)}
               </div>
 
               {/* Real backend trackingHistory timeline */}

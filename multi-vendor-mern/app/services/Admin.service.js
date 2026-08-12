@@ -2,6 +2,7 @@ import * as adminRepo from '../repositories/Admin.repository.js';
 import User from '../models/User.model.js';
 import Store from '../models/Store.model.js';
 import SellerProfile from '../models/SellerProfile.model.js';
+import Product from '../models/Product.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
 import PermissionGroup from '../models/PermissionGroup.model.js';
 
@@ -12,16 +13,61 @@ export const activateUser = async (id, adminId) => {
   if (id.toString() === adminId.toString()) {
     throw new ApiError(403, 'You cannot modify your own account');
   }
-  return User.findByIdAndUpdate(id, { isActive: true }, { new: true }).lean();
+
+  const user = await User.findByIdAndUpdate(
+    id,
+    { isActive: true },
+    { new: true }
+  ).lean();
+
+  if (!user) throw new ApiError(404, 'User not found');
+
+  if (user.role === 'Seller') {
+    const sellerProfile = await SellerProfile.findOne({ user: id });
+    if (sellerProfile) {
+      const store = await Store.findOne({ sellerProfile: sellerProfile._id });
+      if (store) {
+        await Store.findByIdAndUpdate(store._id, { isActive: true });
+        await Product.updateMany(
+          { store: store._id, isDeleted: false, status: 'Suspended' },
+          { status: 'Approved' }
+        );
+      }
+    }
+  }
+
+  return user;
 };
 
-export const deactivateUser = async (id, adminId) => {
-  if (id.toString() === adminId.toString()) {
+export const deactivateUser = async (userId, adminId) => {
+  if (userId.toString() === adminId.toString()) {
     throw new ApiError(403, 'You cannot modify your own account');
   }
-  return User.findByIdAndUpdate(id, { isActive: false }, { new: true }).lean();
-};
 
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { isActive: false },
+    { new: true }
+  ).lean();
+
+  if (!user) throw new ApiError(404, 'User not found');
+
+  if (user.role === 'Seller') {
+    const sellerProfile = await SellerProfile.findOne({ user: userId });   // correct lookup
+    if (sellerProfile) {
+      const store = await Store.findOne({ sellerProfile: sellerProfile._id });
+      if (store) {
+        await Store.findByIdAndUpdate(store._id, { isActive: false });
+        await Product.updateMany(
+          { store: store._id, isDeleted: false },
+          { status: 'Suspended' }
+        );
+      }
+    }
+  }
+
+  return user;
+};
 // ---------------- Sellers ----------------
 export const getSellers = (query) => adminRepo.findSellers(query);
 

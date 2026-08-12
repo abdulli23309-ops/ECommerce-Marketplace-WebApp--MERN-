@@ -12,18 +12,13 @@ const statusBadgeStyle = (status) => {
   }
 };
 
-const iconBtnStyle = {
-  background: "transparent", border: "none", cursor: "pointer", padding: "4px", borderRadius: "4px",
-  color: "#6b7280", transition: "background 0.15s, color 0.15s",
-};
-
 const ApproveIcon = () => ( <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> );
 const RejectIcon = () => ( <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg> );
 
 const SellerApprovalPage = () => {
   const [sellers, setSellers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSeller, setSelectedSeller] = useState(null); // for modal
+  const [selectedSeller, setSelectedSeller] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -89,10 +84,13 @@ const SellerApprovalPage = () => {
               </thead>
               <tbody>
                 {sellers.map((seller) => (
-                  <tr key={seller.id} style={{ borderBottom: "1px solid #f3f4f6", transition: "background 0.15s", cursor: "pointer" }}
+                  <tr
+                    key={seller.id}
+                    style={{ borderBottom: "1px solid #f3f4f6", transition: "background 0.15s", cursor: "pointer" }}
                     onClick={() => openDetailModal(seller)}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f9fafb"}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
                     <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 500, color: "#111827" }}>{seller.businessName}</td>
                     <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "#4b5563" }}>{seller.fullName}</td>
                     <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "#4b5563" }}>{seller.email}</td>
@@ -113,42 +111,104 @@ const SellerApprovalPage = () => {
           )}
         </div>
 
-        {/* Detail Modal */}
+        {/* ============ DETAIL MODAL (ENHANCED) ============ */}
         {modalOpen && selectedSeller && (
-          <div className="modal-overlay" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setModalOpen(false)}>
-            <div className="modal-content" style={{ background: "#fff", borderRadius: "12px", padding: "2rem", maxWidth: "500px", width: "90%", maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>Seller Details</h3>
+          <div
+            style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}
+            onClick={() => setModalOpen(false)}
+          >
+            <div
+              style={{ background: "#fff", borderRadius: "16px", padding: "2rem", width: "90%", maxWidth: "600px", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>Seller Details</h3>
                 <button onClick={() => setModalOpen(false)} style={{ background: "transparent", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#6b7280" }}>×</button>
               </div>
-              <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem" }}>
+
+              {/* Logo & Business Name */}
+              <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1.5rem", alignItems: "center" }}>
                 {selectedSeller.storeLogoUrl ? (
-                  <img src={getImageUrl(selectedSeller.storeLogoUrl)} alt="Logo" style={{ width: "80px", height: "80px", borderRadius: "8px", objectFit: "cover" }} />
+                  <img src={getImageUrl(selectedSeller.storeLogoUrl)} alt="Logo" style={{ width: "80px", height: "80px", borderRadius: "12px", objectFit: "cover", border: "1px solid #e5e7eb" }} />
                 ) : (
-                  <div style={{ width: "80px", height: "80px", borderRadius: "8px", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>No Logo</div>
+                  <div style={{ width: "80px", height: "80px", borderRadius: "12px", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#9ca3af" }}>No Logo</div>
                 )}
                 <div>
-                  <p style={{ fontWeight: 600, fontSize: "1.1rem", margin: "0 0 0.25rem" }}>{selectedSeller.businessName}</p>
-                  <p style={{ color: "#4b5563", margin: 0 }}>Owner: {selectedSeller.fullName}</p>
-                  <p style={{ color: "#4b5563", margin: "0.25rem 0 0" }}>Email: {selectedSeller.email}</p>
+                  <h4 style={{ margin: "0 0 0.25rem", fontSize: "1.1rem", fontWeight: 700 }}>{selectedSeller.businessName}</h4>
+                  <p style={{ margin: 0, color: "#4b5563" }}>{selectedSeller.storeName || "Store not yet created"}</p>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
-                {selectedSeller.status === "Pending" && (
-                  <>
-                    <button onClick={() => handleApprove(selectedSeller.id)} style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: "#16a34a", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Approve</button>
-                    <button onClick={() => { setModalOpen(false); openRejectModal(selectedSeller); }} style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 600, cursor: "pointer" }}>Reject</button>
-                  </>
-                )}
+
+              {/* Two‑column grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
+                {/* Contact Info */}
+                <div>
+                  <h5 style={{ fontSize: "0.9rem", fontWeight: 600, color: "#111827", marginBottom: "0.75rem", paddingBottom: "0.5rem", borderBottom: "2px solid #f3f4f6" }}>Contact Info</h5>
+                  <div style={detailItemStyle}>
+                    <span style={detailLabel}>Full Name</span>
+                    <span style={detailValue}>{selectedSeller.fullName}</span>
+                  </div>
+                  <div style={detailItemStyle}>
+                    <span style={detailLabel}>Email</span>
+                    <span style={detailValue}>{selectedSeller.email}</span>
+                  </div>
+                  <div style={detailItemStyle}>
+                    <span style={detailLabel}>Phone</span>
+                    <span style={detailValue}>{selectedSeller.phone || "—"}</span>
+                  </div>
+                  <div style={detailItemStyle}>
+                    <span style={detailLabel}>City</span>
+                    <span style={detailValue}>{selectedSeller.city || "—"}</span>
+                  </div>
+                </div>
+
+                {/* Business Info */}
+                <div>
+                  <h5 style={{ fontSize: "0.9rem", fontWeight: 600, color: "#111827", marginBottom: "0.75rem", paddingBottom: "0.5rem", borderBottom: "2px solid #f3f4f6" }}>Business Info</h5>
+                  <div style={detailItemStyle}>
+                    <span style={detailLabel}>Address</span>
+                    <span style={detailValue}>{selectedSeller.address || "—"}</span>
+                  </div>
+                  <div style={detailItemStyle}>
+                    <span style={detailLabel}>Tax ID</span>
+                    <span style={detailValue}>{selectedSeller.taxId || "—"}</span>
+                  </div>
+                  {selectedSeller.storeDescription && (
+                    <div style={{ marginTop: "0.5rem" }}>
+                      <span style={detailLabel}>Store Description</span>
+                      <p style={{ fontSize: "0.85rem", color: "#4b5563", marginTop: "0.25rem" }}>
+                        {selectedSeller.storeDescription}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Action buttons */}
+              {selectedSeller.status === "Pending" && (
+                <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end", borderTop: "1px solid #e5e7eb", paddingTop: "1rem" }}>
+                  <button
+                    onClick={() => handleApprove(selectedSeller.id)}
+                    style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: "#16a34a", color: "#fff", fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => { setModalOpen(false); openRejectModal(selectedSeller); }}
+                    style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Reject Reason Modal */}
+        {/* ============ REJECT REASON MODAL (unchanged) ============ */}
         {rejectModalOpen && selectedSeller && (
-          <div className="modal-overlay" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setRejectModalOpen(false)}>
-            <div className="modal-content" style={{ background: "#fff", borderRadius: "12px", padding: "2rem", maxWidth: "400px", width: "90%" }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setRejectModalOpen(false)}>
+            <div style={{ background: "#fff", borderRadius: "12px", padding: "2rem", maxWidth: "400px", width: "90%" }} onClick={(e) => e.stopPropagation()}>
               <h3>Reject Seller: {selectedSeller.businessName}</h3>
               <div className="form-group">
                 <label className="form-label">Reason</label>
@@ -164,6 +224,31 @@ const SellerApprovalPage = () => {
       </div>
     </div>
   );
+};
+
+// Helper styles for the modal details
+const detailItemStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "0.3rem 0",
+  borderBottom: "1px dashed #f3f4f6",
+};
+const detailLabel = {
+  fontSize: "0.85rem",
+  fontWeight: 500,
+  color: "#6b7280",
+};
+const detailValue = {
+  fontSize: "0.85rem",
+  fontWeight: 500,
+  color: "#111827",
+  textAlign: "right",
+};
+
+const iconBtnStyle = {
+  background: "transparent", border: "none", cursor: "pointer", padding: "4px", borderRadius: "4px",
+  color: "#6b7280", transition: "background 0.15s, color 0.15s",
 };
 
 export default SellerApprovalPage;

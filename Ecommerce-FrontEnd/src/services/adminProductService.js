@@ -11,11 +11,16 @@ export const getProductById = async (productId) => {
   return data.data;
 };
 
-export const updateProductStatus = async (productId, status, reason = '', note = '') => {
-  const { data } = await axiosInstance.put(`/admin/products/${productId}/status`, {
-    status,
-    reason,
-    internalNote: note
-  });
-  return data.data;
+// services/adminProductService.js
+
+export const updateProductStatus = async (productId, status, rejectionReason = '', internalNote = '') => {
+  const payload = { status };
+  if (rejectionReason) payload.rejectionReason = rejectionReason;
+  if (internalNote) payload.internalNote = internalNote;
+  
+  const { data } = await axiosInstance.put(
+    `/admin/products/${productId}/status`,
+    payload
+  );
+  return data.data || data;
 };

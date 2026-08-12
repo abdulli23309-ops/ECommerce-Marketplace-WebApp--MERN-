@@ -35,6 +35,10 @@ const paymentSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    cardBrand: { type: String, default: null },
+cardLast4: { type: String, default: null },
+cardExpMonth: { type: Number, default: null },
+cardExpYear: { type: Number, default: null },
     paidAt: {
       type: Date,
       default: null,

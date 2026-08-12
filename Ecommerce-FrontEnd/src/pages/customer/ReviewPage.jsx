@@ -16,11 +16,11 @@ const ReviewPage = () => {
   const [error, setError] = useState(null);
   const maxCommentLength = 500;
 
-  // Image upload state
+  // Image upload state – now an array of objects { file, preview }
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const fileInputRef = useRef(null);
+  const MAX_FILES = 5;
 
   useEffect(() => {
     const fetchSellerOrder = async () => {
@@ -38,16 +38,28 @@ const ReviewPage = () => {
     fetchSellerOrder();
   }, [sellerOrderId]);
 
-  // Handle file selection for review images
+  // Add files to the existing selection (max 5 total)
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    setSelectedFiles(files);
-    const previews = files.map((f) => URL.createObjectURL(f));
-    setImagePreviews(previews);
+
+    setSelectedFiles((prev) => {
+      const combined = [...prev, ...files].slice(0, MAX_FILES);
+      return combined;
+    });
+    // Reset the file input so the same file can be re-selected if needed
+    e.target.value = '';
   };
 
-  // Upload selected images and return an array of URLs
+  const removeFile = (index) => {
+    setSelectedFiles((prev) => {
+      const updated = [...prev];
+      updated.splice(index, 1);
+      return updated;
+    });
+  };
+
+  // Upload all selected images one by one and return URLs
   const uploadImages = async () => {
     if (selectedFiles.length === 0) return [];
     setUploadingImages(true);
@@ -86,7 +98,6 @@ const ReviewPage = () => {
     setSubmitting(true);
     setError(null);
     try {
-      // Upload images first (if any)
       const imageUrls = await uploadImages();
 
       await axiosInstance.post("/reviews", {
@@ -94,7 +105,7 @@ const ReviewPage = () => {
         productId,
         rating,
         comment,
-        images: imageUrls,   // now includes uploaded image URLs
+        images: imageUrls,
       });
       navigate("/orders");
     } catch (err) {
@@ -113,7 +124,7 @@ const ReviewPage = () => {
 
   const product = sellerOrder.items?.[0];
   const productName = product?.productNameSnapshot || "Product";
-  const productImage = product?.product?.images?.[0];   // first product image
+  const productImage = product?.product?.images?.[0];
   const storeName = sellerOrder.store?.name || "Unknown Store";
 
   return (
@@ -122,7 +133,6 @@ const ReviewPage = () => {
       background: "#fff", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
       fontFamily: "Inter, system-ui, sans-serif", color: "#111827",
     }}>
-      {/* Back link */}
       <button
         onClick={() => navigate(-1)}
         style={{ background: "none", border: "none", color: "#6b7280", fontSize: "0.9rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}
@@ -130,7 +140,6 @@ const ReviewPage = () => {
         ← Back
       </button>
 
-      {/* Product context */}
       <div style={{
         display: "flex", gap: "1rem", alignItems: "center",
         paddingBottom: "1.5rem", marginBottom: "1.5rem",
@@ -153,7 +162,6 @@ const ReviewPage = () => {
         </div>
       </div>
 
-      {/* Review form */}
       <form onSubmit={handleSubmit}>
         {/* Star Rating */}
         <div className="form-group" style={{ marginBottom: "1.5rem" }}>
@@ -186,21 +194,77 @@ const ReviewPage = () => {
           <div style={{ textAlign: "right", fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.25rem" }}>{comment.length} / {maxCommentLength}</div>
         </div>
 
-        {/* Image Upload */}
+        {/* Image Upload – supports multiple files up to 5 */}
         <div className="form-group" style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.5rem" }}>Add Photos (optional)</label>
-          <input
-            type="file"
-            accept=".jpg,.jpeg,.png,.webp"
-            multiple
-            onChange={handleFileChange}
-            ref={fileInputRef}
-            style={{ marginBottom: "0.5rem" }}
-          />
-          {imagePreviews.length > 0 && (
+          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.5rem" }}>
+            Add Photos (optional, up to {MAX_FILES})
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={selectedFiles.length >= MAX_FILES}
+              style={{
+                padding: "0.5rem 1.25rem",
+                borderRadius: "6px",
+                border: "2px dashed #d1d5db",
+                background: "#f9fafb",
+                cursor: selectedFiles.length >= MAX_FILES ? "not-allowed" : "pointer",
+                fontWeight: 500,
+                fontSize: "0.9rem",
+                color: selectedFiles.length >= MAX_FILES ? "#9ca3af" : "#374151",
+                opacity: selectedFiles.length >= MAX_FILES ? 0.7 : 1,
+              }}
+            >
+              {selectedFiles.length >= MAX_FILES ? "Max files reached" : "Choose Files"}
+            </button>
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp"
+              multiple
+              onChange={handleFileChange}
+              ref={fileInputRef}
+              style={{ display: "none" }}
+            />
+            <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>
+              {selectedFiles.length} / {MAX_FILES} selected
+            </span>
+          </div>
+
+          {/* Preview of selected images with remove button */}
+          {selectedFiles.length > 0 && (
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
-              {imagePreviews.map((preview, idx) => (
-                <img key={idx} src={preview} alt={`Preview ${idx}`} style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "4px", border: "1px solid #e5e7eb" }} />
+              {selectedFiles.map((file, idx) => (
+                <div key={idx} style={{ position: "relative", width: "80px", height: "80px" }}>
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Preview ${idx}`}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "4px", border: "1px solid #e5e7eb" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeFile(idx)}
+                    style={{
+                      position: "absolute",
+                      top: "-6px",
+                      right: "-6px",
+                      background: "#fff",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "50%",
+                      width: "20px",
+                      height: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      color: "#dc2626",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           )}

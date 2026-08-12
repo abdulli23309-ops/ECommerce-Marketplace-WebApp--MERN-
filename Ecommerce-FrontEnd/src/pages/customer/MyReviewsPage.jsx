@@ -117,7 +117,33 @@ const MyReviewsPage = () => {
               {review.comment && (
                 <p style={{ color: "#374151", lineHeight: 1.6, margin: "0 0 0.75rem", fontSize: "0.95rem" }}>
                   {review.comment}
+                  {review.sellerReply && (
+  <div style={{
+    marginTop: '12px',
+    padding: '12px',
+    backgroundColor: '#f9fafb',
+    borderLeft: '4px solid #10b981',
+    borderRadius: '4px'
+  }}>
+    <strong style={{
+      display: 'block',
+      fontSize: '13px',
+      color: '#374151',
+      marginBottom: '4px'
+    }}>
+      Response from Seller
+    </strong>
+    <p style={{
+      margin: 0,
+      fontSize: '14px',
+      color: '#4b5563'
+    }}>
+      {review.sellerReply}
+    </p>
+  </div>
+)}
                 </p>
+                
               )}
 
               {/* Review images */}

@@ -113,38 +113,53 @@ export const verifyWebhookSignature = (rawBody, signature) => {
 };
 
 // ---------- Process successful payment ----------
-// ---------- Process successful payment ----------
 export const handlePaymentSuccess = async (event) => {
   const paymentIntent = event.data.object;
   const stripePaymentIntentId = paymentIntent.id;
   const stripeEventId = event.id;
+const charge = paymentIntent.charges?.data?.[0];
+const cardDetails = charge?.payment_method_details?.card;
+const cardBrand = cardDetails?.brand || null;
+const cardLast4 = cardDetails?.last4 || null;
+const cardExpMonth = cardDetails?.exp_month || null;
+const cardExpYear = cardDetails?.exp_year || null;
+
+  console.log(`[WEBHOOK] Processing payment_intent.succeeded for PI: ${stripePaymentIntentId}`);
 
   const payment = await paymentRepo.findByStripePaymentIntentId(stripePaymentIntentId);
   if (!payment) {
-    console.error(`Payment not found for PI: ${stripePaymentIntentId}`);
+    console.error(`[WEBHOOK] Payment not found for PI: ${stripePaymentIntentId}`);
     return;
   }
 
+  console.log(`[WEBHOOK] Found payment ${payment._id} with status ${payment.status}`);
+
   // Idempotency check
   const existingTx = await PaymentTransaction.findOne({ stripeEventId });
-  if (existingTx) return;
+  if (existingTx) {
+    console.log(`[WEBHOOK] Duplicate event ignored: ${stripeEventId}`);
+    return;
+  }
 
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // Use session‑aware queries
     const currentPayment = await paymentRepo.findByIdQuery(payment._id, session);
     if (!currentPayment || currentPayment.status !== 'Pending') {
+      console.log(`[WEBHOOK] Payment not in Pending state, skipping: ${currentPayment?.status}`);
       await session.abortTransaction();
       session.endSession();
       return;
     }
 
     const parentOrder = await orderRepo.findByIdQuery(currentPayment.parentOrder, session);
-    if (!parentOrder) throw new Error('ParentOrder not found');
+    if (!parentOrder) {
+      throw new Error('ParentOrder not found');
+    }
 
-    // Atomic stock deduction
+    console.log(`[WEBHOOK] Deducting stock for order ${parentOrder._id}`);
+
     const sellerOrders = await orderRepo.findSellerOrdersByParentQuery(parentOrder._id, session);
     for (const so of sellerOrders) {
       for (const item of so.items) {
@@ -159,7 +174,8 @@ export const handlePaymentSuccess = async (event) => {
       }
     }
 
-    // Create success PaymentTransaction
+    console.log(`[WEBHOOK] Creating PaymentTransaction with eventId ${stripeEventId}`);
+
     await PaymentTransaction.create([{
       payment: currentPayment._id,
       type: 'success',
@@ -169,16 +185,19 @@ export const handlePaymentSuccess = async (event) => {
       stripeEventId,
     }], { session });
 
-    // Update Payment
     currentPayment.status = 'Completed';
+    currentPayment.cardBrand = cardBrand;
+currentPayment.cardLast4 = cardLast4;
+currentPayment.cardExpMonth = cardExpMonth;
+currentPayment.cardExpYear = cardExpYear;
     currentPayment.paidAt = new Date();
     await currentPayment.save({ session });
 
-    // Update ParentOrder
     parentOrder.orderStatus = 'Processing';
     await parentOrder.save({ session });
 
-    // Clear cart (use Mongoose model directly with session)
+    console.log(`[WEBHOOK] Clearing cart for user ${parentOrder.customer}`);
+
     await Cart.updateOne(
       { user: parentOrder.customer },
       { $set: { items: [] } },
@@ -187,16 +206,18 @@ export const handlePaymentSuccess = async (event) => {
 
     await session.commitTransaction();
     session.endSession();
+    console.log(`[WEBHOOK] Successfully processed payment for order ${parentOrder._id}`);
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
 
+    console.error(`[WEBHOOK] Error processing payment: ${error.message}`);
+
+    // If stock deduction failed, mark order as Cancelled
     if (error.message.includes('Insufficient stock')) {
-      console.error('Stock deduction failed after successful payment. Order cannot be fulfilled.');
-      // Order cancelled, payment remains Completed (refund later)
       await ParentOrder.findByIdAndUpdate(parentOrder._id, { orderStatus: 'Cancelled' });
     }
-    throw error; // controller returns 200 to Stripe
+    throw error; // rethrow to be caught by webhook handler
   }
 };
 
@@ -251,4 +272,11 @@ export const handlePaymentFailure = async (event) => {
     session.endSession();
     throw error;
   }
+};
+export const getPaymentByOrderId = async (orderId, userId) => {
+  const order = await orderRepo.findById(orderId, userId);   // ensures ownership
+  if (!order) throw new ApiError(404, 'Order not found');
+  const payment = await paymentRepo.findByParentOrder(orderId);
+  if (!payment) throw new ApiError(404, 'Payment not found');
+  return payment;
 };

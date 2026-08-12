@@ -26,7 +26,11 @@ const handleStatusChange = async (productId, newStatus, reason, note) => {
   try {
     await updateProductStatus(productId, newStatus, reason, note);
     setProducts(prev =>
-      prev.map(p => (p._id === productId ? { ...p, status: newStatus } : p))
+      prev.map(p => 
+        p._id === productId 
+          ? { ...p, status: newStatus, rejectionReason: reason, internalNote: note } 
+          : p
+      )
     );
   } catch (err) {
     console.error('Status update failed', err);

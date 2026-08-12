@@ -14,11 +14,11 @@ export const getProductById = asyncHandler(async (req, res) => {
 });
 
 export const updateProductStatus = asyncHandler(async (req, res) => {
-  const { status, reason, internalNote } = req.body;
+ const { status, rejectionReason, internalNote } = req.body;
   const updatedProduct = await adminProductService.updateProductStatus(
     req.params.id,
     status,
-    reason,
+    rejectionReason,
     internalNote
   );
   new ApiResponse(200, updatedProduct, 'Product status updated').send(res);

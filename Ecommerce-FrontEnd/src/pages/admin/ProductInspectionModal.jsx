@@ -4,6 +4,7 @@ import axiosInstance from '../../services/axiosInstance';
 
 const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
   const [internalNote, setInternalNote] = useState('');
+  const [rejectionReason, setRejectionReason] = useState(''); // new separate field
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [reviews, setReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
@@ -30,6 +31,17 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
     fetchReviews();
   }, [product]);
 
+  // Pre‑populate existing values when viewing a rejected product
+  useEffect(() => {
+    if (product?.status === 'Rejected') {
+      setRejectionReason(product.rejectionReason || '');
+      setInternalNote(product.internalNote || '');
+    } else {
+      setRejectionReason('');
+      setInternalNote('');
+    }
+  }, [product]);
+
   const goToPrevImage = () => {
     setCurrentImgIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
@@ -40,13 +52,14 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
 
   // Action handlers – they call the parent's onStatusChange
   const handleApprove = () => {
+    // For approval, internal note is optional; rejection reason is not used
     onStatusChange(product._id, 'Approved', '', internalNote);
     onClose();
   };
 
   const handleReject = () => {
-    if (!internalNote.trim()) return; // must provide a reason
-    onStatusChange(product._id, 'Rejected', internalNote, ''); // note becomes rejection reason
+    if (!rejectionReason.trim()) return; // rejection reason is required
+    onStatusChange(product._id, 'Rejected', rejectionReason, internalNote);
     onClose();
   };
 
@@ -280,6 +293,41 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
             </div>
           </div>
 
+          {/* Display existing rejection reason & internal notes (for already rejected products) */}
+          {status === 'Rejected' && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              {rejectionReason && (
+                <div
+                  style={{
+                    padding: '12px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #f87171',
+                    color: '#991b1b',
+                    borderRadius: '8px',
+                    marginBottom: '0.75rem',
+                  }}
+                >
+                  <strong>Rejection Reason (seller sees this):</strong>
+                  <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{rejectionReason}</p>
+                </div>
+              )}
+              {internalNote && (
+                <div
+                  style={{
+                    padding: '12px',
+                    backgroundColor: '#fffbeb',
+                    border: '1px solid #fcd34d',
+                    color: '#92400e',
+                    borderRadius: '8px',
+                  }}
+                >
+                  <strong>Internal Admin Notes:</strong>
+                  <p style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{internalNote}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Customer Reviews Section */}
           <div
             style={{
@@ -363,6 +411,32 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                   >
                     {review.comment}
                   </p>
+                  {review.sellerReply && (
+  <div style={{
+    marginTop: '12px',
+    padding: '10px 12px',
+    backgroundColor: '#ecfdf5',
+    border: '1px solid #a7f3d0',
+    borderRadius: '6px'
+  }}>
+    <div style={{
+      fontWeight: 600,
+      fontSize: '12px',
+      marginBottom: '4px',
+      color: '#065f46'
+    }}>
+      Seller Reply
+    </div>
+    <p style={{
+      margin: 0,
+      color: '#064e3b',
+      fontSize: '13px',
+      lineHeight: '1.5'
+    }}>
+      {review.sellerReply}
+    </p>
+  </div>
+)}
                 </div>
               ))
             )}
@@ -436,15 +510,31 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
           {/* Dynamic buttons based on status */}
           {status === 'PendingApproval' && (
             <>
-              {/* Internal note / rejection reason textarea */}
+              {/* Rejection Reason (shown to seller) */}
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={2}
+                placeholder="Rejection reason (visible to seller)…"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  marginBottom: '12px',
+                  fontSize: '0.85rem',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  resize: 'vertical',
+                }}
+              />
+              {/* Internal Admin Notes */}
               <textarea
                 value={internalNote}
                 onChange={(e) => setInternalNote(e.target.value)}
-                rows={3}
-                placeholder="Write an internal note or rejection reason…"
+                rows={2}
+                placeholder="Internal notes (admin only)…"
                 style={{
                   width: '100%',
-                  minHeight: '80px',
                   padding: '12px',
                   border: '1px solid #d1d5db',
                   borderRadius: '8px',
@@ -473,6 +563,7 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                 </button>
                 <button
                   onClick={handleReject}
+                  disabled={!rejectionReason.trim()}
                   style={{
                     flex: 1,
                     padding: '10px',
@@ -481,7 +572,8 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                     backgroundColor: '#fef2f2',
                     color: '#b91c1c',
                     fontWeight: '600',
-                    cursor: 'pointer',
+                    cursor: !rejectionReason.trim() ? 'not-allowed' : 'pointer',
+                    opacity: !rejectionReason.trim() ? 0.6 : 1,
                   }}
                 >
                   Reject

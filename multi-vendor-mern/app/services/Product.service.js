@@ -22,6 +22,10 @@ export const getMyProductById = async (userId, productId) => {
   if (!product) throw new ApiError(404, 'Product not found');
   return product;
 };
+export const getPublicProducts = (filters) => {
+  // Ensure store is included if present
+  return productRepo.findPublicWithFilters(filters);
+};
 
 export const getMyProducts = async (userId, queryParams = {}) => {
   const store = await resolveStore(userId);

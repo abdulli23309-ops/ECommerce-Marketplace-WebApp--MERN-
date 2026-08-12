@@ -65,7 +65,6 @@ export const findPublicById = (id) =>
     .lean();
 
 export const findPublicWithFilters = async (filters = {}) => {
-  const allowedStoreIds = await storeRepo.getActiveStoreIdsForApprovedSellers();
   const {
     search,
     categoryId,
@@ -75,14 +74,22 @@ export const findPublicWithFilters = async (filters = {}) => {
     maxPrice,
     sortBy,
     page = 1,
-    pageSize = 12
+    pageSize = 12,
+    store,                     // ← new
   } = filters;
 
   const query = {
     isDeleted: false,
     status: 'Approved',
-    store: { $in: allowedStoreIds }
   };
+
+  // If a specific store is requested, filter by it; otherwise show products from all active sellers
+  if (store) {
+    query.store = store;
+  } else {
+    const allowedStoreIds = await storeRepo.getActiveStoreIdsForApprovedSellers();
+    query.store = { $in: allowedStoreIds };
+  }
 
   if (search) {
     query.$or = [
@@ -120,7 +127,7 @@ export const findPublicWithFilters = async (filters = {}) => {
   ]);
 
   return {
-    products,
+     items: products,
     page: Number(page),
     pageSize: limit,
     total,
@@ -183,3 +190,4 @@ export const getRatingStats = async (productId) => {
     reviewCount: result[0].reviewCount,
   };
 };
+

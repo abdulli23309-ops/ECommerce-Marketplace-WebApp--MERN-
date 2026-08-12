@@ -1,72 +1,43 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
-import { getImageUrl } from "../../utils/imageHelper";   // <-- shared utility
+import CustomerReturnDetail from "./CustomerReturnDetail";
 
-const ReviewDetailPage = () => {
-  const { reviewId } = useParams();
-  const [review, setReview] = useState(null);
+const ReturnDetailsPage = () => {
+  const { returnId } = useParams();
+  const [returnReq, setReturnReq] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchReview = async () => {
+    const fetchReturn = async () => {
       try {
-        const res = await axiosInstance.get(`/reviews/${reviewId}`);
-        setReview(res.data.data || res.data);
+        const res = await axiosInstance.get(`/returns/${returnId}`);
+        setReturnReq(res.data?.data || res.data);
       } catch (err) {
-        console.error("Failed to load review", err);
+        console.error("Failed to load return", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchReview();
-  }, [reviewId]);
+    fetchReturn();
+  }, [returnId]);
 
-  if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading review...</div>;
-  if (!review) return <div style={{ padding: "2rem", color: "#666" }}>Review not found.</div>;
+  if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading return...</div>;
+  if (!returnReq) return <div style={{ padding: "2rem", color: "#666" }}>Return not found.</div>;
 
   return (
-    <div style={{ maxWidth: "700px", margin: "0 auto", padding: "2rem" }}>
-      <Link to="/reviews/my" className="back-link">← Back to reviews</Link>
-      <h2 className="section-title" style={{ marginBottom: "1.5rem" }}>Review Details</h2>
-
-      <div className="review-card" style={{ border: "1px solid #eaeaea", borderRadius: "0.5rem", padding: "1.5rem", background: "#fff" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <div>
-            <p style={{ fontWeight: 600, color: "#000", margin: 0 }}>
-              {review.product?.name || "Deleted Product"}
-            </p>
-          </div>
-          <span style={{ fontSize: "1.5rem", letterSpacing: "2px" }}>
-            {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
-          </span>
-        </div>
-
-        {review.comment ? (
-          <p style={{ margin: "0 0 1rem 0", color: "#333", lineHeight: 1.6 }}>{review.comment}</p>
-        ) : (
-          <p style={{ margin: "0 0 1rem 0", color: "#999", fontStyle: "italic" }}>No comment provided.</p>
-        )}
-
-        {review.images?.length > 0 && (
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-            {review.images.map((imgUrl, idx) => (
-              <img
-                key={idx}
-                src={getImageUrl(imgUrl)}
-                alt={`Review image ${idx + 1}`}
-                style={{ width: "120px", height: "120px", objectFit: "cover", borderRadius: "0.25rem", border: "1px solid #eaeaea" }}
-              />
-            ))}
-          </div>
-        )}
-
-        <p style={{ fontSize: "0.85rem", color: "#888", margin: 0 }}>
-          Reviewed on {new Date(review.createdAt).toLocaleDateString()} at {new Date(review.createdAt).toLocaleTimeString()}
-        </p>
-      </div>
+    <div style={{ maxWidth: "600px", margin: "2rem auto", padding: "0 1rem" }}>
+      <Link to="/returns" style={{ color: "#6b7280", textDecoration: "none", fontSize: "0.9rem", display: "inline-block", marginBottom: "1rem" }}>
+        ← Back to returns
+      </Link>
+      {/* Render the detail directly, not as a modal */}
+      <CustomerReturnDetail
+        returnReq={returnReq}
+        onClose={() => window.history.back()}
+        onUpdate={() => window.location.reload()} // or refetch
+      />
     </div>
   );
 };
 
-export default ReviewDetailPage;
+export default ReturnDetailsPage;

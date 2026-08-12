@@ -61,3 +61,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
   if (imagePaths.length === 0) throw new ApiError(400, 'No image uploaded');
   new ApiResponse(200, { url: imagePaths[0] }, 'Image uploaded').send(res);
 });
+export const getPublicProducts = asyncHandler(async (req, res) => {
+  const data = await productService.getPublicProducts(req.query);
+  new ApiResponse(200, data, 'Products retrieved').send(res);
+});

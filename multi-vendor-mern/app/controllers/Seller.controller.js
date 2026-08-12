@@ -39,3 +39,18 @@ export const getSellerOrderById = asyncHandler(async (req, res) => {
   if (!order) throw new ApiError(404, 'Seller order not found');
   new ApiResponse(200, order, 'Seller order retrieved').send(res);
 });
+
+export const applyAsSeller = asyncHandler(async (req, res) => {
+  const result = await sellerService.applyAsSeller(req.user.id, req.body, req.files);
+  new ApiResponse(201, result, 'Application submitted').send(res);
+});
+
+export const getProfile = asyncHandler(async (req, res) => {
+  const profile = await sellerService.getSellerProfile(req.user.id);
+  new ApiResponse(200, profile, 'Seller profile').send(res);
+});
+
+export const updateProfile = asyncHandler(async (req, res) => {
+  const profile = await sellerService.updateSellerProfile(req.user.id, req.body);
+  new ApiResponse(200, profile, 'Profile updated').send(res);
+});

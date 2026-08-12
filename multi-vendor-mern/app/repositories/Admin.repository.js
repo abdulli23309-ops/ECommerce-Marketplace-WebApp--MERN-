@@ -345,3 +345,10 @@ export const updatePermissionGroup = (id, data) =>
 
 export const deletePermissionGroup = (id) =>
   PermissionGroup.findByIdAndDelete(id).lean();
+
+export const rejectSeller = (sellerId, reason) =>
+  SellerProfile.findByIdAndUpdate(
+    sellerId,
+    { status: 'Rejected', rejectionReason: reason, approvedAt: null, approvedBy: null },
+    { new: true }
+  );
