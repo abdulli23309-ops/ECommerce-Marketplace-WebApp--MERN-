@@ -181,26 +181,40 @@ const OrderDetailPage = () => {
   };
 
   const getActiveIndex = (status) => {
-  switch (status) {
-    case 'Pending':          return 0;
-    case 'Processing':       return 1;
-    case 'Shipped':
-    case 'Dispatched':       return 2;
-    case 'OutForDelivery':   return 3;
-    case 'Delivered':        return 4;
-    default:                 return 0;
-  }
-};
+    switch (status) {
+      case 'Pending':          return 0;
+      case 'Processing':       return 1;
+      case 'Shipped':
+      case 'Dispatched':       return 2;
+      case 'OutForDelivery':   return 3;
+      case 'Delivered':        return 4;
+      default:                 return 0;
+    }
+  };
 
   const effectiveStatus = getEffectiveStatus(order);
   const isCancelled = effectiveStatus === 'Cancelled';
   const currentStep = getActiveIndex(effectiveStatus);
 
+  // Determine if this is a Stripe refund cancellation scenario
+  const isStripeRefundCancellation =
+    order?.orderStatus === 'Processing' &&
+    order.payment?.method === 'Stripe' &&
+    order.payment?.status === 'Completed';
+
   // Determine if cancel should be available
-  const canCancel = order && !isCancelled && order.orderStatus === 'Pending'
-    && !(order.sellerOrders || []).some(so =>
-      ['Processing', 'Shipped', 'Dispatched', 'OutForDelivery', 'Delivered', 'Cancelled'].includes(so.status)
-    );
+  const canCancel = order && !isCancelled && (
+    (
+      order.orderStatus === 'Pending' &&
+      !(order.sellerOrders || []).some(so =>
+        ['Processing', 'Shipped', 'Dispatched', 'OutForDelivery', 'Delivered', 'Cancelled'].includes(so.status)
+      )
+    ) ||
+    (
+      isStripeRefundCancellation &&
+      !(order.sellerOrders || []).some(so => so.status !== 'Pending')
+    )
+  );
 
   if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading order...</div>;
   if (!order) return <div style={{ padding: "2rem", color: "#666" }}>Order not found.</div>;
@@ -362,7 +376,7 @@ const OrderDetailPage = () => {
                     onMouseEnter={(e) => { if (!cancelling) e.target.style.background = "#fef2f2" }}
                     onMouseLeave={(e) => { if (!cancelling) e.target.style.background = "#fff" }}
                   >
-                    {cancelling ? "Cancelling..." : "Cancel Order"}
+                    {cancelling ? "Cancelling..." : isStripeRefundCancellation ? "Cancel & Refund" : "Cancel Order"}
                   </button>
                 )}
               </div>
@@ -400,7 +414,9 @@ const OrderDetailPage = () => {
               Cancel this order?
             </h3>
             <p style={{ fontSize: "0.9rem", color: "#6b7280", margin: 0 }}>
-              Are you sure you want to cancel this order? This action cannot be undone and the seller will be notified.
+              {isStripeRefundCancellation
+                ? "Are you sure you want to cancel this order? Your payment will be automatically refunded to your original payment method. This action cannot be undone."
+                : "Are you sure you want to cancel this order? This action cannot be undone and the seller will be notified."}
             </p>
             <div style={{ display: "flex", gap: 12, width: "100%", marginTop: 24 }}>
               <button
@@ -413,7 +429,7 @@ const OrderDetailPage = () => {
                 onClick={handleConfirmCancel}
                 style={{ flex: 1, padding: "12px", borderRadius: "8px", border: "none", backgroundColor: "#ef4444", color: "#fff", cursor: "pointer", fontWeight: 600 }}
               >
-                Cancel Order
+                {isStripeRefundCancellation ? "Cancel & Refund" : "Cancel Order"}
               </button>
             </div>
           </div>

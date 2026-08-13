@@ -23,22 +23,22 @@ const paymentSchema = new mongoose.Schema(
     status: {
       type: String,
       required: true,
-      enum: ['Pending', 'Completed', 'Failed'],
+      enum: ['Pending', 'Completed', 'Failed', 'Refunded'],
       default: 'Pending',
     },
     transactionId: {
       type: String,
       default: null,
     },
-    stripePaymentIntentId: {      // ← new field
+    stripePaymentIntentId: {
       type: String,
       default: null,
       index: true,
     },
     cardBrand: { type: String, default: null },
-cardLast4: { type: String, default: null },
-cardExpMonth: { type: Number, default: null },
-cardExpYear: { type: Number, default: null },
+    cardLast4: { type: String, default: null },
+    cardExpMonth: { type: Number, default: null },
+    cardExpYear: { type: Number, default: null },
     paidAt: {
       type: Date,
       default: null,

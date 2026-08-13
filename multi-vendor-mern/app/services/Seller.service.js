@@ -65,6 +65,22 @@ export const getSellerOrders = async (userId) => {
   return Array.from(grouped.values());
 };
 
+// NEW: single seller order with ownership check
+export const getSellerOrderById = async (userId, sellerOrderId) => {
+  const { store } = await getStoreId(userId);
+
+  const order = await SellerOrder.findOne({
+    _id: sellerOrderId,
+    store: store._id,
+  })
+    .populate('store', 'name')
+    .lean();
+
+  if (!order) throw new ApiError(404, 'Seller order not found');
+
+  return order;
+};
+
 // ---------- Apply as Seller (create or update) ----------
 export const applyAsSeller = async (userId, body, files) => {
   const {
@@ -82,10 +98,8 @@ export const applyAsSeller = async (userId, body, files) => {
     throw new ApiError(400, 'Business name and store name are required');
   }
 
-  // Check if seller profile already exists for this user
   let profile = await sellerProfileRepo.findByUser(userId);
 
-  // Prepare store data
   const storeData = {
     name: storeName,
     description: storeDescription || '',
@@ -98,17 +112,15 @@ export const applyAsSeller = async (userId, body, files) => {
   }
 
   if (profile) {
-    // Update existing profile
     profile.businessName = businessName;
     profile.description = description || '';
     profile.phone = phone || profile.phone || '';
     profile.address = address || profile.address || '';
     profile.taxId = taxId || profile.taxId || '';
-    profile.status = 'Pending';               // reset to Pending
-    profile.rejectionReason = null;           // clear any previous rejection reason
+    profile.status = 'Pending';
+    profile.rejectionReason = null;
     await profile.save();
 
-    // Update associated store
     let store = await Store.findOne({ sellerProfile: profile._id });
     if (store) {
       store.name = storeData.name;
@@ -117,14 +129,12 @@ export const applyAsSeller = async (userId, body, files) => {
       if (storeData.logo) store.logo = storeData.logo;
       await store.save();
     } else {
-      // If for some reason the store was deleted, create a new one
       store = await Store.create({ ...storeData, sellerProfile: profile._id });
     }
 
     return { profile, store };
   }
 
-  // No existing profile – create new profile and store
   profile = await sellerProfileRepo.create({
     user: userId,
     businessName,

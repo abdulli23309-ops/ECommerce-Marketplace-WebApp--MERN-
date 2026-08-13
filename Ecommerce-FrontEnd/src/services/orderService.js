@@ -22,6 +22,7 @@ export const createPaymentIntent = async (addressId, paymentMethod) => {
   });
   return data.data; // { payment, order, clientSecret }
 };
+
 export const cancelOrder = async (orderId) => {
   const { data } = await axiosInstance.put(`/orders/${orderId}/cancel`);
   return data.data;

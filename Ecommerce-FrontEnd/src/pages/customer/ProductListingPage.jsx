@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useDispatch } from "react-redux"; // <-- added
 import { fetchApprovedProducts } from "../../services/productService";
 import { getImageUrl } from "../../utils/imageHelper";
 import { fetchCategories, fetchSubCategories } from "../../services/categoryService";
 import { fetchBrands } from "../../services/brandService";
+import { addItemToWishlist } from "../../store/wishlistSlice"; // <-- added
 
 const ProductListingPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const dispatch = useDispatch(); // <-- added
 
   // State for products, loading, etc.
   const [products, setProducts] = useState([]);
@@ -28,21 +31,20 @@ const ProductListingPage = () => {
     sortBy: searchParams.get("sortBy") || "newest",
   });
 
-  // Load categories, brands on mount
-useEffect(() => {
-  fetchCategories().then(setCategories).catch(console.error);
-  fetchBrands().then(setBrands).catch(console.error);
-}, []);
+  useEffect(() => {
+    fetchCategories().then(setCategories).catch(console.error);
+    fetchBrands().then(setBrands).catch(console.error);
+  }, []);
 
-useEffect(() => {
-  if (filters.categoryId) {
-    fetchSubCategories(filters.categoryId).then(setSubCategories).catch(console.error);
-  } else {
-    setSubCategories([]);
-    setFilters(prev => ({ ...prev, subCategoryId: '' }));
-  }
-}, [filters.categoryId]);
-  // Fetch products when filters or page change
+  useEffect(() => {
+    if (filters.categoryId) {
+      fetchSubCategories(filters.categoryId).then(setSubCategories).catch(console.error);
+    } else {
+      setSubCategories([]);
+      setFilters(prev => ({ ...prev, subCategoryId: '' }));
+    }
+  }, [filters.categoryId]);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -54,7 +56,6 @@ useEffect(() => {
         });
         setProducts(data.items || []);
         setTotalPages(data.totalPages);
-        // Update URL params
         const params = new URLSearchParams();
         if (currentPage > 1) params.set("page", currentPage);
         if (filters.categoryId) params.set("categoryId", filters.categoryId);
@@ -77,7 +78,7 @@ useEffect(() => {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
-    setCurrentPage(1); // reset to first page on filter change
+    setCurrentPage(1);
   };
 
   const handleSearchSubmit = (e) => {
@@ -121,7 +122,6 @@ useEffect(() => {
       </div>
 
       <div className="listing-content">
-        {/* Filter Sidebar */}
         <aside className="listing-filters">
           <h3 className="filter-title">Filters</h3>
           <div className="form-group">
@@ -156,7 +156,6 @@ useEffect(() => {
           <button className="btn-remove" onClick={resetFilters} style={{ marginTop: "1rem" }}>Clear Filters</button>
         </aside>
 
-        {/* Product Grid */}
         <main className="listing-products">
           {loading ? (
             <p style={{ color: "#666" }}>Loading products...</p>
@@ -168,40 +167,52 @@ useEffect(() => {
             <>
               <div className="product-grid">
                 {products.map(product => (
-                  <Link to={`/products/${product.id}`} key={product.id} className="product-card">
-                    <div className="product-image">
-                      {product.images && product.images.length > 0 ? (
-                        <img src={getImageUrl(product.images[0])} alt={product.name} />
-                      ) : (
-                        <div className="no-image">No Image</div>
-                      )}
-                    </div>
-                    <div className="product-details">
-                      <p className="product-name">{product.name}</p>
-                      <p className="product-price">PKR {product.basePrice?.toLocaleString()}</p>
-                    </div>
-                  </Link>
+                  <div key={product.id} className="product-card" style={{ position: "relative" }}>
+                    <Link to={`/products/${product.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                      <div className="product-image">
+                        {product.images && product.images.length > 0 ? (
+                          <img src={getImageUrl(product.images[0])} alt={product.name} />
+                        ) : (
+                          <div className="no-image">No Image</div>
+                        )}
+                      </div>
+                      <div className="product-details">
+                        <p className="product-name">{product.name}</p>
+                        <p className="product-price">PKR {product.basePrice?.toLocaleString()}</p>
+                      </div>
+                    </Link>
+                    <button
+                      onClick={() => dispatch(addItemToWishlist(product.id))}
+                      style={{
+                        position: "absolute",
+                        top: "8px",
+                        right: "8px",
+                        background: "none",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "50%",
+                        width: "32px",
+                        height: "32px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#4b5563",
+                      }}
+                      title="Add to Wishlist"
+                    >
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </button>
+                  </div>
                 ))}
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="pagination">
-                  <button
-                    className="page-btn"
-                    disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage(prev => prev - 1)}
-                  >
-                    Previous
-                  </button>
+                  <button className="page-btn" disabled={currentPage <= 1} onClick={() => setCurrentPage(prev => prev - 1)}>Previous</button>
                   <span className="page-info">Page {currentPage} of {totalPages}</span>
-                  <button
-                    className="page-btn"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage(prev => prev + 1)}
-                  >
-                    Next
-                  </button>
+                  <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(prev => prev + 1)}>Next</button>
                 </div>
               )}
             </>

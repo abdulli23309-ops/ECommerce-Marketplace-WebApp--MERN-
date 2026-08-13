@@ -1,6 +1,7 @@
 import * as returnRepo from '../repositories/Return.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import * as sellerProfileRepo from '../repositories/SellerProfile.repository.js';
+import * as refundRepo from '../repositories/Refund.repository.js';
 import Store from '../models/Store.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
@@ -112,4 +113,15 @@ export const updateTracking = async (returnId, userId, trackingNumber) => {
     returnTrackingNumber: trackingNumber,
     status: 'ITEM_IN_TRANSIT',
   });
+};
+
+export const getMyReturnRefund = async (returnId, userId) => {
+  const ret = await returnRepo.findById(returnId);
+  if (!ret) throw new ApiError(404, 'Return not found');
+  if (ret.customer.toString() !== userId) throw new ApiError(403, 'Not your return');
+
+  const refund = await refundRepo.findByReturnRequest(returnId);
+  if (!refund) throw new ApiError(404, 'Refund not found for this return');
+
+  return refund;
 };

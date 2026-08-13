@@ -43,7 +43,7 @@ import ReviewPage from "./pages/customer/ReviewPage";
 import MyReviewsPage from "./pages/customer/MyReviewsPage";
 import ReviewDetailPage from "./pages/customer/ReviewDetailPage";
 import PermissionGroupsPage from "./pages/admin/PermissionGroupsPage";
-import RequestReturnPage from "./pages/customer/RequestReturnPage";   // single import
+import RequestReturnPage from "./pages/customer/RequestReturnPage";
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminShipmentsPage from "./pages/admin/AdminShipmentsPage";
 import ProductGrid from "./pages/seller/ProductGrid";
@@ -51,6 +51,7 @@ import OrderConfirmationPage from "./pages/customer/OrderConfirmationPage";
 import CustomerReturnsPage from "./pages/customer/CustomerReturnsPage";
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
 import SellerReturnsPage from "./pages/seller/SellerReturnsPage";
+import WishlistPage from "./pages/customer/WishlistPage"; // <-- add this import
 
 const App = () => {
   const dispatch = useDispatch();
@@ -84,6 +85,7 @@ const App = () => {
       <Route element={<ProtectedRoute allowedRoles={["Customer"]} />}>
         <Route element={<CustomerLayout />}>
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/wishlist" element={<WishlistPage />} /> {/* <-- add this route */}
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/orders" element={<OrderHistoryPage />} />
@@ -91,7 +93,7 @@ const App = () => {
           <Route path="/orders/:orderId" element={<OrderDetailPage />} />
           <Route path="/review/new/:sellerOrderId" element={<ReviewPage />} />
           <Route path="/returns/new/:sellerOrderId" element={<RequestReturnPage />} /> 
-          <Route path="/returns" element={<CustomerReturnsPage />} />   {/* single route */}
+          <Route path="/returns" element={<CustomerReturnsPage />} />
           <Route path="/reviews/my" element={<MyReviewsPage />} />
           <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
           <Route path="/reviews/:reviewId" element={<ReviewDetailPage />} />

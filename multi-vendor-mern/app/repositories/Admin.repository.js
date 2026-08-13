@@ -45,8 +45,6 @@ export const findUsers = async ({ page = 1, pageSize = 10, search, role, isActiv
   };
 };
 
-
-// ---------- Sellers ----------
 // ---------- Sellers ----------
 export const findSellers = async ({ page = 1, pageSize = 10, search, status }) => {
   const query = {};
@@ -93,7 +91,8 @@ export const findSellers = async ({ page = 1, pageSize = 10, search, status }) =
     totalPages: Math.ceil((search ? items.length : total) / limit),
   };
 };
-// ---------- Orders (ID search added) ----------
+
+// ---------- Orders ----------
 export const findOrders = async ({ page = 1, pageSize = 10, search, status, sortBy }) => {
   const query = {};
   if (status) query.orderStatus = status;
@@ -123,8 +122,8 @@ export const findOrders = async ({ page = 1, pageSize = 10, search, status, sort
   return { items, total, page: Number(page), pageSize: limit, totalPages: Math.ceil(total / limit) };
 };
 
-// ---------- Payments (ID and parentOrder search added) ----------
-export const findPayments = async ({ page = 1, pageSize = 10, search, status, method }) => {
+// ---------- Payments (with sort) ----------
+export const findPayments = async ({ page = 1, pageSize = 10, search, status, method, sortBy = 'newest' }) => {
   const query = {};
   if (status) query.status = status;
   if (method) query.method = method;
@@ -136,12 +135,17 @@ export const findPayments = async ({ page = 1, pageSize = 10, search, status, me
     ];
   }
 
+  let sortOption = { createdAt: -1 }; // newest by default
+  if (sortBy === 'oldest') sortOption = { createdAt: 1 };
+  else if (sortBy === 'amount_asc') sortOption = { amount: 1 };
+  else if (sortBy === 'amount_desc') sortOption = { amount: -1 };
+
   const skip = (Number(page) - 1) * Number(pageSize);
   const limit = Number(pageSize);
 
   const [items, total] = await Promise.all([
     Payment.find(query)
-      .sort({ createdAt: -1 })
+      .sort(sortOption)
       .skip(skip)
       .limit(limit)
       .lean(),
@@ -151,7 +155,7 @@ export const findPayments = async ({ page = 1, pageSize = 10, search, status, me
   return { items, total, page: Number(page), pageSize: limit, totalPages: Math.ceil(total / limit) };
 };
 
-// ---------- Shipments (ID search added) ----------
+// ---------- Shipments ----------
 export const findShipments = async ({ page = 1, pageSize = 10, search, status }) => {
   const query = {};
   if (status) query.status = status;
@@ -179,7 +183,7 @@ export const findShipments = async ({ page = 1, pageSize = 10, search, status })
 
   return { items, total, page: Number(page), pageSize: limit, totalPages: Math.ceil(total / limit) };
 };
-export const findAllPermissions = () => Permission.find({}).lean();
+
 // ---------- Returns ----------
 export const findReturns = async ({ page = 1, pageSize = 10, search, status }) => {
   const query = {};
@@ -294,10 +298,10 @@ export const getStats = async () => {
     pendingReturns,
   ] = await Promise.all([
     User.countDocuments(),
-    SellerProfile.countDocuments(),
+    User.countDocuments({ role: 'Seller' }),               // actual seller users
     Product.countDocuments({ isDeleted: false }),
     ParentOrder.countDocuments(),
-    SellerProfile.countDocuments({ status: 'Approved' }),
+    User.countDocuments({ role: 'Seller', isActive: true }),
     SellerProfile.countDocuments({ status: 'Pending' }),
     Product.countDocuments({ isDeleted: false, status: 'Approved' }),
     Product.countDocuments({ isDeleted: false, status: 'PendingApproval' }),
@@ -320,8 +324,8 @@ export const getStats = async () => {
     pendingReturns,
   };
 };
-// ---------- User Activation / Deactivation ----------
-// Prevent self-modification
+
+// ---------- User Activation / Deactivation (with self-protection) ----------
 const ensureNotSelf = (userId, adminId) => {
   if (userId.toString() === adminId.toString()) {
     throw new ApiError(403, 'You cannot modify your own account');
@@ -337,14 +341,16 @@ export const deactivateUser = async (id, adminId) => {
   ensureNotSelf(id, adminId);
   return User.findByIdAndUpdate(id, { isActive: false }, { new: true }).lean();
 };
-export const createPermissionGroup = (data) =>
-  PermissionGroup.create(data);
 
+// ---------- Permission Groups CRUD ----------
+export const createPermissionGroup = (data) => PermissionGroup.create(data);
 export const updatePermissionGroup = (id, data) =>
   PermissionGroup.findByIdAndUpdate(id, { $set: data }, { new: true }).lean();
-
 export const deletePermissionGroup = (id) =>
   PermissionGroup.findByIdAndDelete(id).lean();
+
+// ---------- Misc ----------
+export const findAllPermissions = () => Permission.find({}).lean();
 
 export const rejectSeller = (sellerId, reason) =>
   SellerProfile.findByIdAndUpdate(

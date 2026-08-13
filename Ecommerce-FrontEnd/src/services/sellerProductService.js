@@ -29,7 +29,7 @@ const mapProduct = (p) => ({
 
 // ---------- Paginated fetch for seller's own products ----------
 export const fetchSellerProducts = async ({ page = 1, pageSize = 12 } = {}) => {
-  const { data } = await axiosInstance.get("/products", { params: { page, pageSize } });
+  const { data } = await axiosInstance.get("/seller/products", { params: { page, pageSize } });
   const body = data.data;   // { products, total, page, totalPages }
   return {
     items: (body.products || []).map(mapProduct),
@@ -47,7 +47,7 @@ export const fetchProductById = async (productId) => {
 
 // ---------- Create a new product (multipart for images) ----------
 export const createProduct = async (formData) => {
-  const { data } = await axiosInstance.post("/products", formData, {
+  const { data } = await axiosInstance.post("/seller/products", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return mapProduct(data.data);
@@ -55,7 +55,7 @@ export const createProduct = async (formData) => {
 
 // ---------- Update an existing product ----------
 export const updateProduct = async (productId, formData) => {
-  const { data } = await axiosInstance.put(`/products/${productId}`, formData, {
+  const { data } = await axiosInstance.put(`/seller/products/${productId}`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return mapProduct(data.data);
@@ -63,7 +63,7 @@ export const updateProduct = async (productId, formData) => {
 
 // ---------- Delete a product ----------
 export const deleteProduct = async (productId) => {
-  const { data } = await axiosInstance.delete(`/products/${productId}`);
+  const { data } = await axiosInstance.delete(`/seller/products/${productId}`);
   return data.data;
 };
 // Fetch RAW product (with populated objects) for editing

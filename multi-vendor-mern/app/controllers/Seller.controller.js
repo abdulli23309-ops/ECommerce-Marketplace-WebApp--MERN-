@@ -1,6 +1,7 @@
 import * as sellerService from '../services/Seller.service.js';
 import { ApiResponse } from '../utils/ApiResponse.util.js';
 import { asyncHandler } from '../utils/AsyncHandler.util.js';
+import { ApiError } from '../utils/ApiError.util.js'; // added to fix uploadStoreLogo
 
 export const getStatus = asyncHandler(async (req, res) => {
   try {
@@ -29,14 +30,15 @@ export const createProfile = asyncHandler(async (req, res) => {
     throw err;
   }
 });
+
 export const uploadStoreLogo = asyncHandler(async (req, res) => {
   const imagePaths = (req.files || []).map(file => `/uploads/products/${file.filename}`);
   if (imagePaths.length === 0) throw new ApiError(400, 'No image uploaded');
   new ApiResponse(200, { logoUrl: imagePaths[0] }, 'Logo uploaded').send(res);
 });
+
 export const getSellerOrderById = asyncHandler(async (req, res) => {
-  const order = await SellerOrder.findById(req.params.id).populate('store', 'name').lean();
-  if (!order) throw new ApiError(404, 'Seller order not found');
+  const order = await sellerService.getSellerOrderById(req.user.id, req.params.id);
   new ApiResponse(200, order, 'Seller order retrieved').send(res);
 });
 

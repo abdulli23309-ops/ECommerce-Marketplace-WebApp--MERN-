@@ -11,6 +11,7 @@ router.post('/', returnController.createReturn);
 router.get('/mine', returnController.getMyReturns);
 router.post('/upload-image', uploadProductImages, returnController.uploadReturnImage);
 router.put('/:id/tracking', authenticate, returnController.updateTracking);
+router.get('/:id/refund', authenticate, returnController.getMyReturnRefund);
 // Seller
 router.get('/seller', requireRole('Seller'), returnController.getSellerReturns);
 router.put('/:id/seller-decision', requireRole('Seller'), returnController.sellerDecision);

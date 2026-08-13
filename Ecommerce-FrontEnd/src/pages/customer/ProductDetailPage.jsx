@@ -5,6 +5,7 @@ import { fetchProductById, fetchApprovedProducts } from "../../services/productS
 import { fetchProductReviews } from "../../services/reviewService";
 import { getImageUrl } from "../../utils/imageHelper";
 import { addItemToCart } from "../../store/cartSlice";
+import { addItemToWishlist } from "../../store/wishlistSlice";
 
 const ProductDetailPage = () => {
   const { productId } = useParams();
@@ -32,7 +33,6 @@ const ProductDetailPage = () => {
           setMainImage(getImageUrl(productData.images[0]));
         }
 
-        // Related products
         try {
           const allProducts = await fetchApprovedProducts({ page: 1, pageSize: 100 });
           const related = (allProducts?.items || [])
@@ -44,10 +44,8 @@ const ProductDetailPage = () => {
           setRelatedProducts([]);
         }
 
-        // Reviews – handle paginated response
         try {
           const reviewRes = await fetchProductReviews(productId);
-          // reviewRes could be { items, total, ... } or plain array (fallback)
           setReviews(reviewRes.items || reviewRes || []);
         } catch (error) {
           console.error("Failed to fetch reviews:", error);
@@ -80,6 +78,21 @@ const ProductDetailPage = () => {
       setMessage({ text: "Could not add to cart. Please try again.", type: "error" });
     } finally {
       setAddingToCart(false);
+    }
+  };
+
+  const handleAddToWishlist = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    try {
+      await dispatch(addItemToWishlist(product.id)).unwrap();
+      setMessage({ text: "Item added to wishlist.", type: "success" });
+      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
+    } catch (error) {
+      console.error("Wishlist error:", error);
+      setMessage({ text: "Could not add to wishlist. Please try again.", type: "error" });
     }
   };
 
@@ -273,7 +286,7 @@ const ProductDetailPage = () => {
               Currently Out of Stock
             </p>
           ) : (
-            <div className="add-to-cart-row" style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            <div className="add-to-cart-row" style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
               <div className="quantity-control" style={{ display: "flex", border: "1px solid #eaeaea" }}>
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -328,6 +341,27 @@ const ProductDetailPage = () => {
                 }}
               >
                 {addingToCart ? "Adding..." : "Add to Cart"}
+              </button>
+              <button
+                onClick={handleAddToWishlist}
+                style={{
+                  marginLeft: "0.5rem",
+                  background: "none",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  padding: "0.75rem 1rem",
+                  cursor: "pointer",
+                  color: "#4b5563",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+                title="Add to Wishlist"
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                Wishlist
               </button>
             </div>
           )}

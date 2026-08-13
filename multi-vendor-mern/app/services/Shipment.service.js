@@ -80,17 +80,23 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
     if (allDelivered) {
       await orderRepo.updateStatus(parentOrderId, 'Delivered');
     }
-    // Mark COD payment as Completed
-const payment = await Payment.findOne({ parentOrder: parentOrderId, method: 'CashOnDelivery', status: 'Pending' });
-if (payment) {
-  payment.status = 'Completed';
-  payment.paidAt = new Date();
-  await payment.save();
-}
+
+    // Mark COD payment as Completed when the order is delivered
+    const payment = await Payment.findOne({
+      parentOrder: parentOrderId,
+      method: 'CashOnDelivery',
+      status: 'Pending',
+    });
+    if (payment) {
+      payment.status = 'Completed';
+      payment.paidAt = new Date();
+      await payment.save();
+    }
   }
 
   return updated;
 };
+
 export const updateShipmentInfo = async (shipmentId, data, userId) => {
   const shipment = await shipmentRepo.findById(shipmentId);
   if (!shipment) throw new ApiError(404, 'Shipment not found');

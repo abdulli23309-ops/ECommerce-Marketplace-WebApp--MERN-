@@ -1,4 +1,8 @@
 import mongoose from 'mongoose';
+import stripe from '../stripe.js';
+import PaymentTransaction from '../models/PaymentTransaction.model.js';
+import Product from '../models/Product.model.js';
+import * as paymentRepo from '../repositories/Payment.repository.js';
 import ParentOrder from '../models/ParentOrder.model.js';
 import SellerOrder from '../models/SellerOrder.model.js';
 import * as addressRepo from '../repositories/Address.repository.js';
@@ -170,20 +174,92 @@ export const prepareOrder = async (userId, addressId, session) => {
 export const cancelOrder = async (orderId, userId) => {
   const parentOrder = await orderRepo.findByIdForMutation(orderId, userId);
   if (!parentOrder) throw new ApiError(404, 'Order not found');
-  if (parentOrder.orderStatus !== 'Pending') {
-    throw new ApiError(400, 'Only pending orders can be cancelled');
+
+  // ---------- Existing Pending path (COD / unpaid / no refund needed) ----------
+  if (parentOrder.orderStatus === 'Pending') {
+    await orderRepo.updateStatus(orderId, 'Cancelled');
+
+    const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
+    for (const so of sellerOrders) {
+      await orderRepo.updateSellerOrderStatus(so._id, 'Cancelled');
+    }
+
+    return parentOrder;
   }
 
-  // Cancel the parent order
-  parentOrder.orderStatus = 'Cancelled';
-  await parentOrder.save();
+  // ---------- New Stripe Processing path with automatic refund ----------
+  if (parentOrder.orderStatus === 'Processing') {
+    const payment = await paymentRepo.findByParentOrder(orderId);
 
-  // Cancel all seller orders belonging to this parent
-  const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
-  for (const so of sellerOrders) {
-    so.status = 'Cancelled';
-    await so.save();
+    if (!payment || payment.method !== 'Stripe' || payment.status !== 'Completed') {
+      throw new ApiError(400, 'Only pending orders can be cancelled');
+    }
+
+    const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
+    const anyProgressed = sellerOrders.some((so) => so.status !== 'Pending');
+
+    if (anyProgressed) {
+      throw new ApiError(
+        400,
+        'Order cannot be cancelled once a seller has started processing it. Please request a return after delivery instead.'
+      );
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. Refund via Stripe
+      try {
+        await stripe.refunds.create({ payment_intent: payment.stripePaymentIntentId });
+      } catch (stripeError) {
+        await session.abortTransaction();
+        session.endSession();
+        throw new ApiError(502, 'Refund could not be processed, please try again or contact support');
+      }
+
+      // 2. Mark payment as Refunded
+      payment.status = 'Refunded';
+      await payment.save({ session });
+
+      // 3. Manual PaymentTransaction record (simplified Phase 1 synthetic event ID)
+      await PaymentTransaction.create([{
+        payment: payment._id,
+        type: 'refund',
+        status: 'success',
+        amount: payment.amount,
+        stripePaymentIntentId: payment.stripePaymentIntentId,
+        stripeEventId: `manual-refund-${payment._id}-${Date.now()}`,
+      }], { session });
+
+      // 4. Restore stock
+      for (const so of sellerOrders) {
+        for (const item of so.items || []) {
+          await Product.updateOne(
+            { _id: item.product },
+            { $inc: { stock: item.quantity } },
+            { session }
+          );
+        }
+      }
+
+      // 5. Cancel parent order and seller orders
+      await orderRepo.updateStatus(orderId, 'Cancelled');
+      for (const so of sellerOrders) {
+        so.status = 'Cancelled';
+        await so.save({ session });
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+      return parentOrder;
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   }
 
-  return parentOrder;
+  // Any other status – not cancellable
+  throw new ApiError(400, 'Only pending orders can be cancelled');
 };

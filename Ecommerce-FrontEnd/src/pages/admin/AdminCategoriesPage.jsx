@@ -19,6 +19,12 @@ const AddIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
   </svg>
 );
+const WarningIcon = () => (
+  <svg width="36" height="36" fill="none" stroke="#dc2626" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+      d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
 
 // ---------- Styles ----------
 const iconBtnStyle = {
@@ -42,6 +48,10 @@ const AdminCategoriesPage = () => {
   const [error, setError] = useState(null);
   const [expandedCategoryId, setExpandedCategoryId] = useState(null);
   const [subCategoriesMap, setSubCategoriesMap] = useState({});
+
+  // Delete confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'category'|'subcategory', id, name, parentId? }
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -80,7 +90,7 @@ const AdminCategoriesPage = () => {
     } catch (err) { console.error(err); }
   };
 
-  // ---------- Modal handlers ----------
+  // ---------- Modal handlers (add/edit) ----------
   const openAddCategory = () => {
     setModalMode("category");
     setEditingCategory(null);
@@ -113,17 +123,45 @@ const AdminCategoriesPage = () => {
     }
   };
 
-  const handleDeleteCategory = async (catId) => {
-    if (!window.confirm("Delete this category and all its subcategories?")) return;
+  // ---------- Delete confirmation handlers ----------
+  const openDeleteCategoryModal = (cat) => {
+    setDeleteTarget({ type: "category", id: cat.id, name: cat.name });
+    setIsDeleteModalOpen(true);
+  };
+
+  const openDeleteSubCategoryModal = (catId, sub) => {
+    setDeleteTarget({ type: "subcategory", id: sub.id, name: sub.name, parentId: catId });
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setDeleteTarget(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await axiosInstance.delete(`/categories/${catId}`);
-      fetchCategories();
-      setSubCategoriesMap(prev => { const copy = { ...prev }; delete copy[catId]; return copy; });
+      if (deleteTarget.type === "category") {
+        await axiosInstance.delete(`/categories/${deleteTarget.id}`);
+        fetchCategories();
+        setSubCategoriesMap(prev => {
+          const copy = { ...prev };
+          delete copy[deleteTarget.id];
+          return copy;
+        });
+      } else if (deleteTarget.type === "subcategory") {
+        await axiosInstance.delete(`/subcategories/${deleteTarget.id}`);
+        refreshSubCategories(deleteTarget.parentId);
+      }
+      closeDeleteModal();
     } catch (err) {
-      alert(err.response?.data?.message || "Cannot delete category.");
+      alert(err.response?.data?.message || "Cannot delete.");
+      closeDeleteModal();
     }
   };
 
+  // Subcategory CRUD
   const openAddSubCategory = (catId) => {
     setModalMode("subcategory");
     setEditingCategory({ id: catId });
@@ -156,16 +194,6 @@ const AdminCategoriesPage = () => {
       refreshSubCategories(catId);
     } catch (err) {
       setError(err.response?.data?.message || "Save failed.");
-    }
-  };
-
-  const handleDeleteSubCategory = async (catId, subId) => {
-    if (!window.confirm("Delete this subcategory?")) return;
-    try {
-      await axiosInstance.delete(`/subcategories/${subId}`);
-      refreshSubCategories(catId);
-    } catch (err) {
-      alert(err.response?.data?.message || "Cannot delete subcategory.");
     }
   };
 
@@ -234,7 +262,7 @@ const AdminCategoriesPage = () => {
                         <td style={{ padding: "0.75rem 1.25rem", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
                             <button onClick={(e) => { e.stopPropagation(); openEditCategory(cat); }} style={iconBtnStyle} title="Edit"><EditIcon /></button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }} style={iconBtnStyle} title="Delete"><DeleteIcon /></button>
+                            <button onClick={(e) => { e.stopPropagation(); openDeleteCategoryModal(cat); }} style={iconBtnStyle} title="Delete"><DeleteIcon /></button>
                             <button onClick={(e) => { e.stopPropagation(); openAddSubCategory(cat.id); }} style={{ ...iconBtnStyle, color: "#16a34a" }} title="Add Subcategory"><AddIcon /></button>
                           </div>
                         </td>
@@ -249,7 +277,7 @@ const AdminCategoriesPage = () => {
                           <td style={{ padding: "0.75rem 1.25rem", textAlign: "right" }}>
                             <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
                               <button onClick={() => openEditSubCategory(cat.id, sub)} style={iconBtnStyle} title="Edit"><EditIcon /></button>
-                              <button onClick={() => handleDeleteSubCategory(cat.id, sub.id)} style={iconBtnStyle} title="Delete"><DeleteIcon /></button>
+                              <button onClick={() => openDeleteSubCategoryModal(cat.id, sub)} style={iconBtnStyle} title="Delete"><DeleteIcon /></button>
                             </div>
                           </td>
                         </tr>
@@ -262,11 +290,11 @@ const AdminCategoriesPage = () => {
           )}
         </div>
 
-        {/* Modal – fully intact */}
+        {/* Add/Edit Modal */}
         {modalOpen && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h3>
+          <div className="modal-overlay" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setModalOpen(false)}>
+            <div className="modal-content" style={{ background: "#fff", borderRadius: "12px", padding: "2rem", maxWidth: "420px", width: "90%" }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "1.5rem" }}>
                 {modalMode === "subcategory"
                   ? (editingSubCategory ? "Edit Subcategory" : "Add Subcategory")
                   : (editingCategory ? "Edit Category" : "Add Category")}
@@ -276,13 +304,40 @@ const AdminCategoriesPage = () => {
                 <input className="form-input" value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
-              {error && <p className="error-text">{error}</p>}
-              <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-                <button className="btn-primary"
+              {error && <p className="error-text" style={{ color: "#dc2626", marginTop: "0.5rem" }}>{error}</p>}
+              <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
+                <button className="btn-primary" style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: "#111827", color: "#fff", fontWeight: 600, cursor: "pointer" }}
                   onClick={modalMode === "subcategory" ? handleSubCategorySave : handleCategorySave}>
                   Save
                 </button>
-                <button className="btn-edit-profile" onClick={() => setModalOpen(false)}>Cancel</button>
+                <button className="btn-edit-profile" style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 600, cursor: "pointer" }} onClick={() => setModalOpen(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {isDeleteModalOpen && (
+          <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={closeDeleteModal}>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "2rem", maxWidth: "420px", width: "90%", boxShadow: "0 20px 40px rgba(0,0,0,0.15)" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+                <WarningIcon />
+              </div>
+              <h3 style={{ textAlign: "center", fontSize: "1.25rem", fontWeight: 700, color: "#111827", marginBottom: "0.5rem" }}>
+                Delete {deleteTarget?.type === "category" ? "Category" : "Subcategory"}?
+              </h3>
+              <p style={{ textAlign: "center", color: "#6b7280", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
+                {deleteTarget?.type === "category"
+                  ? "Are you sure you want to delete this category and all its subcategories? This action cannot be undone."
+                  : "Are you sure you want to delete this subcategory? This action cannot be undone."}
+              </p>
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <button onClick={closeDeleteModal} style={{ flex: 1, padding: "0.6rem 1rem", borderRadius: "8px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 600, cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={confirmDelete} style={{ flex: 1, padding: "0.6rem 1rem", borderRadius: "8px", border: "none", background: "#dc2626", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+                  Delete
+                </button>
               </div>
             </div>
           </div>

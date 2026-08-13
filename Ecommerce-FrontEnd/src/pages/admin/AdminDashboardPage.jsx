@@ -177,7 +177,7 @@ const AdminDashboardPage = () => {
       </div>
 
       {/* Metrics Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px", marginBottom: "28px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
         {cards.map((card) => (
           <Link
             key={card.label}
@@ -233,68 +233,6 @@ const AdminDashboardPage = () => {
           </Link>
         ))}
       </div>
-
-      {/* Lower workspace */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px" }} className="dashboard-lower-grid">
-        <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid #f3f4f6" }}>
-            <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "#111827", margin: 0 }}>Pending Approvals Queue</h2>
-            <span style={{ fontSize: "0.75rem", fontWeight: 500, background: "#f1f5f9", color: "#475569", padding: "2px 8px", borderRadius: "12px" }}>
-              {(stats.pendingSellerApprovals || 0) + (stats.pendingProductApprovals || 0)} Items
-            </span>
-          </div>
-          <div style={{ textAlign: "center", padding: "36px 12px" }}>
-            <div style={{ display: "inline-flex", padding: "12px", background: "#ecfdf5", color: "#059669", borderRadius: "50%", marginBottom: "12px" }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-            </div>
-            <p style={{ fontWeight: 600, fontSize: "0.9375rem", color: "#111827", margin: "0 0 4px" }}>Queue is clear</p>
-            <p style={{ fontSize: "0.8125rem", color: "#6b7280", margin: "0 0 16px" }}>
-              All seller accounts and product updates have been reviewed.
-            </p>
-            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-              <Link to="/admin/sellers" style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#334155", background: "#f9fafb", border: "1px solid #d1d5db", padding: "6px 14px", borderRadius: "6px", textDecoration: "none" }}>
-                Manage Sellers
-              </Link>
-              <Link to="/admin/products" style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#334155", background: "#f9fafb", border: "1px solid #d1d5db", padding: "6px 14px", borderRadius: "6px", textDecoration: "none" }}>
-                Manage Products
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "20px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid #f3f4f6" }}>
-            <h2 style={{ fontSize: "1rem", fontWeight: 600, color: "#111827", margin: 0 }}>System Status</h2>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {[
-              { label: "Database (MongoDB)", sub: "Operational", color: "#10b981" },
-              { label: "Express API Server", sub: "Connected", color: "#10b981" },
-              { label: "Authentication Service", sub: "JWT Refresh Active", color: "#2563eb" },
-            ].map((item) => (
-              <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: item.color, flexShrink: 0 }}></span>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#111827" }}>{item.label}</span>
-                  <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>{item.sub}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Responsive fix for lower grid on small screens */}
-      <style>{`
-        @media (max-width: 900px) {
-          .dashboard-lower-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

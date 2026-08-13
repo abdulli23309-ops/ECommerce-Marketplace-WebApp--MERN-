@@ -38,6 +38,10 @@ export const createRefund = async (returnRequestId, adminId) => {
     reason: 'Refund for return request',
   });
 
+  // Mark the original payment as Refunded
+  payment.status = 'Refunded';
+  await payment.save();
+
   // Update return request status to refund completed
   await returnRepo.updateById(returnRequestId, {
     status: 'INSPECTED_AND_REFUNDED',

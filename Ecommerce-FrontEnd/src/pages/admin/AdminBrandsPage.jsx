@@ -23,6 +23,12 @@ const DeleteIcon = () => (
   </svg>
 );
 
+const WarningIcon = () => (
+  <svg width="36" height="36" fill="none" stroke="#dc2626" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
 const AdminBrandsPage = () => {
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +36,10 @@ const AdminBrandsPage = () => {
   const [editingBrand, setEditingBrand] = useState(null);
   const [form, setForm] = useState({ name: "" });
   const [error, setError] = useState(null);
+
+  // Delete confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [brandToDelete, setBrandToDelete] = useState(null);
 
   const fetchBrands = async () => {
     setLoading(true);
@@ -74,13 +84,25 @@ const AdminBrandsPage = () => {
     }
   };
 
-  const handleDelete = async (brandId) => {
-    if (!window.confirm("Delete this brand?")) return;
+  const openDeleteModal = (brand) => {
+    setBrandToDelete(brand);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setBrandToDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!brandToDelete) return;
     try {
-      await axiosInstance.delete(`/brands/${brandId}`);
+      await axiosInstance.delete(`/brands/${brandToDelete.id}`);
       fetchBrands();
+      closeDeleteModal();
     } catch (err) {
       alert(err.response?.data?.message || "Cannot delete brand.");
+      closeDeleteModal();
     }
   };
 
@@ -92,18 +114,35 @@ const AdminBrandsPage = () => {
             <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", margin: 0 }}>Brand Management</h1>
             <p style={{ color: "#6b7280", marginTop: "0.25rem" }}>Manage product brands</p>
           </div>
-          <button onClick={openAddBrand} style={{
-            padding: "0.5rem 1.25rem", borderRadius: "8px", border: "none",
-            background: "#111827", color: "#fff", fontWeight: 600, fontSize: "0.9rem",
-            cursor: "pointer", transition: "background 0.2s",
-          }}
-            onMouseEnter={(e) => e.target.style.background = "#1f2937"}
-            onMouseLeave={(e) => e.target.style.background = "#111827"}>
+          <button
+            onClick={openAddBrand}
+            style={{
+              padding: "0.5rem 1.25rem",
+              borderRadius: "8px",
+              border: "none",
+              background: "#111827",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => (e.target.style.background = "#1f2937")}
+            onMouseLeave={(e) => (e.target.style.background = "#111827")}
+          >
             + Add Brand
           </button>
         </div>
 
-        <div style={{ background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", border: "1px solid #e5e7eb", overflow: "hidden" }}>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: "12px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+            border: "1px solid #e5e7eb",
+            overflow: "hidden",
+          }}
+        >
           {loading ? (
             <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>Loading...</div>
           ) : brands.length === 0 ? (
@@ -117,15 +156,18 @@ const AdminBrandsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {brands.map(brand => (
-                  <tr key={brand.id} style={{ borderBottom: "1px solid #f3f4f6", transition: "background 0.15s" }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f9fafb"}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                {brands.map((brand) => (
+                  <tr
+                    key={brand.id}
+                    style={{ borderBottom: "1px solid #f3f4f6", transition: "background 0.15s" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  >
                     <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 600, color: "#111827" }}>{brand.name}</td>
                     <td style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>
                       <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
                         <button onClick={() => openEditBrand(brand)} style={iconBtnStyle} title="Edit"><EditIcon /></button>
-                        <button onClick={() => handleDelete(brand.id)} style={{ ...iconBtnStyle, color: "#dc2626" }} title="Delete"><DeleteIcon /></button>
+                        <button onClick={() => openDeleteModal(brand)} style={{ ...iconBtnStyle, color: "#dc2626" }} title="Delete"><DeleteIcon /></button>
                       </div>
                     </td>
                   </tr>
@@ -135,18 +177,128 @@ const AdminBrandsPage = () => {
           )}
         </div>
 
+        {/* Add/Edit Modal */}
         {modalOpen && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h3>{editingBrand ? "Edit Brand" : "Add Brand"}</h3>
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              zIndex: 999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onClick={() => setModalOpen(false)}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: "12px",
+                padding: "2rem",
+                maxWidth: "420px",
+                width: "90%",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "1.5rem" }}>
+                {editingBrand ? "Edit Brand" : "Add Brand"}
+              </h3>
               <div className="form-group">
                 <label className="form-label">Name</label>
-                <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                <input
+                  className="form-input"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
               </div>
-              {error && <p className="error-text">{error}</p>}
-              <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-                <button className="btn-primary" onClick={handleSave}>Save</button>
-                <button className="btn-edit-profile" onClick={() => setModalOpen(false)}>Cancel</button>
+              {error && <p className="error-text" style={{ color: "#dc2626", marginTop: "0.5rem" }}>{error}</p>}
+              <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
+                <button
+                  className="btn-primary"
+                  style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: "#111827", color: "#fff", fontWeight: 600, cursor: "pointer" }}
+                  onClick={handleSave}
+                >
+                  Save
+                </button>
+                <button
+                  className="btn-edit-profile"
+                  style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 600, cursor: "pointer" }}
+                  onClick={() => setModalOpen(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {isDeleteModalOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(0,0,0,0.6)",
+              zIndex: 1000,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onClick={closeDeleteModal}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: "16px",
+                padding: "2rem",
+                maxWidth: "420px",
+                width: "90%",
+                boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+                <WarningIcon />
+              </div>
+              <h3 style={{ textAlign: "center", fontSize: "1.25rem", fontWeight: 700, color: "#111827", marginBottom: "0.5rem" }}>
+                Delete Brand?
+              </h3>
+              <p style={{ textAlign: "center", color: "#6b7280", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
+                Are you sure you want to delete this brand?
+              </p>
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <button
+                  onClick={closeDeleteModal}
+                  style={{
+                    flex: 1,
+                    padding: "0.6rem 1rem",
+                    borderRadius: "8px",
+                    border: "1px solid #d1d5db",
+                    background: "#fff",
+                    color: "#374151",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  style={{
+                    flex: 1,
+                    padding: "0.6rem 1rem",
+                    borderRadius: "8px",
+                    border: "none",
+                    background: "#dc2626",
+                    color: "#fff",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>

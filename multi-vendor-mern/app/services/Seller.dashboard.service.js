@@ -19,33 +19,72 @@ const getStoreId = async (userId) => {
 
 export const getDashboard = async (userId) => {
   const { store } = await getStoreId(userId);
+  const storeId = store._id;
 
-  const totalProducts = await Product.countDocuments({ store: store._id, isDeleted: false });
-  const totalOrders = await SellerOrder.countDocuments({ store: store._id });
-
-  // Pending shipments: seller orders that have no shipment or shipment status "Pending"
-  const pendingShipments = await Shipment.countDocuments({
-    sellerOrder: { $in: await SellerOrder.find({ store: store._id }).select('_id') },
-    status: 'Pending',
+  // ---------- Product metrics ----------
+  const totalProducts = await Product.countDocuments({ store: storeId, isDeleted: false });
+  const approvedProducts = await Product.countDocuments({
+    store: storeId,
+    isDeleted: false,
+    status: 'Approved',
+  });
+  const pendingProducts = await Product.countDocuments({
+    store: storeId,
+    isDeleted: false,
+    status: 'PendingApproval',
   });
 
-  // Today's orders (seller orders created today)
+  // ---------- Date boundaries ----------
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const startOfNextMonth = new Date(startOfMonth);
+  startOfNextMonth.setMonth(startOfNextMonth.getMonth() + 1);
+
+  // ---------- Orders ----------
   const todayOrders = await SellerOrder.countDocuments({
-    store: store._id,
+    store: storeId,
     createdAt: { $gte: startOfToday },
   });
 
-  // Total revenue from delivered orders
+  const monthlyOrders = await SellerOrder.countDocuments({
+    store: storeId,
+    createdAt: { $gte: startOfMonth, $lt: startOfNextMonth },
+  });
+
+  const cancelledOrders = await SellerOrder.countDocuments({
+    store: storeId,
+    status: 'Cancelled',
+  });
+
+  // ---------- Revenue ----------
   const deliveredOrders = await SellerOrder.find({
-    store: store._id,
+    store: storeId,
     status: 'Delivered',
   }).select('subTotal');
   const totalRevenue = deliveredOrders.reduce((sum, o) => sum + o.subTotal, 0);
 
-  // Ratings
-  const productIds = (await Product.find({ store: store._id }).select('_id')).map(p => p._id);
+  // ---------- Pending shipments ----------
+  const sellerOrders = await SellerOrder.find({ store: storeId }).select('_id');
+  const sellerOrderIds = sellerOrders.map(so => so._id);
+
+  const shipments = await Shipment.find({ sellerOrder: { $in: sellerOrderIds } });
+  const shipmentMap = new Map(shipments.map(s => [s.sellerOrder.toString(), s]));
+
+  let pendingShipments = 0;
+  for (const so of sellerOrders) {
+    const shipment = shipmentMap.get(so._id.toString());
+    if (!shipment || shipment.status === 'Pending') {
+      pendingShipments += 1;
+    }
+  }
+
+  // ---------- Ratings ----------
+  const productIds = (await Product.find({ store: storeId, isDeleted: false }).select('_id')).map(p => p._id);
   const avgResult = await Review.aggregate([
     { $match: { product: { $in: productIds } } },
     { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
@@ -55,10 +94,13 @@ export const getDashboard = async (userId) => {
 
   return {
     totalProducts,
-    totalOrders,
-    pendingShipments,
+    approvedProducts,
+    pendingProducts,
     todayOrders,
+    monthlyOrders,
     totalRevenue,
+    pendingShipments,
+    cancelledOrders,
     averageRating: Math.round(averageRating * 10) / 10,
     totalReviews,
   };

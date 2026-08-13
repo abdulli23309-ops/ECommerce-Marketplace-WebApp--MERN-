@@ -1,6 +1,7 @@
 import ParentOrder from '../models/ParentOrder.model.js';
 import SellerOrder from '../models/SellerOrder.model.js';
 import mongoose from 'mongoose';
+import * as paymentRepo from './Payment.repository.js';
 
 export const findByCustomer = async (customerId, { page = 1, pageSize = 10 } = {}) => {
   const skip = (Number(page) - 1) * Number(pageSize);
@@ -28,8 +29,8 @@ export const findByCustomer = async (customerId, { page = 1, pageSize = 10 } = {
   };
 };
 
-export const findById = (id, customerId) =>
-  ParentOrder.findOne({
+export const findById = async (id, customerId) => {
+  const order = await ParentOrder.findOne({
     _id: new mongoose.Types.ObjectId(id),
     customer: new mongoose.Types.ObjectId(customerId),
   })
@@ -38,6 +39,21 @@ export const findById = (id, customerId) =>
       populate: { path: 'store', select: 'name city' },
     })
     .lean();
+
+  if (!order) return null;
+
+  const payment = await paymentRepo.findByParentOrder(id);
+  if (payment) {
+    order.payment = {
+      method: payment.method,
+      status: payment.status,
+    };
+  } else {
+    order.payment = null;
+  }
+
+  return order;
+};
 
 export const updateStatus = (id, status) =>
   ParentOrder.findByIdAndUpdate(id, { orderStatus: status }, { new: true });

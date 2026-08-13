@@ -1,6 +1,7 @@
 import * as returnService from '../services/Return.service.js';
 import { ApiResponse } from '../utils/ApiResponse.util.js';
 import { asyncHandler } from '../utils/AsyncHandler.util.js';
+import { ApiError } from '../utils/ApiError.util.js';
 
 export const createReturn = asyncHandler(async (req, res) => {
   const returnReq = await returnService.createReturn(req.user.id, req.body);
@@ -65,4 +66,9 @@ export const updateTracking = asyncHandler(async (req, res) => {
     trackingNumber
   );
   new ApiResponse(200, result, 'Tracking updated').send(res);
+});
+
+export const getMyReturnRefund = asyncHandler(async (req, res) => {
+  const refund = await returnService.getMyReturnRefund(req.params.id, req.user.id);
+  new ApiResponse(200, refund, 'Refund retrieved').send(res);
 });

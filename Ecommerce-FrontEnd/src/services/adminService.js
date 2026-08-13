@@ -107,9 +107,9 @@ export const getPayments = async (params = {}) => {
       status: p.status,
       createdAt: p.createdAt,
     })),
-    total: payments.length,
-    page: 1,
-    totalPages: 1,
+    total: data.data?.total ?? payments.length,
+    page: data.data?.page ?? params.page ?? 1,
+    totalPages: data.data?.totalPages ?? Math.ceil((data.data?.total ?? payments.length) / (params.pageSize || 10)),
   };
 };
 

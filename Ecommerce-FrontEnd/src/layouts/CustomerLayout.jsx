@@ -14,14 +14,11 @@ const CustomerLayout = () => {
   const cartItemCount = useSelector((state) => state.cart?.totalCount || 0);
   const [sellerStatus, setSellerStatus] = useState(null);
 
-   useEffect(() => {
-  if (user) {
-    dispatch(loadCart());
-  }
-}, [user, dispatch]);
-
-  
- 
+  useEffect(() => {
+    if (user) {
+      dispatch(loadCart());
+    }
+  }, [user, dispatch]);
 
   const getDashboardLink = () => {
     if (!user) return null;
@@ -69,18 +66,18 @@ const CustomerLayout = () => {
           </div>
 
           {user ? (
-  <div className="navbar-links">
-    <Link to="/orders">Orders</Link>
-    <Link to="/profile">Profile</Link>
-    <Link to="/reviews/my">Reviews</Link>
-    <Link to="/returns">Returns</Link> 
-  </div>
-) : (
-  <div className="navbar-links">
-    <Link to="/login">Sign In</Link>
-  </div>
-)}
-          
+            <div className="navbar-links">
+              <Link to="/orders">Orders</Link>
+              <Link to="/profile">Profile</Link>
+              <Link to="/reviews/my">Reviews</Link>
+              <Link to="/returns">Returns</Link>
+              <Link to="/wishlist">Wishlist</Link>
+            </div>
+          ) : (
+            <div className="navbar-links">
+              <Link to="/login">Sign In</Link>
+            </div>
+          )}
         </div>
       </header>
 

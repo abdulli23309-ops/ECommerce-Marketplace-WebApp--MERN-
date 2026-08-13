@@ -30,7 +30,7 @@ const CustomerReturnDetail = ({ returnReq, onClose, onUpdate }) => {
     if (returnReq.status === "INSPECTED_AND_REFUNDED") {
       const fetchRefund = async () => {
         try {
-          const res = await axiosInstance.get(`/refunds/return/${returnReq._id}`);
+          const res = await axiosInstance.get(`/returns/${returnReq._id}/refund`);
           const refund = res.data?.data || res.data;
           if (refund?.amount) setRefundAmount(refund.amount);
         } catch (err) {
