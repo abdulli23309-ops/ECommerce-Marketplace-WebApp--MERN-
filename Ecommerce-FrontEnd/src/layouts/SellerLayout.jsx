@@ -42,11 +42,47 @@ const SellerLayout = () => {
     }
   }, []);
 
+  // ---- Dashboard stats (pending shipments) ----
+  const [pendingShipments, setPendingShipments] = useState(0);
+
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get('/seller/dashboard');
+      const stats = res.data?.data || {};
+      setPendingShipments(stats.pendingShipments ?? 0);
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats', err);
+    }
+  }, []);
+
+  // ---- Returns needing seller action ----
+  const [returnsActionCount, setReturnsActionCount] = useState(0);
+
+  const fetchReturnsActionCount = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get('/returns/seller');
+      const returns = res.data?.data || res.data || [];
+      const actionStatuses = ['PENDING_SELLER_REVIEW', 'ITEM_IN_TRANSIT'];
+      const count = returns.filter(r => actionStatuses.includes(r.status)).length;
+      setReturnsActionCount(count);
+    } catch (err) {
+      console.error('Failed to fetch returns count', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60000); // poll every 60s
+    fetchDashboardStats();
+    fetchReturnsActionCount();
+
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+      fetchDashboardStats();
+      fetchReturnsActionCount();
+    }, 60000); // poll every 60s
+
     return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, fetchDashboardStats, fetchReturnsActionCount]);
 
   const handleOrdersClick = async () => {
     try {
@@ -190,25 +226,64 @@ const SellerLayout = () => {
             </PermissionGate>
 
             <PermissionGate permission="Seller.Orders.View">
-              <Link className="dashboard-nav-link" to="/seller/shipments">
-                <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1zM13 16h6a1 1 0 001-1v-4a1 1 0 00-1-1h-5" />
-                </svg>
-                Shipments
+              <Link
+                className="dashboard-nav-link"
+                to="/seller/shipments"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1zM13 16h6a1 1 0 001-1v-4a1 1 0 00-1-1h-5" />
+                  </svg>
+                  Shipments
+                </span>
+                {pendingShipments > 0 && (
+                  <span style={{
+                    backgroundColor: '#ef4444',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    padding: '2px 6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    minWidth: '20px',
+                    textAlign: 'center',
+                  }}>
+                    {pendingShipments}
+                  </span>
+                )}
               </Link>
             </PermissionGate>
 
-            {/* Returns – new sidebar link */}
-            {/* Returns */}
-<PermissionGate permission="Seller.Orders.View">
-  <Link className="dashboard-nav-link" to="/seller/returns">
-    <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-    </svg>
-    Returns
-  </Link>
-</PermissionGate>
+            {/* Returns with badge */}
+            <PermissionGate permission="Seller.Orders.View">
+              <Link
+                className="dashboard-nav-link"
+                to="/seller/returns"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Returns
+                </span>
+                {returnsActionCount > 0 && (
+                  <span style={{
+                    backgroundColor: '#ef4444',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    padding: '2px 6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    minWidth: '20px',
+                    textAlign: 'center',
+                  }}>
+                    {returnsActionCount}
+                  </span>
+                )}
+              </Link>
+            </PermissionGate>
 
             <PermissionGate permission="Seller.Reviews.View">
               <Link className="dashboard-nav-link" to="/seller/reviews">

@@ -68,15 +68,20 @@ export const getDashboard = async (userId) => {
   }).select('subTotal');
   const totalRevenue = deliveredOrders.reduce((sum, o) => sum + o.subTotal, 0);
 
-  // ---------- Pending shipments ----------
-  const sellerOrders = await SellerOrder.find({ store: storeId }).select('_id');
-  const sellerOrderIds = sellerOrders.map(so => so._id);
+  // ---------- Pending shipments (actionable only) ----------
+  const actionableStatuses = ['Pending', 'Processing', 'Packed', 'Dispatched', 'OutForDelivery'];
+  const actionableSellerOrders = await SellerOrder.find({
+    store: storeId,
+    status: { $in: actionableStatuses },
+  }).select('_id status');
 
-  const shipments = await Shipment.find({ sellerOrder: { $in: sellerOrderIds } });
+  const actionableOrderIds = actionableSellerOrders.map(so => so._id);
+
+  const shipments = await Shipment.find({ sellerOrder: { $in: actionableOrderIds } });
   const shipmentMap = new Map(shipments.map(s => [s.sellerOrder.toString(), s]));
 
   let pendingShipments = 0;
-  for (const so of sellerOrders) {
+  for (const so of actionableSellerOrders) {
     const shipment = shipmentMap.get(so._id.toString());
     if (!shipment || shipment.status === 'Pending') {
       pendingShipments += 1;
@@ -105,7 +110,6 @@ export const getDashboard = async (userId) => {
     totalReviews,
   };
 };
-
 // ---------- Seller orders (grouped, sorted newest first) ----------
 export const getSellerOrders = async (userId, { page = 1, pageSize = 10 } = {}) => {
   const { store } = await getStoreId(userId);

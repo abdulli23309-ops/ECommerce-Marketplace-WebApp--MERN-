@@ -2,6 +2,7 @@ import * as refundRepo from '../repositories/Refund.repository.js';
 import * as returnRepo from '../repositories/Return.repository.js';
 import * as paymentRepo from '../repositories/Payment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
+import Product from '../models/Product.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
 export const createRefund = async (returnRequestId, adminId) => {
@@ -21,6 +22,7 @@ export const createRefund = async (returnRequestId, adminId) => {
   const existing = await refundRepo.findByReturnRequest(returnRequestId);
   if (existing) throw new ApiError(409, 'Refund already exists for this return');
 
+  // Fetch the seller order (used for both payment lookup and stock restoration)
   const sellerOrder = await orderRepo.findSellerOrderById(returnRequest.sellerOrder);
   if (!sellerOrder) throw new ApiError(404, 'Seller order not found');
 
@@ -41,6 +43,14 @@ export const createRefund = async (returnRequestId, adminId) => {
   // Mark the original payment as Refunded
   payment.status = 'Refunded';
   await payment.save();
+
+  // Restore stock for the returned items
+  for (const item of sellerOrder.items || []) {
+    await Product.updateOne(
+      { _id: item.product },
+      { $inc: { stock: item.quantity } }
+    );
+  }
 
   // Update return request status to refund completed
   await returnRepo.updateById(returnRequestId, {

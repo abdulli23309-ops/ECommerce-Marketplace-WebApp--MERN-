@@ -172,9 +172,9 @@ const StoreSettingsPage = () => {
     try {
       const formData = new FormData();
       formData.append("images", logoFile);
-      const { data } = await axiosInstance.post("/products/upload-image", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+     const { data } = await axiosInstance.post("/seller/products/upload-image", formData, {
+  headers: { "Content-Type": "multipart/form-data" },
+});
       return data.data?.url || data.url;
     } catch (err) {
       throw err;

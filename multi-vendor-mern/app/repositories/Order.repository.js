@@ -1,5 +1,6 @@
 import ParentOrder from '../models/ParentOrder.model.js';
 import SellerOrder from '../models/SellerOrder.model.js';
+import Shipment from '../models/Shipment.model.js'; 
 import mongoose from 'mongoose';
 import * as paymentRepo from './Payment.repository.js';
 
@@ -42,6 +43,7 @@ export const findById = async (id, customerId) => {
 
   if (!order) return null;
 
+  // Attach payment
   const payment = await paymentRepo.findByParentOrder(id);
   if (payment) {
     order.payment = {
@@ -52,9 +54,19 @@ export const findById = async (id, customerId) => {
     order.payment = null;
   }
 
+  // Attach shipment to each seller order
+  const sellerOrderIds = (order.sellerOrders || []).map(so => so._id);
+  const shipments = await Shipment.find({
+    sellerOrder: { $in: sellerOrderIds },
+  }).lean();
+  const shipmentMap = new Map(shipments.map(s => [s.sellerOrder.toString(), s]));
+
+  for (const so of order.sellerOrders) {
+    so.shipment = shipmentMap.get(so._id.toString()) || null;
+  }
+
   return order;
 };
-
 export const updateStatus = (id, status) =>
   ParentOrder.findByIdAndUpdate(id, { orderStatus: status }, { new: true });
 

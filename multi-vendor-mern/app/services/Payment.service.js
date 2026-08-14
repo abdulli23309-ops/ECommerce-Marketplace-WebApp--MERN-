@@ -81,6 +81,18 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod) => {
     }
  } else if (paymentMethod === 'CashOnDelivery') {
   await processor.process(payment, parentOrder);
+
+  // Deduct stock for COD orders
+  const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(parentOrder._id);
+  for (const so of sellerOrders) {
+    for (const item of so.items || []) {
+      await Product.updateOne(
+        { _id: item.product, stock: { $gte: item.quantity } },
+        { $inc: { stock: -item.quantity } }
+      );
+    }
+  }
+
   // COD order is confirmed – clear the cart immediately
   await Cart.updateOne(
     { user: userId },
