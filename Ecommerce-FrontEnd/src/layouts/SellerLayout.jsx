@@ -70,6 +70,10 @@ const SellerLayout = () => {
     }
   }, []);
 
+  // ---- Dismissed badge flags (only local UI, not persisted) ----
+  const [dismissedShipments, setDismissedShipments] = useState(false);
+  const [dismissedReturns, setDismissedReturns] = useState(false);
+
   useEffect(() => {
     fetchUnreadCount();
     fetchDashboardStats();
@@ -79,7 +83,7 @@ const SellerLayout = () => {
       fetchUnreadCount();
       fetchDashboardStats();
       fetchReturnsActionCount();
-    }, 60000); // poll every 60s
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [fetchUnreadCount, fetchDashboardStats, fetchReturnsActionCount]);
@@ -91,6 +95,14 @@ const SellerLayout = () => {
     } catch (err) {
       console.error('Failed to mark orders as read', err);
     }
+  };
+
+  const handleShipmentsClick = () => {
+    setDismissedShipments(true);
+  };
+
+  const handleReturnsClick = () => {
+    setDismissedReturns(true);
   };
 
   const handleLogout = () => {
@@ -229,6 +241,7 @@ const SellerLayout = () => {
               <Link
                 className="dashboard-nav-link"
                 to="/seller/shipments"
+                onClick={handleShipmentsClick}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -238,7 +251,7 @@ const SellerLayout = () => {
                   </svg>
                   Shipments
                 </span>
-                {pendingShipments > 0 && (
+                {!dismissedShipments && pendingShipments > 0 && (
                   <span style={{
                     backgroundColor: '#ef4444',
                     color: '#fff',
@@ -260,6 +273,7 @@ const SellerLayout = () => {
               <Link
                 className="dashboard-nav-link"
                 to="/seller/returns"
+                onClick={handleReturnsClick}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -268,7 +282,7 @@ const SellerLayout = () => {
                   </svg>
                   Returns
                 </span>
-                {returnsActionCount > 0 && (
+                {!dismissedReturns && returnsActionCount > 0 && (
                   <span style={{
                     backgroundColor: '#ef4444',
                     color: '#fff',

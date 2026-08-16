@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createShipment, updateShipmentStatus } from "../../services/sellerShipmentService";
 
 const carrierOptions = ["DHL", "FedEx", "TCS", "Leopard", "BlueEx", "Pakistan Post", "Other"];
+const shipmentStatusOrder = ["Pending", "Packed", "Dispatched", "OutForDelivery", "Delivered"];
 
 const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSaved }) => {
   const [carrier, setCarrier] = useState("");
@@ -10,7 +11,6 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Pre‑fill when shipment exists
   useEffect(() => {
     if (shipment) {
       setCarrier(shipment.carrier || "");
@@ -29,12 +29,15 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
     setMessage("");
     try {
       if (!shipment) {
-        // Create new shipment
         const newShipment = await createShipment(sellerOrderId, trackingNumber, carrier);
         onSaved(newShipment);
-        onClose(); // close after creation – user can reopen to update status
+        onClose();
       } else {
-        // Update shipment status only (carrier/tracking are locked)
+        if (status === shipment.status) {
+          setMessage("This status is already applied.");
+          setLoading(false);
+          return;
+        }
         if (status !== shipment.status) {
           const updated = await updateShipmentStatus(shipment._id, status, "");
           onSaved(updated);
@@ -53,7 +56,6 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={onClose}
         style={{
@@ -63,8 +65,6 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
           zIndex: 999,
         }}
       />
-
-      {/* Modal */}
       <div
         style={{
           position: "fixed",
@@ -143,7 +143,6 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* Carrier */}
           <div style={{ marginBottom: "1rem" }}>
             <label
               style={{
@@ -159,7 +158,7 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
               className="form-input"
               value={carrier}
               onChange={(e) => setCarrier(e.target.value)}
-              disabled={!!shipment} // locked once created
+              disabled={!!shipment}
               style={{ width: "100%" }}
             >
               <option value="">Select carrier</option>
@@ -171,7 +170,6 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
             </select>
           </div>
 
-          {/* Tracking Number */}
           <div style={{ marginBottom: shipment ? "1rem" : "1.5rem" }}>
             <label
               style={{
@@ -189,12 +187,11 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
               placeholder="Enter tracking number"
               value={trackingNumber}
               onChange={(e) => setTrackingNumber(e.target.value)}
-              disabled={!!shipment} // locked once created
+              disabled={!!shipment}
               style={{ width: "100%" }}
             />
           </div>
 
-          {/* Status update dropdown – only when shipment exists */}
           {shipment && (
             <div style={{ marginBottom: "1.5rem" }}>
               <label
@@ -215,11 +212,21 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
                 style={{ width: "100%" }}
               >
                 <option value="">Select status</option>
-                <option value="Pending">Pending</option>
-                <option value="Packed">Packed</option>
-                <option value="Dispatched">Dispatched</option>
-                <option value="OutForDelivery">Out For Delivery</option>
-                <option value="Delivered">Delivered</option>
+                {shipmentStatusOrder.map((statusOption) => {
+                  const currentIndex = shipmentStatusOrder.indexOf(shipment.status);
+                  const optionIndex = shipmentStatusOrder.indexOf(statusOption);
+                  return (
+                    <option
+                      key={statusOption}
+                      value={statusOption}
+                      disabled={
+                        currentIndex !== -1 && optionIndex <= currentIndex && statusOption !== shipment.status
+                      }
+                    >
+                      {statusOption}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           )}

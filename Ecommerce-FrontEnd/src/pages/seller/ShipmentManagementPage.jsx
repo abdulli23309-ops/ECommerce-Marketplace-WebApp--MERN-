@@ -45,13 +45,21 @@ const renderItemSummary = (sellerOrders) => {
   );
 };
 
+// Status order for forward-only progression
+const shipmentStatusOrder = [
+  "Pending",
+  "Packed",
+  "Dispatched",
+  "OutForDelivery",
+  "Delivered",
+];
+
 const ShipmentManagementPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [courier, setCourier] = useState("");
@@ -95,7 +103,6 @@ const ShipmentManagementPage = () => {
     setDrawerOpen(true);
   };
 
-  // Save courier/tracking details (create or update)
   const handleSaveShipment = async () => {
     if (!selectedOrder) return;
     setSavingShipment(true);
@@ -124,26 +131,28 @@ const ShipmentManagementPage = () => {
     }
   };
 
-  // Update shipment status and keep the drawer open with fresh data
   const handleUpdateStatus = async () => {
     if (!selectedOrder) return;
     const shipment = selectedOrder.sellerOrders[0]?.shipment;
     if (!shipment?._id) return;
+
+    // Prevent duplicate status update
+    if (shipmentStatus === shipment.status) {
+      alert("This status is already applied.");
+      return;
+    }
+
     setUpdatingStatus(true);
     try {
       await axiosInstance.put(`/shipments/${shipment._id}/status`, {
         status: shipmentStatus,
       });
 
-      // Re‑fetch all orders to get the latest trackingHistory
       const allItems = await loadOrders();
-
-      // Update the selected order inside the drawer so the timeline shows the new entry immediately
       if (allItems.length > 0) {
         const updatedOrder = allItems.find(o => o._id === selectedOrder._id);
         if (updatedOrder) {
           setSelectedOrder(updatedOrder);
-          // keep courier/tracking fields synced
           const so = updatedOrder.sellerOrders[0];
           if (so?.shipment) {
             setCourier(so.shipment.carrier || "");
@@ -152,7 +161,6 @@ const ShipmentManagementPage = () => {
           }
         }
       }
-      // Do NOT close the drawer – the seller can see the updated timeline
     } catch (err) {
       console.error("Failed to update status", err);
       alert("Could not update shipment status.");
@@ -385,7 +393,6 @@ const ShipmentManagementPage = () => {
               </button>
             </div>
 
-            {/* Scrollable content */}
             <div style={{ flex: 1, overflowY: "auto", padding: "2rem" }}>
               <div style={{ marginBottom: "2rem" }}>
                 <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>
@@ -467,11 +474,21 @@ const ShipmentManagementPage = () => {
                         opacity: selectedOrder.sellerOrders[0]?.shipment?.status === "Delivered" ? 0.6 : 1,
                       }}
                     >
-                      <option value="Pending">Pending</option>
-                      <option value="Packed">Packed</option>
-                      <option value="Dispatched">Dispatched</option>
-                      <option value="OutForDelivery">Out For Delivery</option>
-                      <option value="Delivered">Delivered</option>
+                      {shipmentStatusOrder.map((statusOption) => {
+                        const currentIndex = shipmentStatusOrder.indexOf(selectedOrder.sellerOrders[0]?.shipment?.status);
+                        const optionIndex = shipmentStatusOrder.indexOf(statusOption);
+                        return (
+                          <option
+                            key={statusOption}
+                            value={statusOption}
+                            disabled={
+                              currentIndex !== -1 && optionIndex <= currentIndex && statusOption !== selectedOrder.sellerOrders[0]?.shipment?.status
+                            }
+                          >
+                            {statusOption}
+                          </option>
+                        );
+                      })}
                     </select>
                     <button
                       onClick={handleUpdateStatus}
@@ -532,7 +549,6 @@ const ShipmentManagementPage = () => {
               )}
             </div>
 
-            {/* Footer */}
             <div style={{ padding: "1rem 2rem", borderTop: "1px solid #e5e7eb", display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
               <button
                 onClick={() => setDrawerOpen(false)}

@@ -49,6 +49,10 @@ const ProductGrid = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Delete confirmation state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+
   const loadProducts = async () => {
     setLoading(true);
     setError(null);
@@ -68,13 +72,25 @@ const ProductGrid = () => {
     loadProducts();
   }, [page]);
 
-  const handleDelete = async (productId) => {
-    if (!window.confirm('Delete this product?')) return;
+  const openDeleteModal = (product) => {
+    setProductToDelete(product);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setProductToDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
     try {
-      await deleteProduct(productId);
+      await deleteProduct(productToDelete._id);
       loadProducts();
+      closeDeleteModal();
     } catch (err) {
       console.error('Failed to delete', err);
+      closeDeleteModal();
     }
   };
 
@@ -108,7 +124,6 @@ const ProductGrid = () => {
               const badgeStyle = getBadgeStyle(product.status);
               const badgeText = getBadgeText(product.status);
 
-              // Warning box
               let warningBox = null;
               if (isRejected && product.rejectionReason) {
                 warningBox = (
@@ -158,7 +173,6 @@ const ProductGrid = () => {
                 );
               }
 
-              // Action button
               const renderActionButton = () => {
                 if (isRejected) {
                   return (
@@ -204,7 +218,6 @@ const ProductGrid = () => {
                   );
                 }
                 if (isPending) {
-                  // Disabled "Awaiting Review" text – no link
                   return (
                     <span style={{
                       color: '#6b7280',
@@ -221,7 +234,6 @@ const ProductGrid = () => {
                     </span>
                   );
                 }
-                // Default Edit button (Approved or any other status)
                 return (
                   <Link
                     to={`/seller/products/edit/${product._id}`}
@@ -257,7 +269,6 @@ const ProductGrid = () => {
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
                 >
-                  {/* Image container with overlay badge */}
                   <div style={{ position: 'relative', height: '180px', overflow: 'hidden' }}>
                     <img
                       src={getImageUrl(product.images?.[0]) || '/placeholder.png'}
@@ -270,13 +281,11 @@ const ProductGrid = () => {
                       }}
                       onError={e => e.target.style.display = 'none'}
                     />
-                    {/* Status Badge */}
                     <div style={badgeStyle}>
                       {badgeText}
                     </div>
                   </div>
 
-                  {/* Card Body */}
                   <div style={{ padding: '1rem' }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.name}
@@ -286,7 +295,6 @@ const ProductGrid = () => {
                       <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Stock: {product.stockQuantity ?? product.stock ?? 0}</span>
                     </div>
 
-                    {/* Rating */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                       {product.avgRating > 0 ? (
                         <span style={{ color: '#f59e0b', fontWeight: 600 }}>{product.avgRating} ★</span>
@@ -295,10 +303,8 @@ const ProductGrid = () => {
                       )}
                     </div>
 
-                    {/* Warning Box */}
                     {warningBox}
 
-                    {/* Action Buttons */}
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                       <PermissionGate permission="Seller.Products.Edit">
                         {renderActionButton()}
@@ -308,7 +314,7 @@ const ProductGrid = () => {
                         <button
                           onClick={e => {
                             e.stopPropagation();
-                            handleDelete(product._id);
+                            openDeleteModal(product);
                           }}
                           style={{
                             background: '#fee2e2',
@@ -341,12 +347,84 @@ const ProductGrid = () => {
         </>
       )}
 
-      {/* Product Detail Modal */}
       {selectedProduct && (
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
         />
+      )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {isDeleteModalOpen && productToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onClick={closeDeleteModal}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '16px',
+              padding: '2rem',
+              maxWidth: '420px',
+              width: '90%',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+              textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ marginBottom: '1rem' }}>
+              <svg width="36" height="36" fill="none" stroke="#dc2626" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>
+              Delete Product?
+            </h3>
+            <p style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
+              Are you sure you want to delete this product? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                onClick={closeDeleteModal}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #d1d5db',
+                  background: '#fff',
+                  color: '#374151',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem 1rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#dc2626',
+                  color: '#fff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

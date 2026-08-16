@@ -25,7 +25,7 @@ export const checkout = async (userId, addressId) => {
   // 3. Validate stock and group by store
   const storeItemsMap = new Map();
 
-for (const cartItem of cart.items) {
+  for (const cartItem of cart.items) {
     const product = await productRepo.findPublicById(cartItem.product);
     if (!product) throw new ApiError(404, `Product ${cartItem.product} not found`);
     if (product.stock < cartItem.quantity) {
@@ -42,7 +42,8 @@ for (const cartItem of cart.items) {
       unitPriceSnapshot: product.price,
       quantity: cartItem.quantity,
     });
-}
+  }
+
   // 4. Start transaction
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -101,11 +102,10 @@ for (const cartItem of cart.items) {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error('Checkout transaction failed:', error);   // 🔍 this will show the exact error
+    console.error('Checkout transaction failed:', error);
     throw error;
   }
 };
-// Add this to the existing order.service.js (after the imports)
 
 export const prepareOrder = async (userId, addressId, session) => {
   // 1. Validate address
@@ -139,9 +139,9 @@ export const prepareOrder = async (userId, addressId, session) => {
   // 4. Create ParentOrder – use actual address fields
   const parentOrder = await ParentOrder.create([{
     customer: userId,
-    shippingFullName: address.fullName || address.street,      // fallback if no fullName
-    shippingPhone: address.phoneNumber || '03001234567',       // fallback
-    shippingAddressLine1: address.street,                       // your Address uses "street"
+    shippingFullName: address.fullName || address.street,
+    shippingPhone: address.phoneNumber || '03001234567',
+    shippingAddressLine1: address.street,
     shippingAddressLine2: address.addressLine2 || '',
     shippingCity: address.city,
     shippingState: address.state || '',
@@ -177,6 +177,22 @@ export const cancelOrder = async (orderId, userId) => {
 
   // ---------- Existing Pending path (COD / unpaid / no refund needed) ----------
   if (parentOrder.orderStatus === 'Pending') {
+    // If this was a COD order, stock was deducted at placement.
+    // We must restore it because the order never completed.
+    const payment = await paymentRepo.findByParentOrder(orderId);
+
+    if (payment && payment.method === 'CashOnDelivery') {
+      const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
+      for (const so of sellerOrders) {
+        for (const item of so.items || []) {
+          await Product.updateOne(
+            { _id: item.product },
+            { $inc: { stock: item.quantity } }
+          );
+        }
+      }
+    }
+
     await orderRepo.updateStatus(orderId, 'Cancelled');
 
     const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
