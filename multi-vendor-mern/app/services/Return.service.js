@@ -53,6 +53,9 @@ export const processReturn = async (returnId, status, adminId, rejectionReason) 
 
 export const getAllReturns = (filter = {}) => returnRepo.findAll(filter);
 
+export const getAllReturnsPaginated = (options) =>
+  returnRepo.findAllPaginated(options);
+
 export const adminDecision = async (returnId, decision, adminId, notes) => {
   const ret = await returnRepo.findById(returnId);
   if (!ret) throw new ApiError(404, 'Return not found');

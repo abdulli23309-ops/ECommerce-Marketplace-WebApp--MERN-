@@ -56,14 +56,14 @@ const ShoppingBag = () => (
 );
 
 // Common styles
-const pageBg = { minHeight: '100vh', backgroundColor: '#f9fafb', fontFamily: 'Arial, sans-serif' };
+const pageBg = { minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', fontFamily: 'Arial, sans-serif' };
 const container = { maxWidth: '1200px', margin: '0 auto', padding: '40px 16px' };
 const twoCol = { display: 'flex', gap: '32px', flexWrap: 'wrap' };
 const leftCol = { flex: '2', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '24px' };
 const rightCol = { flex: '1', minWidth: '280px' };
-const card = { backgroundColor: '#fff', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #eee', padding: '24px' };
-const sectionTitle = { fontSize: '1.1rem', fontWeight: 600, color: '#111827', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' };
-const btnPrimary = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px 20px', backgroundColor: '#111827', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' };
+const card = { backgroundColor: 'var(--surface)', borderRadius: '16px', boxShadow: '0 1px 3px var(--shadow)', border: '1px solid var(--border)', padding: '24px' };
+const sectionTitle = { fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' };
+const btnPrimary = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'var(--primary)', color: 'var(--primary-contrast)', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' };
 const btnGhost = { background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' };
 const inputRadio = { accentColor: '#4f46e5', marginRight: '12px' };
 const orderSummaryItem = { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' };
@@ -72,6 +72,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const mode = useSelector((state) => state.theme.mode);
   const stripe = useStripe();
   const elements = useElements();
 
@@ -82,6 +83,13 @@ const CheckoutPage = () => {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("card");
+  // Stripe Elements are rendered in an iframe and cannot consume CSS custom properties.
+  const cardElementOptions = {
+    style: {
+      base: { fontSize: "16px", color: mode === "dark" ? "#f3f4f6" : "#424770", "::placeholder": { color: mode === "dark" ? "#71717a" : "#aab7c4" } },
+      invalid: { color: "#f87171" },
+    },
+  };
 
   useEffect(() => {
     if (!user) {
@@ -323,23 +331,8 @@ const CheckoutPage = () => {
               </div>
 
               {paymentMethod === "card" && (
-                <div style={{ marginTop: '24px', padding: '16px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#f9fafb' }}>
-                  <CardElement
-                    options={{
-                      style: {
-                        base: {
-                          fontSize: "16px",
-                          color: "#424770",
-                          "::placeholder": {
-                            color: "#aab7c4",
-                          },
-                        },
-                        invalid: {
-                          color: "#9e2146",
-                        },
-                      },
-                    }}
-                  />
+                <div style={{ marginTop: '24px', padding: '16px', border: '1px solid var(--border)', borderRadius: '8px', backgroundColor: 'var(--input-bg)' }}>
+                  <CardElement options={cardElementOptions} />
                 </div>
               )}
             </div>

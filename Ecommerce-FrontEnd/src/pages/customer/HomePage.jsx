@@ -53,9 +53,9 @@ const HomePage = () => {
         <h3 className="section-title">New Arrivals</h3>
         
         {loading ? (
-          <p style={{ color: '#666' }}>Loading products...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Loading products...</p>
         ) : products.length === 0 ? (
-          <p style={{ color: '#666' }}>No products available right now.</p>
+          <p style={{ color: 'var(--text-secondary)' }}>No products available right now.</p>
         ) : (
           <div className="product-grid">
             {products.map((product) => (
@@ -64,7 +64,7 @@ const HomePage = () => {
                 key={product.id}
                 className="product-card"
               >
-                <div style={{ backgroundColor: '#f9fafb', height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ backgroundColor: 'var(--bg-secondary)', height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {product.images && product.images.length > 0 ? (
                     <img
                       src={getImageUrl(product.images[0])}
@@ -72,7 +72,7 @@ const HomePage = () => {
                       className="product-image"
                     />
                   ) : (
-                    <span style={{ color: '#a1a1aa', fontSize: '0.875rem' }}>No Image</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No Image</span>
                   )}
                 </div>
                 <div className="product-details">

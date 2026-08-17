@@ -10,8 +10,8 @@ const statusBadgeStyle = (active) => ({
   borderRadius: "999px",
   fontSize: "0.75rem",
   fontWeight: 600,
-  backgroundColor: active ? "#dcfce7" : "#fee2e2",
-  color: active ? "#166534" : "#991b1b",
+  backgroundColor: active ? "var(--success-bg)" : "var(--danger-bg)",
+  color: active ? "var(--success-text)" : "var(--danger-text)",
 });
 
 const iconBtnStyle = {
@@ -20,7 +20,7 @@ const iconBtnStyle = {
   cursor: "pointer",
   padding: "4px",
   borderRadius: "4px",
-  color: "#6b7280",
+  color: "var(--text-secondary)",
   transition: "background 0.15s, color 0.15s",
 };
 
@@ -72,59 +72,107 @@ const AdminUsersPage = () => {
   const isSelf = (userId) => currentUser?.id === userId;
 
   return (
-    <div style={{ backgroundColor: "#f9fafb", minHeight: "100vh", padding: "2rem" }}>
+    <div style={{ backgroundColor: "var(--bg-secondary)", minHeight: "100vh", padding: "2rem" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", margin: 0 }}>User Management</h1>
-          <p style={{ color: "#6b7280", marginTop: "0.25rem" }}>Manage user accounts and permissions</p>
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>User Management</h1>
+          <p style={{ color: "var(--text-secondary)", marginTop: "0.25rem" }}>Manage user accounts and permissions</p>
         </div>
 
-        <div style={{ background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", border: "1px solid #e5e7eb", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-          <input placeholder="Search by name or email..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} style={{ flex: 1, minWidth: "200px", padding: "0.5rem 0.75rem", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "0.9rem", outline: "none" }} />
-          <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }} style={{ padding: "0.5rem 0.75rem", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "0.9rem", outline: "none", background: "#fff" }}>
+        <div style={{ background: "var(--surface)", borderRadius: "12px", boxShadow: "0 1px 3px var(--shadow)", border: "1px solid var(--border)", padding: "1rem 1.25rem", marginBottom: "1.5rem", display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+          <input
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            style={{
+              flex: 1,
+              minWidth: "200px",
+              padding: "0.5rem 0.75rem",
+              borderRadius: "6px",
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)",
+              fontSize: "0.9rem",
+              outline: "none"
+            }}
+          />
+          <select
+            value={roleFilter}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+            style={{
+              padding: "0.5rem 0.75rem",
+              borderRadius: "6px",
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)",
+              fontSize: "0.9rem",
+              outline: "none"
+            }}
+          >
             <option value="">All Roles</option>
             <option value="Customer">Customer</option>
             <option value="Seller">Seller</option>
             <option value="Admin">Admin</option>
           </select>
-          <select value={activeFilter} onChange={(e) => { setActiveFilter(e.target.value); setPage(1); }} style={{ padding: "0.5rem 0.75rem", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "0.9rem", outline: "none", background: "#fff" }}>
+          <select
+            value={activeFilter}
+            onChange={(e) => { setActiveFilter(e.target.value); setPage(1); }}
+            style={{
+              padding: "0.5rem 0.75rem",
+              borderRadius: "6px",
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)",
+              fontSize: "0.9rem",
+              outline: "none"
+            }}
+          >
             <option value="">All Status</option>
             <option value="true">Active</option>
             <option value="false">Inactive</option>
           </select>
         </div>
 
-        <div style={{ background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", border: "1px solid #e5e7eb", overflow: "hidden" }}>
+        <div style={{ background: "var(--surface)", borderRadius: "12px", boxShadow: "0 1px 3px var(--shadow)", border: "1px solid var(--border)", overflow: "hidden" }}>
           {loading ? (
-            <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>Loading...</div>
+            <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading...</div>
           ) : users.length === 0 ? (
-            <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>No users found.</div>
+            <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>No users found.</div>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid #f3f4f6", backgroundColor: "#f9fafb" }}>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase" }}>Name</th>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left" }}>Email</th>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left" }}>Role</th>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left" }}>Status</th>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>Actions</th>
+                <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Name</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Email</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Role</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Status</th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "center", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((user) => {
                   const self = isSelf(user._id);
                   return (
-                    <tr key={user._id} style={{ borderBottom: "1px solid #f3f4f6", cursor: "pointer", transition: "background 0.15s" }}
+                    <tr
+                      key={user._id}
+                      style={{ borderBottom: "1px solid var(--border)", cursor: "pointer", transition: "background 0.15s" }}
                       onClick={() => openModal(user)}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f9fafb"}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
-                      <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 500, color: "#111827" }}>{user.name}</td>
-                      <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "#4b5563" }}>{user.email}</td>
-                      <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "#4b5563" }}>{user.role}</td>
-                      <td style={{ padding: "0.75rem 1.25rem" }}><span style={statusBadgeStyle(user.isActive)}>{user.isActive ? "Active" : "Inactive"}</span></td>
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--surface)")}
+                    >
+                      <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 500, color: "var(--text-primary)" }}>{user.name}</td>
+                      <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>{user.email}</td>
+                      <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>{user.role}</td>
+                      <td style={{ padding: "0.75rem 1.25rem" }}>
+                        <span style={statusBadgeStyle(user.isActive)}>{user.isActive ? "Active" : "Inactive"}</span>
+                      </td>
                       <td style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>
                         {!self && (
-                          <button onClick={(e) => { e.stopPropagation(); handleToggleActive(user._id, user.isActive); }} style={{ ...iconBtnStyle, color: user.isActive ? "#dc2626" : "#16a34a" }} title={user.isActive ? "Deactivate" : "Activate"}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleToggleActive(user._id, user.isActive); }}
+                            style={{ ...iconBtnStyle, color: user.isActive ? "var(--danger)" : "var(--success)" }}
+                            title={user.isActive ? "Deactivate" : "Activate"}
+                          >
                             <ToggleIcon active={user.isActive} />
                           </button>
                         )}
@@ -140,24 +188,32 @@ const AdminUsersPage = () => {
         {totalPages > 1 && (
           <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "1.5rem" }}>
             <button className="page-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
-            <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "#6b7280" }}>Page {page} of {totalPages}</span>
+            <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Page {page} of {totalPages}</span>
             <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</button>
           </div>
         )}
 
         {modalOpen && selectedUser && (
-          <div className="modal-overlay" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setModalOpen(false)}>
-            <div className="modal-content" style={{ background: "#fff", borderRadius: "12px", padding: "2rem", maxWidth: "450px", width: "90%" }} onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-overlay"
+            style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}
+            onClick={() => setModalOpen(false)}
+          >
+            <div
+              className="modal-content"
+              style={{ background: "var(--surface)", borderRadius: "12px", padding: "2rem", maxWidth: "450px", width: "90%" }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                 <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>User Details</h3>
-                <button onClick={() => setModalOpen(false)} style={{ background: "transparent", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "#6b7280" }}>×</button>
+                <button onClick={() => setModalOpen(false)} style={{ background: "transparent", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--text-secondary)" }}>×</button>
               </div>
 
               <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
                 {selectedUser.avatar ? (
                   <img src={getImageUrl(selectedUser.avatar)} alt={selectedUser.name} style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover" }} />
                 ) : (
-                  <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "2rem", fontWeight: 700 }}>
+                  <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary-contrast)", fontSize: "2rem", fontWeight: 700 }}>
                     {selectedUser.name?.charAt(0).toUpperCase() || "?"}
                   </div>
                 )}
@@ -170,8 +226,18 @@ const AdminUsersPage = () => {
 
               {!isSelf(selectedUser._id) && (
                 <div style={{ marginTop: "1.5rem", textAlign: "right" }}>
-                  <button onClick={() => handleToggleActive(selectedUser._id, selectedUser.isActive)}
-                    style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: selectedUser.isActive ? "#dc2626" : "#16a34a", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+                  <button
+                    onClick={() => handleToggleActive(selectedUser._id, selectedUser.isActive)}
+                    style={{
+                      padding: "0.5rem 1.25rem",
+                      borderRadius: "6px",
+                      border: "none",
+                      background: selectedUser.isActive ? "var(--danger)" : "var(--success)",
+                      color: "#fff",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
                     {selectedUser.isActive ? "Deactivate" : "Activate"}
                   </button>
                 </div>

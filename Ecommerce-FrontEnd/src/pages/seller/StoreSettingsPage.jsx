@@ -8,7 +8,6 @@ const StoreSettingsPage = () => {
   const dispatch = useDispatch();
   const { user, accessToken, refreshToken } = useSelector((state) => state.auth);
 
-  // ---------- Profile State (seller profile) ----------
   const [profile, setProfile] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -19,12 +18,10 @@ const StoreSettingsPage = () => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileMsg, setProfileMsg] = useState({ text: "", type: "" });
 
-  // ---------- Avatar upload state ----------
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const avatarInputRef = useRef(null);
 
-  // ---------- Password State ----------
   const [password, setPassword] = useState({
     current: "",
     new: "",
@@ -33,7 +30,6 @@ const StoreSettingsPage = () => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState({ text: "", type: "" });
 
-  // ---------- Store State ----------
   const [store, setStore] = useState({
     name: "",
     description: "",
@@ -43,16 +39,13 @@ const StoreSettingsPage = () => {
   const [storeLoading, setStoreLoading] = useState(false);
   const [storeMsg, setStoreMsg] = useState({ text: "", type: "" });
 
-  // ---------- Logo Upload ----------
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = useRef(null);
 
-  // ---------- Active Tab ----------
   const [activeTab, setActiveTab] = useState("profile");
 
-  // ---------- Load Data ----------
   useEffect(() => {
     (async () => {
       try {
@@ -88,7 +81,6 @@ const StoreSettingsPage = () => {
     })();
   }, [user]);
 
-  // ---------- Avatar file change ----------
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -96,7 +88,6 @@ const StoreSettingsPage = () => {
     setAvatarPreview(URL.createObjectURL(file));
   };
 
-  // ---------- Profile Submit ----------
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setProfileLoading(true);
@@ -104,7 +95,6 @@ const StoreSettingsPage = () => {
     try {
       let avatarUrl = user?.avatar || null;
 
-      // If a new avatar file is selected, upload it first
       if (avatarFile) {
         const formData = new FormData();
         formData.append("avatar", avatarFile);
@@ -112,7 +102,6 @@ const StoreSettingsPage = () => {
           headers: { "Content-Type": "multipart/form-data" },
         });
         avatarUrl = data.data?.avatar || data.avatar;
-        // Update Redux store with new avatar
         dispatch(setCredentials({
           user: { ...user, avatar: avatarUrl },
           accessToken,
@@ -122,7 +111,6 @@ const StoreSettingsPage = () => {
         setAvatarPreview(null);
       }
 
-      // Update seller profile fields
       await axiosInstance.put("/seller/profile", {
         phone: profile.phone,
         address: profile.address,
@@ -172,9 +160,9 @@ const StoreSettingsPage = () => {
     try {
       const formData = new FormData();
       formData.append("images", logoFile);
-     const { data } = await axiosInstance.post("/seller/products/upload-image", formData, {
-  headers: { "Content-Type": "multipart/form-data" },
-});
+      const { data } = await axiosInstance.post("/seller/products/upload-image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return data.data?.url || data.url;
     } catch (err) {
       throw err;
@@ -225,14 +213,13 @@ const StoreSettingsPage = () => {
   };
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "#111827" }}>
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
       <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem" }}>Settings</h2>
-        <p style={{ color: "#6b7280", margin: 0 }}>Manage your account and store preferences.</p>
+        <h2 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem", color: "var(--text-primary)" }}>Settings</h2>
+        <p style={{ color: "var(--text-secondary)", margin: 0 }}>Manage your account and store preferences.</p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "2rem", borderBottom: "1px solid #e5e7eb", paddingBottom: "0.5rem" }}>
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "2rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
         <button onClick={() => setActiveTab("profile")} style={{ ...tabStyle, ...(activeTab === "profile" ? tabActive : tabInactive) }}>
           <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
           Profile
@@ -243,24 +230,22 @@ const StoreSettingsPage = () => {
         </button>
       </div>
 
-      {/* ============ PROFILE TAB ============ */}
       {activeTab === "profile" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           <div style={cardStyle}>
             <h3 style={sectionHeader}>Personal Information</h3>
 
-            {/* Avatar Section with upload */}
             <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
               <div
                 onClick={() => avatarInputRef.current?.click()}
                 style={{
                   width: "72px", height: "72px", borderRadius: "50%",
                   overflow: "hidden", cursor: "pointer", position: "relative",
-                  border: "2px solid #e5e7eb", transition: "border-color 0.2s",
+                  border: "2px solid var(--border)", transition: "border-color 0.2s",
                   flexShrink: 0,
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = "#6b7280"}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = "#e5e7eb"}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--text-secondary)"}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--border)"}
               >
                 {avatarPreview || user?.avatar ? (
                   <img
@@ -269,7 +254,7 @@ const StoreSettingsPage = () => {
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 ) : (
-                  <div style={{ width: "100%", height: "100%", background: "#111827", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", fontWeight: 700 }}>
+                  <div style={{ width: "100%", height: "100%", background: "var(--primary)", color: "var(--primary-contrast)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", fontWeight: 700 }}>
                     {getUserInitials()}
                   </div>
                 )}
@@ -282,8 +267,8 @@ const StoreSettingsPage = () => {
                 />
               </div>
               <div>
-                <p style={{ fontWeight: 600, margin: 0 }}>{profile.name}</p>
-                <p style={{ color: "#6b7280", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
+                <p style={{ fontWeight: 600, margin: 0, color: "var(--text-primary)" }}>{profile.name}</p>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
                   Click the avatar to change your photo
                 </p>
               </div>
@@ -313,10 +298,10 @@ const StoreSettingsPage = () => {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Role</label>
-                  <input className="form-input" value="Seller" disabled style={{ width: "100%", boxSizing: "border-box", background: "#f9fafb", color: "#6b7280" }} />
+                  <input className="form-input" value="Seller" disabled style={{ width: "100%", boxSizing: "border-box", background: "var(--disabled-bg)", color: "var(--disabled-text)" }} />
                 </div>
               </div>
-              {profileMsg.text && <p style={{ color: profileMsg.type === "success" ? "#065f46" : "#d11a2a", fontSize: "0.9rem", marginBottom: "1rem", fontWeight: 500 }}>{profileMsg.text}</p>}
+              {profileMsg.text && <p style={{ color: profileMsg.type === "success" ? "var(--success-text)" : "var(--danger-text)", fontSize: "0.9rem", marginBottom: "1rem", fontWeight: 500 }}>{profileMsg.text}</p>}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button type="submit" className="btn-primary" disabled={profileLoading}>
                   {profileLoading ? (
@@ -330,7 +315,6 @@ const StoreSettingsPage = () => {
             </form>
           </div>
 
-          {/* Change Password Card */}
           <div style={cardStyle}>
             <h3 style={sectionHeader}>Change Password</h3>
             <form onSubmit={handlePasswordSubmit}>
@@ -348,7 +332,7 @@ const StoreSettingsPage = () => {
                   <input className="form-input" type="password" value={password.confirm} onChange={(e) => setPassword({ ...password, confirm: e.target.value })} required minLength={8} style={{ width: "100%", boxSizing: "border-box" }} />
                 </div>
               </div>
-              {passwordMsg.text && <p style={{ color: passwordMsg.type === "success" ? "#065f46" : "#d11a2a", fontSize: "0.9rem", marginBottom: "1rem", fontWeight: 500 }}>{passwordMsg.text}</p>}
+              {passwordMsg.text && <p style={{ color: passwordMsg.type === "success" ? "var(--success-text)" : "var(--danger-text)", fontSize: "0.9rem", marginBottom: "1rem", fontWeight: 500 }}>{passwordMsg.text}</p>}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button type="submit" className="btn-primary" disabled={passwordLoading}>
                   {passwordLoading ? (
@@ -364,13 +348,11 @@ const StoreSettingsPage = () => {
         </div>
       )}
 
-      {/* ============ STORE TAB ============ */}
       {activeTab === "store" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           <div style={cardStyle}>
             <h3 style={sectionHeader}>Store Information</h3>
 
-            {/* Logo Upload Dropzone */}
             <div className="form-group" style={{ marginBottom: "1.5rem" }}>
               <label className="form-label">Store Logo</label>
               <div
@@ -378,21 +360,21 @@ const StoreSettingsPage = () => {
                 onDrop={handleDrop}
                 onClick={() => logoInputRef.current?.click()}
                 style={{
-                  border: "2px dashed #d1d5db", borderRadius: "8px", padding: "2rem",
+                  border: "2px dashed var(--input-border)", borderRadius: "8px", padding: "2rem",
                   textAlign: "center", cursor: "pointer", transition: "border-color 0.2s",
-                  background: "#f9fafb",
+                  background: "var(--bg-secondary)",
                 }}
               >
                 {logoPreview || store.logo ? (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <img src={logoPreview || getImageUrl(store.logo)} alt="Logo preview" style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px", border: "1px solid #e5e7eb", marginBottom: "0.5rem" }} />
-                    <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>{logoFile ? logoFile.name : "Click or drop to change logo"}</span>
+                    <img src={logoPreview || getImageUrl(store.logo)} alt="Logo preview" style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border)", marginBottom: "0.5rem" }} />
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{logoFile ? logoFile.name : "Click or drop to change logo"}</span>
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <svg width="36" height="36" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    <p style={{ fontSize: "0.9rem", color: "#6b7280", margin: "0.5rem 0 0.25rem" }}>Drag & drop your logo here, or click to browse</p>
-                    <p style={{ fontSize: "0.75rem", color: "#9ca3af", margin: 0 }}>PNG or JPG up to 2MB, 500x500px recommended</p>
+                    <svg width="36" height="36" fill="none" stroke="var(--text-muted)" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: "0.5rem 0 0.25rem" }}>Drag & drop your logo here, or click to browse</p>
+                    <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0 }}>PNG or JPG up to 2MB, 500x500px recommended</p>
                   </div>
                 )}
                 <input type="file" ref={logoInputRef} style={{ display: "none" }} accept=".png,.jpg,.jpeg,.webp" onChange={handleLogoFileChange} />
@@ -408,7 +390,7 @@ const StoreSettingsPage = () => {
                 <div className="form-group" style={{ gridColumn: "span 2" }}>
                   <label className="form-label">Description</label>
                   <textarea className="form-input" rows={4} value={store.description} onChange={(e) => setStore({ ...store, description: e.target.value })} maxLength={500} style={{ width: "100%", boxSizing: "border-box" }} />
-                  <div style={{ textAlign: "right", fontSize: "0.75rem", color: "#9ca3af" }}>{store.description.length}/500</div>
+                  <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)" }}>{store.description.length}/500</div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">City</label>
@@ -420,13 +402,13 @@ const StoreSettingsPage = () => {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Store URL Slug</label>
-                  <div style={{ display: "flex", alignItems: "center", border: "1px solid #d1d5db", borderRadius: "6px", overflow: "hidden" }}>
-                    <span style={{ background: "#f9fafb", padding: "0.5rem 0.75rem", color: "#6b7280", fontSize: "0.85rem", borderRight: "1px solid #d1d5db" }}>vendorverse.com/store/</span>
-                    <input className="form-input" value={store.name?.toLowerCase().replace(/\s+/g, "-")} readOnly style={{ border: "none", flex: 1, paddingLeft: "0.5rem", background: "#fff" }} />
+                  <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--input-border)", borderRadius: "6px", overflow: "hidden" }}>
+                    <span style={{ background: "var(--bg-secondary)", padding: "0.5rem 0.75rem", color: "var(--text-secondary)", fontSize: "0.85rem", borderRight: "1px solid var(--input-border)" }}>vendorverse.com/store/</span>
+                    <input className="form-input" value={store.name?.toLowerCase().replace(/\s+/g, "-")} readOnly style={{ border: "none", flex: 1, paddingLeft: "0.5rem", background: "var(--input-bg)", color: "var(--text-primary)" }} />
                   </div>
                 </div>
               </div>
-              {storeMsg.text && <p style={{ color: storeMsg.type === "success" ? "#065f46" : "#d11a2a", fontSize: "0.9rem", marginBottom: "1rem", fontWeight: 500 }}>{storeMsg.text}</p>}
+              {storeMsg.text && <p style={{ color: storeMsg.type === "success" ? "var(--success-text)" : "var(--danger-text)", fontSize: "0.9rem", marginBottom: "1rem", fontWeight: 500 }}>{storeMsg.text}</p>}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button type="submit" className="btn-primary" disabled={storeLoading || uploadingLogo}>
                   {storeLoading || uploadingLogo ? (
@@ -448,8 +430,8 @@ const StoreSettingsPage = () => {
 };
 
 const cardStyle = {
-  background: "#fff",
-  border: "1px solid #e5e7eb",
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
   borderRadius: "12px",
   padding: "1.5rem",
   boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
@@ -459,6 +441,7 @@ const sectionHeader = {
   fontSize: "1.1rem",
   fontWeight: 600,
   margin: "0 0 1.25rem",
+  color: "var(--text-primary)",
 };
 
 const tabStyle = {
@@ -475,17 +458,17 @@ const tabStyle = {
 };
 
 const tabActive = {
-  border: "1px solid #e5e7eb",
-  borderBottom: "1px solid #fff",
-  background: "#fff",
-  color: "#111827",
+  border: "1px solid var(--border)",
+  borderBottom: "1px solid var(--surface)",
+  background: "var(--surface)",
+  color: "var(--text-primary)",
   zIndex: 1,
 };
 
 const tabInactive = {
   border: "1px solid transparent",
   background: "transparent",
-  color: "#6b7280",
+  color: "var(--text-secondary)",
   fontWeight: 400,
   zIndex: 0,
 };

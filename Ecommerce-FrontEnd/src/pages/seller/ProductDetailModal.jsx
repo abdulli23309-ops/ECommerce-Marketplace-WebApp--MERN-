@@ -67,7 +67,7 @@ const ProductDetailModal = ({ product, onClose }) => {
           width: '800px',
           maxWidth: '90vw',
           maxHeight: '75vh',
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: '12px',
           boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
           zIndex: 1000,
@@ -75,7 +75,7 @@ const ProductDetailModal = ({ product, onClose }) => {
           padding: '2rem',
           boxSizing: 'border-box',
           fontFamily: 'Inter, system-ui, sans-serif',
-          color: '#111827',
+          color: 'var(--text-primary)',
         }}
       >
         {/* Close button */}
@@ -89,7 +89,7 @@ const ProductDetailModal = ({ product, onClose }) => {
             border: 'none',
             fontSize: '1.5rem',
             cursor: 'pointer',
-            color: '#6b7280',
+            color: 'var(--text-secondary)',
           }}
         >
           ×
@@ -103,7 +103,7 @@ const ProductDetailModal = ({ product, onClose }) => {
                 position: 'relative',
                 width: '100%',
                 height: '300px',
-                backgroundColor: '#f3f4f6',
+                backgroundColor: 'var(--bg-secondary)',
                 borderRadius: '12px',
                 overflow: 'hidden',
                 display: 'flex',
@@ -120,7 +120,7 @@ const ProductDetailModal = ({ product, onClose }) => {
                   height: '100%',
                   objectFit: 'cover',
                   borderRadius: '12px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                 }}
                 onError={(e) => (e.target.src = '/placeholder.png')}
               />
@@ -146,7 +146,7 @@ const ProductDetailModal = ({ product, onClose }) => {
                     justifyContent: 'center',
                     fontSize: '18px',
                     fontWeight: 'bold',
-                    color: '#111827',
+                    color: 'var(--text-primary)',
                   }}
                 >
                   ‹
@@ -174,7 +174,7 @@ const ProductDetailModal = ({ product, onClose }) => {
                     justifyContent: 'center',
                     fontSize: '18px',
                     fontWeight: 'bold',
-                    color: '#111827',
+                    color: 'var(--text-primary)',
                   }}
                 >
                   ›
@@ -224,24 +224,24 @@ const ProductDetailModal = ({ product, onClose }) => {
             <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.5rem' }}>
               {product.name}
             </h2>
-            <p style={{ fontSize: '1.25rem', fontWeight: 600, color: '#111827', margin: '0 0 1rem' }}>
+            <p style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 1rem' }}>
               PKR {product.price?.toLocaleString()}
             </p>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <span
                 style={{
-                  background: '#f3f4f6',
+                  background: 'var(--bg-secondary)',
                   padding: '0.25rem 0.75rem',
                   borderRadius: '999px',
                   fontSize: '0.85rem',
                   fontWeight: 600,
-                  color: '#4b5563',
+                  color: 'var(--text-secondary)',
                 }}
               >
                 {product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}
               </span>
               {product.avgRating > 0 && (
-                <span style={{ color: '#f59e0b', fontWeight: 600 }}>
+                <span style={{ color: 'var(--warning)', fontWeight: 600 }}>
                   {product.avgRating} ★ ({product.reviewCount})
                 </span>
               )}
@@ -287,29 +287,29 @@ const ProductDetailModal = ({ product, onClose }) => {
         {activeTab === 'details' && (
           <div>
             <div style={{ marginBottom: '1rem' }}>
-              <h4 style={{ fontWeight: 600, marginBottom: '0.25rem', color: '#4b5563' }}>Description</h4>
-              <p style={{ lineHeight: '1.6', color: '#111827' }}>
+              <h4 style={{ fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>Description</h4>
+              <p style={{ lineHeight: '1.6', color: 'var(--text-primary)' }}>
                 {product.description || 'No description provided.'}
               </p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Category:</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Category:</span>
                 <br />
                 <span>{product.category?.name || product.category || 'N/A'}</span>
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Brand:</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Brand:</span>
                 <br />
                 <span>{product.brand?.name || product.brand || 'N/A'}</span>
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Created:</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Created:</span>
                 <br />
                 <span>{new Date(product.createdAt).toLocaleDateString()}</span>
               </div>
               <div>
-                <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>Stock:</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Stock:</span>
                 <br />
                 <span>{product.stock}</span>
               </div>
@@ -320,23 +320,23 @@ const ProductDetailModal = ({ product, onClose }) => {
         {activeTab === 'reviews' && (
           <div>
             <div style={{ marginBottom: '1.5rem' }}>
-              <h4 style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#4b5563' }}>Overall Rating</h4>
+              <h4 style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Overall Rating</h4>
               {product.avgRating > 0 ? (
-                <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>
+                <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--warning)' }}>
                   {product.avgRating} / 5 ★ ({product.reviewCount} review{product.reviewCount !== 1 ? 's' : ''})
                 </p>
               ) : (
-                <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#9ca3af' }}>No ratings yet</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-muted)' }}>No ratings yet</p>
               )}
               {product.status === 'Rejected' && product.rejectionReason && (
   <div style={{
-    backgroundColor: '#fef2f2',
+    backgroundColor: 'var(--danger-bg)',
     border: '1px solid #f87171',
     borderRadius: '8px',
     padding: '8px 12px',
     marginTop: '12px',
   }}>
-    <p style={{ margin: 0, fontSize: '0.85rem', color: '#991b1b', lineHeight: '1.4' }}>
+    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--danger-text)', lineHeight: '1.4' }}>
       ⚠️ {product.rejectionReason}
     </p>
   </div>
@@ -344,21 +344,21 @@ const ProductDetailModal = ({ product, onClose }) => {
             </div>
 
             {loadingReviews ? (
-              <p style={{ color: '#6b7280' }}>Loading reviews...</p>
+              <p style={{ color: 'var(--text-secondary)' }}>Loading reviews...</p>
             ) : reviews.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {reviews.map((review, idx) => (
-                  <div key={review._id || idx} style={{ background: '#f9fafb', padding: '1rem', borderRadius: '8px' }}>
+                  <div key={review._id || idx} style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                       <span style={{ fontWeight: 600 }}>
                         {review.customer?.name || 'Anonymous'}
                       </span>
-                      <span style={{ color: '#f59e0b', fontWeight: 600 }}>
+                      <span style={{ color: 'var(--warning)', fontWeight: 600 }}>
                         {renderStars(review.rating)} {review.rating}
                       </span>
                     </div>
-                    <p style={{ margin: '0 0 0.5rem', color: '#4b5563', lineHeight: '1.5' }}>{review.comment}</p>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#9ca3af' }}>
+                    <p style={{ margin: '0 0 0.5rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>{review.comment}</p>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                       by {review.customer?.name || 'Anonymous'} on{' '}
                       {new Date(review.createdAt).toLocaleDateString()}
                     </p>
@@ -366,7 +366,7 @@ const ProductDetailModal = ({ product, onClose }) => {
                 ))}
               </div>
             ) : (
-              <p style={{ color: '#6b7280' }}>No reviews yet for this product.</p>
+              <p style={{ color: 'var(--text-secondary)' }}>No reviews yet for this product.</p>
             )}
           </div>
         )}

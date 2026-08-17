@@ -15,6 +15,8 @@ const ProductDetailPage = () => {
 
   const [product, setProduct] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [totalReviewPages, setTotalReviewPages] = useState(1);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [mainImage, setMainImage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -22,6 +24,7 @@ const ProductDetailPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState({ text: "", type: "" });
 
+  // Load product details and related products
   useEffect(() => {
     const loadProductData = async () => {
       setLoading(true);
@@ -43,14 +46,6 @@ const ProductDetailPage = () => {
           console.error("Failed to fetch related products:", error);
           setRelatedProducts([]);
         }
-
-        try {
-          const reviewRes = await fetchProductReviews(productId);
-          setReviews(reviewRes.items || reviewRes || []);
-        } catch (error) {
-          console.error("Failed to fetch reviews:", error);
-          setReviews([]);
-        }
       } catch (error) {
         console.error("Failed to load product details:", error);
         setProduct(null);
@@ -59,8 +54,36 @@ const ProductDetailPage = () => {
         window.scrollTo(0, 0);
       }
     };
+
     loadProductData();
   }, [productId]);
+
+  // Reset reviews page when product changes
+  useEffect(() => {
+    setReviewsPage(1);
+  }, [productId]);
+
+  // Load paginated reviews
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!productId) return;
+
+      try {
+        const reviewRes = await fetchProductReviews(productId, {
+          page: reviewsPage,
+          pageSize: 5,
+        });
+        setReviews(reviewRes.items || reviewRes || []);
+        setTotalReviewPages(reviewRes.totalPages || 1);
+      } catch (error) {
+        console.error("Failed to fetch reviews:", error);
+        setReviews([]);
+        setTotalReviewPages(1);
+      }
+    };
+
+    loadReviews();
+  }, [productId, reviewsPage]);
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -98,7 +121,7 @@ const ProductDetailPage = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: "4rem", textAlign: "center", color: "#333" }}>
+      <div style={{ padding: "4rem", textAlign: "center", color: "var(--text-primary)" }}>
         <p>Loading product details...</p>
       </div>
     );
@@ -106,7 +129,7 @@ const ProductDetailPage = () => {
 
   if (!product) {
     return (
-      <div style={{ padding: "4rem", textAlign: "center", color: "#333" }}>
+      <div style={{ padding: "4rem", textAlign: "center", color: "var(--text-primary)" }}>
         <h2>Product not found</h2>
         <p>This item may have been removed or is currently unavailable.</p>
         <button
@@ -115,8 +138,8 @@ const ProductDetailPage = () => {
             marginTop: "1.5rem",
             padding: "0.75rem 1.5rem",
             cursor: "pointer",
-            background: "#000",
-            color: "#fff",
+            background: "var(--primary)",
+            color: "var(--primary-contrast)",
             border: "none",
             fontWeight: "bold",
           }}
@@ -139,14 +162,14 @@ const ProductDetailPage = () => {
               <div
                 className="no-image"
                 style={{
-                  background: "#eaeaea",
+                  background: "var(--border)",
                   height: "400px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <span style={{ color: "#666" }}>No Image</span>
+                <span style={{ color: "var(--text-secondary)" }}>No Image</span>
               </div>
             )}
           </div>
@@ -167,7 +190,7 @@ const ProductDetailPage = () => {
                     height: "80px",
                     objectFit: "cover",
                     cursor: "pointer",
-                    border: mainImage === getImageUrl(img) ? "2px solid #000" : "1px solid #eaeaea",
+                    border: mainImage === getImageUrl(img) ? "2px solid var(--primary)" : "1px solid var(--border)",
                     opacity: mainImage === getImageUrl(img) ? 1 : 0.6,
                   }}
                 />
@@ -191,7 +214,7 @@ const ProductDetailPage = () => {
           <div
             className="product-meta"
             style={{
-              color: "#666",
+              color: "var(--text-secondary)",
               fontSize: "0.9rem",
               marginBottom: "2rem",
               display: "flex",
@@ -218,9 +241,9 @@ const ProductDetailPage = () => {
               marginTop: "1.5rem",
               marginBottom: "2rem",
               padding: "1rem",
-              border: "1px solid #eaeaea",
+              border: "1px solid var(--border)",
               borderRadius: "0.5rem",
-              background: "#fff",
+              background: "var(--surface)",
             }}
           >
             <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -233,7 +256,7 @@ const ProductDetailPage = () => {
                     height: "60px",
                     objectFit: "cover",
                     borderRadius: "0.25rem",
-                    border: "1px solid #eaeaea",
+                    border: "1px solid var(--border)",
                   }}
                 />
               ) : (
@@ -241,23 +264,23 @@ const ProductDetailPage = () => {
                   style={{
                     width: "60px",
                     height: "60px",
-                    background: "#f5f5f5",
+                    background: "var(--surface-hover)",
                     borderRadius: "0.25rem",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#999",
+                    color: "var(--text-muted)",
                   }}
                 >
                   No logo
                 </div>
               )}
               <div>
-                <p style={{ fontWeight: 600, color: "#000", margin: 0 }}>
+                <p style={{ fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
                   {product.store?.name || "Unknown Store"}
                 </p>
                 {product.store?.description && (
-                  <p style={{ color: "#666", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", margin: "0.25rem 0 0" }}>
                     {product.store.description.length > 60
                       ? product.store.description.slice(0, 60) + "..."
                       : product.store.description}
@@ -276,10 +299,10 @@ const ProductDetailPage = () => {
             <p
               className="out-of-stock"
               style={{
-                color: "#000",
+                color: "var(--text-primary)",
                 fontWeight: "bold",
                 padding: "1rem",
-                border: "1px solid #000",
+                border: "1px solid var(--primary)",
                 textAlign: "center",
               }}
             >
@@ -287,7 +310,7 @@ const ProductDetailPage = () => {
             </p>
           ) : (
             <div className="add-to-cart-row" style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
-              <div className="quantity-control" style={{ display: "flex", border: "1px solid #eaeaea" }}>
+              <div className="quantity-control" style={{ display: "flex", border: "1px solid var(--border)" }}>
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   style={{
@@ -303,8 +326,8 @@ const ProductDetailPage = () => {
                 <span
                   style={{
                     padding: "0.75rem 1.5rem",
-                    borderLeft: "1px solid #eaeaea",
-                    borderRight: "1px solid #eaeaea",
+                    borderLeft: "1px solid var(--border)",
+                    borderRight: "1px solid var(--border)",
                     display: "flex",
                     alignItems: "center",
                   }}
@@ -312,13 +335,15 @@ const ProductDetailPage = () => {
                   {quantity}
                 </span>
                 <button
-                  onClick={() => setQuantity(quantity + 1)}
+                  onClick={() => setQuantity(prev => Math.min(prev + 1, product.stock))}
+                  disabled={quantity >= product.stock}
                   style={{
                     padding: "0.75rem 1rem",
                     background: "none",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: quantity >= product.stock ? "not-allowed" : "pointer",
                     fontSize: "1.2rem",
+                    opacity: quantity >= product.stock ? 0.5 : 1,
                   }}
                 >
                   +
@@ -331,8 +356,8 @@ const ProductDetailPage = () => {
                 style={{
                   flex: 1,
                   padding: "0.85rem",
-                  background: "#000",
-                  color: "#fff",
+                  background: "var(--primary)",
+                  color: "var(--primary-contrast)",
                   border: "none",
                   cursor: addingToCart ? "not-allowed" : "pointer",
                   fontWeight: "bold",
@@ -347,11 +372,11 @@ const ProductDetailPage = () => {
                 style={{
                   marginLeft: "0.5rem",
                   background: "none",
-                  border: "1px solid #d1d5db",
+                  border: "1px solid var(--border)",
                   borderRadius: "6px",
                   padding: "0.75rem 1rem",
                   cursor: "pointer",
-                  color: "#4b5563",
+                  color: "var(--text-secondary)",
                   display: "flex",
                   alignItems: "center",
                   gap: "0.5rem",
@@ -372,9 +397,9 @@ const ProductDetailPage = () => {
               style={{
                 marginTop: "1rem",
                 padding: "0.75rem",
-                border: `1px solid ${message.type === "success" ? "#000" : "#333"}`,
-                backgroundColor: message.type === "success" ? "#f9f9f9" : "#fff",
-                color: "#000",
+                border: `1px solid ${message.type === "success" ? "var(--success)" : "var(--danger)"}`,
+                backgroundColor: message.type === "success" ? "var(--success-bg)" : "var(--danger-bg)",
+                color: message.type === "success" ? "var(--success-text)" : "var(--danger-text)",
                 fontWeight: "500",
                 textAlign: "center",
               }}
@@ -389,26 +414,63 @@ const ProductDetailPage = () => {
       <div className="reviews-section">
         <h2 className="section-title">Customer Reviews</h2>
         {reviews.length === 0 ? (
-          <p style={{ color: "#666", fontStyle: "italic" }}>
+          <p style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>
             No reviews have been left for this product yet.
           </p>
         ) : (
-          <div className="reviews-list">
-            {reviews.map((review) => (
-              <div key={review._id || review.id} className="review-card">
-                <div className="review-header">
-                  <span className="review-rating">
-                    {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
-                  </span>
-                  <span className="review-date">
-                    {new Date(review.createdAt).toLocaleDateString()}
-                  </span>
+          <>
+            <div className="reviews-list">
+              {reviews.map((review) => (
+                <div key={review._id || review.id} className="review-card">
+                  <div className="review-header">
+                    <span className="review-rating">
+                      {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
+                    </span>
+                    <span className="review-date">
+                      {new Date(review.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="review-comment">{review.comment}</p>
+                  <p className="review-author">— {review.customer?.name || "Anonymous"}</p>
                 </div>
-                <p className="review-comment">{review.comment}</p>
-                <p className="review-author">— {review.customer?.name || "Anonymous"}</p>
+              ))}
+            </div>
+
+            {totalReviewPages > 1 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: "1rem",
+                  marginTop: "1.5rem",
+                }}
+              >
+                <button
+                  className="page-btn"
+                  disabled={reviewsPage <= 1}
+                  onClick={() => setReviewsPage((prev) => Math.max(1, prev - 1))}
+                >
+                  Previous
+                </button>
+                <span
+                  style={{
+                    alignSelf: "center",
+                    fontSize: "0.9rem",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  Page {reviewsPage} of {totalReviewPages}
+                </span>
+                <button
+                  className="page-btn"
+                  disabled={reviewsPage >= totalReviewPages}
+                  onClick={() => setReviewsPage((prev) => Math.min(totalReviewPages, prev + 1))}
+                >
+                  Next
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
@@ -437,12 +499,12 @@ const ProductDetailPage = () => {
                   ) : (
                     <div
                       style={{
-                        background: "#eaeaea",
+                        background: "var(--border)",
                         height: "100%",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "#666",
+                        color: "var(--text-secondary)",
                       }}
                     >
                       No Image
@@ -453,7 +515,7 @@ const ProductDetailPage = () => {
                   <p className="product-name" style={{ fontWeight: "bold", margin: "0 0 0.25rem 0" }}>
                     {rp.name}
                   </p>
-                  <p className="product-price" style={{ color: "#333", margin: 0 }}>
+                  <p className="product-price" style={{ color: "var(--text-primary)", margin: 0 }}>
                     PKR {rp.price?.toLocaleString()}
                   </p>
                 </div>

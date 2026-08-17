@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import axiosInstance from "../../services/axiosInstance";
 import { getImageUrl } from "../../utils/imageHelper";
+import { getStatusBadgeStyle } from "../../utils/statusBadge";
 
-// Human‑readable status mapping
 const getStatusLabel = (status) => {
   const labels = {
     PENDING_ADMIN_REVIEW: "Under Admin Review",
@@ -17,39 +17,18 @@ const getStatusLabel = (status) => {
   return labels[status] || status;
 };
 
-const getStatusBadgeStyle = (status) => {
-  const base = {
-    padding: "4px 12px",
-    borderRadius: "999px",
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    display: "inline-block",
-  };
-  switch (status) {
-    case "PENDING_ADMIN_REVIEW":
-    case "PENDING_SELLER_REVIEW":
-      return { ...base, backgroundColor: "#eff6ff", color: "#1e40af" };
-    case "APPROVED_PENDING_SHIPMENT":
-      return { ...base, backgroundColor: "#fef3c7", color: "#b45309" };
-    case "ITEM_IN_TRANSIT":
-      return { ...base, backgroundColor: "#e0e7ff", color: "#3730a3" };
-    case "SELLER_RECEIVED":
-      return { ...base, backgroundColor: "#d1fae5", color: "#065f46" };
-    case "INSPECTED_AND_REFUNDED":
-      return { ...base, backgroundColor: "#d1fae5", color: "#065f46" };
-    case "REJECTED_BY_ADMIN":
-    case "REJECTED_BY_SELLER":
-      return { ...base, backgroundColor: "#fee2e2", color: "#991b1b" };
-    default:
-      return { ...base, backgroundColor: "#f3f4f6", color: "#1f2937" };
-  }
-};
-
 const SellerReturnsPage = () => {
   const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReturn, setSelectedReturn] = useState(null);
   const [notes, setNotes] = useState("");
+
+  // Frontend-only pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(returns.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentReturns = returns.slice(startIndex, startIndex + itemsPerPage);
 
   const load = async () => {
     setLoading(true);
@@ -67,17 +46,21 @@ const SellerReturnsPage = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [returns.length, currentPage, totalPages]);
+
   const handleDecision = async (decision) => {
     if (!selectedReturn) return;
 
     if (decision === "CONFIRM_RECEIPT") {
-      // Seller confirms receipt → status becomes SELLER_RECEIVED, admin can now refund
       await axiosInstance.put(`/returns/${selectedReturn._id}/seller-decision`, {
         decision: "CONFIRM_RECEIPT",
         sellerNotes: notes,
       });
     } else {
-      // standard approve / reject for PENDING_SELLER_REVIEW
       await axiosInstance.put(`/returns/${selectedReturn._id}/seller-decision`, {
         decision,
         sellerNotes: notes,
@@ -100,12 +83,12 @@ const SellerReturnsPage = () => {
       </h2>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        {returns.map((ret) => (
+        {currentReturns.map((ret) => (
           <div
             key={ret._id}
             style={{
-              background: "#fff",
-              border: "1px solid #e5e7eb",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
               borderRadius: "12px",
               padding: "1rem",
               cursor: "pointer",
@@ -115,7 +98,7 @@ const SellerReturnsPage = () => {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 700 }}>{getReturnId(ret)}</div>
-                <div style={{ color: "#6b7280", fontSize: "0.85rem" }}>
+                <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
                   {ret.product?.name} – {ret.customer?.name}
                 </div>
               </div>
@@ -126,6 +109,28 @@ const SellerReturnsPage = () => {
           </div>
         ))}
       </div>
+
+      {returns.length > itemsPerPage && (
+        <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "2rem" }}>
+          <button
+            className="page-btn"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          >
+            Previous
+          </button>
+          <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            className="page-btn"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* Decision drawer */}
       {selectedReturn && (
@@ -142,7 +147,7 @@ const SellerReturnsPage = () => {
           <div
             style={{
               width: "400px",
-              background: "#fff",
+              background: "var(--surface)",
               height: "100vh",
               padding: "2rem",
               overflowY: "auto",
@@ -174,7 +179,6 @@ const SellerReturnsPage = () => {
                 />
               ))}
 
-            {/* Tracking number (if available) */}
             {selectedReturn.returnTrackingNumber && (
               <p style={{ marginTop: "1rem" }}>
                 <strong>Tracking Number:</strong> {selectedReturn.returnTrackingNumber}
@@ -185,7 +189,6 @@ const SellerReturnsPage = () => {
               <p><strong>Admin Notes:</strong> {selectedReturn.adminNotes}</p>
             )}
 
-            {/* --- Action: Confirm Receipt (for ITEM_IN_TRANSIT) --- */}
             {selectedReturn.status === "ITEM_IN_TRANSIT" && (
               <div style={{ marginTop: "1rem" }}>
                 <textarea
@@ -200,7 +203,7 @@ const SellerReturnsPage = () => {
                   style={{
                     padding: "0.5rem 1rem",
                     background: "#059669",
-                    color: "#fff",
+                    color: "var(--primary-contrast)",
                     border: "none",
                     borderRadius: "6px",
                     cursor: "pointer",
@@ -213,7 +216,6 @@ const SellerReturnsPage = () => {
               </div>
             )}
 
-            {/* --- Action: Approve/Reject (for PENDING_SELLER_REVIEW) --- */}
             {selectedReturn.status === "PENDING_SELLER_REVIEW" && (
               <>
                 <textarea
@@ -228,8 +230,8 @@ const SellerReturnsPage = () => {
                     onClick={() => handleDecision("APPROVE")}
                     style={{
                       padding: "0.5rem 1rem",
-                      background: "#10b981",
-                      color: "#fff",
+                      background: "var(--success)",
+                      color: "var(--primary-contrast)",
                       border: "none",
                       borderRadius: "6px",
                       cursor: "pointer",
@@ -241,8 +243,8 @@ const SellerReturnsPage = () => {
                     onClick={() => handleDecision("REJECT")}
                     style={{
                       padding: "0.5rem 1rem",
-                      background: "#ef4444",
-                      color: "#fff",
+                      background: "var(--danger)",
+                      color: "var(--primary-contrast)",
                       border: "none",
                       borderRadius: "6px",
                       cursor: "pointer",

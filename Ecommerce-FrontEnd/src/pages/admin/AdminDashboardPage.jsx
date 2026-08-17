@@ -15,8 +15,8 @@ const AdminDashboardPage = () => {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "#64748b" }}>
-        <div style={{ width: "28px", height: "28px", border: "3px solid #e2e8f0", borderTopColor: "#2563eb", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: "12px" }}></div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "var(--text-secondary)" }}>
+        <div style={{ width: "28px", height: "28px", border: "3px solid var(--border)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: "12px" }}></div>
         <p>Loading platform metrics...</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -25,7 +25,7 @@ const AdminDashboardPage = () => {
 
   if (!stats) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "#64748b" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "var(--text-secondary)" }}>
         <p>Failed to load dashboard metrics. Please refresh the page.</p>
       </div>
     );
@@ -37,7 +37,7 @@ const AdminDashboardPage = () => {
       value: stats.totalUsers ?? 0,
       to: "/admin/users",
       badge: "Accounts",
-      badgeStyle: { background: "#eff6ff", color: "#1d4ed8" },
+      badgeStyle: { background: "var(--info-bg)", color: "var(--info-text)" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -52,7 +52,7 @@ const AdminDashboardPage = () => {
       value: stats.totalSellers ?? 0,
       to: "/admin/sellers",
       badge: "Active",
-      badgeStyle: { background: "#ecfdf5", color: "#047857" },
+      badgeStyle: { background: "var(--success-bg)", color: "var(--success-text)" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -65,7 +65,7 @@ const AdminDashboardPage = () => {
       value: stats.totalProducts ?? 0,
       to: "/admin/products",
       badge: "Catalog",
-      badgeStyle: { background: "#eff6ff", color: "#1d4ed8" },
+      badgeStyle: { background: "var(--info-bg)", color: "var(--info-text)" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" />
@@ -80,7 +80,7 @@ const AdminDashboardPage = () => {
       value: stats.totalOrders ?? 0,
       to: "/admin/orders",
       badge: "Total",
-      badgeStyle: { background: "#f5f3ff", color: "#6d28d9" },
+      badgeStyle: { background: "var(--info-bg)", color: "var(--info-text)" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="9" cy="21" r="1" />
@@ -94,7 +94,7 @@ const AdminDashboardPage = () => {
       value: `PKR ${(stats.totalRevenue || 0).toLocaleString()}`,
       to: "/admin/orders",
       badge: "Gross",
-      badgeStyle: { background: "#ecfdf5", color: "#047857" },
+      badgeStyle: { background: "var(--success-bg)", color: "var(--success-text)" },
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="1" x2="12" y2="23" />
@@ -108,8 +108,8 @@ const AdminDashboardPage = () => {
       to: "/admin/sellers",
       badge: stats.pendingSellerApprovals > 0 ? "Action Required" : "Up to Date",
       badgeStyle: stats.pendingSellerApprovals > 0
-        ? { background: "#fffbeb", color: "#b45309" }
-        : { background: "#f1f5f9", color: "#475569" },
+        ? { background: "var(--warning-bg)", color: "var(--warning-text)" }
+        : { background: "var(--bg-secondary)", color: "var(--text-secondary)" },
       highlight: stats.pendingSellerApprovals > 0,
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -125,8 +125,8 @@ const AdminDashboardPage = () => {
       to: "/admin/products",
       badge: stats.pendingProductApprovals > 0 ? "Action Required" : "Up to Date",
       badgeStyle: stats.pendingProductApprovals > 0
-        ? { background: "#fffbeb", color: "#b45309" }
-        : { background: "#f1f5f9", color: "#475569" },
+        ? { background: "var(--warning-bg)", color: "var(--warning-text)" }
+        : { background: "var(--bg-secondary)", color: "var(--text-secondary)" },
       highlight: stats.pendingProductApprovals > 0,
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -141,8 +141,8 @@ const AdminDashboardPage = () => {
       to: "/admin/returns",
       badge: stats.pendingReturns > 0 ? "Action Required" : "Up to Date",
       badgeStyle: stats.pendingReturns > 0
-        ? { background: "#fff1f2", color: "#be123c" }
-        : { background: "#f1f5f9", color: "#475569" },
+        ? { background: "var(--danger-bg)", color: "var(--danger-text)" }
+        : { background: "var(--bg-secondary)", color: "var(--text-secondary)" },
       highlight: stats.pendingReturns > 0,
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -158,34 +158,32 @@ const AdminDashboardPage = () => {
       maxWidth: "1320px",
       margin: "0 auto",
       fontFamily: "Inter, system-ui, sans-serif",
-      color: "#111827",
-      backgroundColor: "#f9fafb",
+      color: "var(--text-primary)",
+      backgroundColor: "var(--bg-secondary)",
       minHeight: "100vh",
     }}>
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", margin: "0 0 4px 0" }}>System Overview</h1>
-          <p style={{ fontSize: "0.875rem", color: "#6b7280", margin: 0 }}>
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 4px 0" }}>System Overview</h1>
+          <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", margin: 0 }}>
             Marketplace health, store metrics, and pending approvals.
           </p>
         </div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.8125rem", fontWeight: 500, color: "#475569", backgroundColor: "#ffffff", border: "1px solid #e5e7eb", padding: "6px 14px", borderRadius: "20px" }}>
-          <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981" }}></span>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "0.8125rem", fontWeight: 500, color: "var(--text-secondary)", backgroundColor: "var(--surface)", border: "1px solid var(--border)", padding: "6px 14px", borderRadius: "20px" }}>
+          <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--success)" }}></span>
           Realtime Sync
         </div>
       </div>
 
-      {/* Metrics Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
         {cards.map((card) => (
           <Link
             key={card.label}
             to={card.to}
             style={{
-              background: "#ffffff",
-              border: card.highlight ? "1px solid #f59e0b" : "1px solid #e5e7eb",
-              borderLeft: card.highlight ? "4px solid #f59e0b" : "1px solid #e5e7eb",
+              background: "var(--surface)",
+              border: card.highlight ? "1px solid var(--warning)" : "1px solid var(--border)",
+              borderLeft: card.highlight ? "4px solid var(--warning)" : "1px solid var(--border)",
               borderRadius: "12px",
               padding: "18px",
               textDecoration: "none",
@@ -197,7 +195,7 @@ const AdminDashboardPage = () => {
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+              e.currentTarget.style.boxShadow = "0 4px 12px var(--shadow)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
@@ -205,19 +203,19 @@ const AdminDashboardPage = () => {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.02em" }}>
+              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.02em" }}>
                 {card.label}
               </span>
-              <div style={{ backgroundColor: "#f1f5f9", color: "#334155", padding: "8px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ backgroundColor: "var(--bg-secondary)", color: "var(--text-secondary)", padding: "8px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {card.icon}
               </div>
             </div>
 
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "#111827", marginBottom: "14px" }}>
+            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "14px" }}>
               {card.value}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f3f4f6", paddingTop: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "10px" }}>
               <span style={{
                 fontSize: "0.75rem",
                 fontWeight: 600,
@@ -228,7 +226,7 @@ const AdminDashboardPage = () => {
               }}>
                 {card.badge}
               </span>
-              <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#2563eb" }}>View details →</span>
+              <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--info)" }}>View details →</span>
             </div>
           </Link>
         ))}

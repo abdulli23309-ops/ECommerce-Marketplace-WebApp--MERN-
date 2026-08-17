@@ -4,34 +4,45 @@ import axiosInstance from '../../services/axiosInstance';
 
 const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
   const [internalNote, setInternalNote] = useState('');
-  const [rejectionReason, setRejectionReason] = useState(''); // new separate field
+  const [rejectionReason, setRejectionReason] = useState('');
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [reviews, setReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [totalReviewPages, setTotalReviewPages] = useState(1);
+  const reviewPageSize = 5;
 
   const images = product?.images || [];
 
-  // Fetch reviews when the modal opens
   useEffect(() => {
     if (!product?._id) return;
+
     const fetchReviews = async () => {
       setLoadingReviews(true);
       try {
-        const res = await axiosInstance.get(`/reviews/product/${product._id}`);
-        const data = res.data?.data || res.data;
-        const reviewList = data?.items || (Array.isArray(data) ? data : []);
-        setReviews(reviewList);
+        const res = await axiosInstance.get(`/reviews/product/${product._id}`, {
+          params: { page: reviewsPage, pageSize: reviewPageSize },
+        });
+        const data = res.data?.data || {};
+        const items = data.items || (Array.isArray(data) ? data : []);
+        setReviews(items);
+        setTotalReviewPages(data.totalPages || 1);
       } catch (err) {
         console.error('Failed to fetch reviews', err);
         setReviews([]);
+        setTotalReviewPages(1);
       } finally {
         setLoadingReviews(false);
       }
     };
-    fetchReviews();
-  }, [product]);
 
-  // Pre‑populate existing values when viewing a rejected product
+    fetchReviews();
+  }, [product, reviewsPage]);
+
+  useEffect(() => {
+    setReviewsPage(1);
+  }, [product?._id]);
+
   useEffect(() => {
     if (product?.status === 'Rejected') {
       setRejectionReason(product.rejectionReason || '');
@@ -50,15 +61,13 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
     setCurrentImgIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
-  // Action handlers – they call the parent's onStatusChange
   const handleApprove = () => {
-    // For approval, internal note is optional; rejection reason is not used
     onStatusChange(product._id, 'Approved', '', internalNote);
     onClose();
   };
 
   const handleReject = () => {
-    if (!rejectionReason.trim()) return; // rejection reason is required
+    if (!rejectionReason.trim()) return;
     onStatusChange(product._id, 'Rejected', rejectionReason, internalNote);
     onClose();
   };
@@ -78,7 +87,6 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={onClose}
         style={{
@@ -89,7 +97,6 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
         }}
       />
 
-      {/* Drawer (full‑height, right‑aligned) */}
       <div
         style={{
           position: 'fixed',
@@ -98,24 +105,24 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
           width: '850px',
           maxWidth: '100vw',
           height: '100vh',
-          background: '#fff',
+          background: 'var(--surface)',
+          color: 'var(--text-primary)',
           boxShadow: '-4px 0 24px rgba(0,0,0,0.1)',
           zIndex: 1000,
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        {/* Header */}
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '1.5rem 2rem 1rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
           }}
         >
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
             Product Inspection
           </h2>
           <button
@@ -125,16 +132,14 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
               border: 'none',
               fontSize: '1.5rem',
               cursor: 'pointer',
-              color: '#6b7280',
+              color: 'var(--text-secondary)',
             }}
           >
             ×
           </button>
         </div>
 
-        {/* Scrollable content area */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-          {/* Image Carousel */}
           {images.length > 0 && (
             <>
               <div
@@ -142,7 +147,7 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                   position: 'relative',
                   width: '100%',
                   height: '300px',
-                  backgroundColor: '#f3f4f6',
+                  backgroundColor: 'var(--bg-secondary)',
                   borderRadius: '12px',
                   overflow: 'hidden',
                   display: 'flex',
@@ -159,7 +164,7 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                     height: '100%',
                     objectFit: 'cover',
                     borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                   }}
                   onError={(e) => (e.target.src = '/placeholder.png')}
                 />
@@ -184,7 +189,7 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                         justifyContent: 'center',
                         fontSize: '18px',
                         fontWeight: 'bold',
-                        color: '#111827',
+                        color: 'var(--text-primary)',
                       }}
                     >
                       ‹
@@ -208,7 +213,7 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                         justifyContent: 'center',
                         fontSize: '18px',
                         fontWeight: 'bold',
-                        color: '#111827',
+                        color: 'var(--text-primary)',
                       }}
                     >
                       ›
@@ -239,8 +244,8 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                         cursor: 'pointer',
                         border:
                           currentImgIndex === idx
-                            ? '2px solid #000'
-                            : '1px solid #e5e7eb',
+                            ? '2px solid var(--primary)'
+                            : '1px solid var(--border)',
                         objectFit: 'cover',
                       }}
                       onError={(e) => (e.target.style.display = 'none')}
@@ -251,16 +256,15 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
             </>
           )}
 
-          {/* Product Details */}
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--text-primary)' }}>
             {product.name}
           </h2>
           <p
             style={{
-              color: '#4b5563',
+              color: 'var(--text-secondary)',
               marginBottom: '0.75rem',
               lineHeight: '1.6',
-              background: '#f9fafb',
+              background: 'var(--bg-secondary)',
               padding: '0.75rem',
               borderRadius: '6px',
             }}
@@ -277,32 +281,31 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
             }}
           >
             <div>
-              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>Brand:</span>{' '}
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Brand:</span>{' '}
               {product.brand?.name || 'N/A'}
             </div>
             <div>
-              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>Condition:</span> New
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Condition:</span> New
             </div>
             <div>
-              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>ID:</span>{' '}
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>ID:</span>{' '}
               {product._id.slice(-8)}
             </div>
             <div>
-              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>Created:</span>{' '}
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Created:</span>{' '}
               {new Date(product.createdAt).toLocaleDateString()}
             </div>
           </div>
 
-          {/* Display existing rejection reason & internal notes (for already rejected products) */}
           {status === 'Rejected' && (
             <div style={{ marginBottom: '1.5rem' }}>
               {rejectionReason && (
                 <div
                   style={{
                     padding: '12px',
-                    backgroundColor: '#fef2f2',
-                    border: '1px solid #f87171',
-                    color: '#991b1b',
+                    backgroundColor: 'var(--danger-bg)',
+                    border: '1px solid var(--danger)',
+                    color: 'var(--danger-text)',
                     borderRadius: '8px',
                     marginBottom: '0.75rem',
                   }}
@@ -315,9 +318,9 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                 <div
                   style={{
                     padding: '12px',
-                    backgroundColor: '#fffbeb',
-                    border: '1px solid #fcd34d',
-                    color: '#92400e',
+                    backgroundColor: 'var(--warning-bg)',
+                    border: '1px solid var(--warning)',
+                    color: 'var(--warning-text)',
                     borderRadius: '8px',
                   }}
                 >
@@ -328,131 +331,160 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
             </div>
           )}
 
-          {/* Customer Reviews Section */}
           <div
             style={{
               marginTop: '32px',
               paddingTop: '24px',
-              borderTop: '1px solid #e5e7eb',
+              borderTop: '1px solid var(--border)',
             }}
           >
             <h3
               style={{
                 fontSize: '16px',
                 fontWeight: 'bold',
-                color: '#111827',
+                color: 'var(--text-primary)',
                 marginBottom: '16px',
               }}
             >
               Customer Reviews & Feedback
             </h3>
             {loadingReviews ? (
-              <p style={{ color: '#6b7280', fontSize: '14px' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
                 Loading reviews...
               </p>
             ) : reviews.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '14px', fontStyle: 'italic' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', fontStyle: 'italic' }}>
                 No reviews yet.
               </p>
             ) : (
-              reviews.map((review) => (
-                <div
-                  key={review._id}
-                  style={{
-                    backgroundColor: '#f9fafb',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    marginBottom: '12px',
-                    border: '1px solid #f3f4f6',
-                  }}
-                >
+              <>
+                {reviews.map((review) => (
+                  <div
+                    key={review._id}
+                    style={{
+                      backgroundColor: 'var(--bg-secondary)',
+                      padding: '16px',
+                      borderRadius: '8px',
+                      marginBottom: '12px',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: 'var(--warning)',
+                          fontWeight: 'bold',
+                          marginRight: '8px',
+                        }}
+                      >
+                        ⭐ {review.rating}
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: '600',
+                          color: 'var(--text-primary)',
+                          fontSize: '14px',
+                        }}
+                      >
+                        {review.customer?.name || 'Anonymous'}
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: 'auto',
+                          color: 'var(--text-muted)',
+                          fontSize: '12px',
+                        }}
+                      >
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        margin: 0,
+                        color: 'var(--text-secondary)',
+                        fontSize: '14px',
+                        lineHeight: '1.5',
+                      }}
+                    >
+                      {review.comment}
+                    </p>
+                    {review.sellerReply && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '10px 12px',
+                        backgroundColor: 'var(--success-bg)',
+                        border: '1px solid var(--success)',
+                        borderRadius: '6px'
+                      }}>
+                        <div style={{
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          marginBottom: '4px',
+                          color: 'var(--success-text)'
+                        }}>
+                          Seller Reply
+                        </div>
+                        <p style={{
+                          margin: 0,
+                          color: 'var(--success-text)',
+                          fontSize: '13px',
+                          lineHeight: '1.5'
+                        }}>
+                          {review.sellerReply}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {totalReviewPages > 1 && (
                   <div
                     style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      marginBottom: '8px',
+                      justifyContent: 'center',
+                      gap: '1rem',
+                      marginTop: '1rem',
                     }}
                   >
-                    <span
-                      style={{
-                        color: '#eab308',
-                        fontWeight: 'bold',
-                        marginRight: '8px',
-                      }}
+                    <button
+                      className="page-btn"
+                      disabled={reviewsPage <= 1}
+                      onClick={() => setReviewsPage((prev) => Math.max(1, prev - 1))}
                     >
-                      ⭐ {review.rating}
+                      Previous
+                    </button>
+                    <span style={{ alignSelf: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                      Page {reviewsPage} of {totalReviewPages}
                     </span>
-                    <span
-                      style={{
-                        fontWeight: '600',
-                        color: '#374151',
-                        fontSize: '14px',
-                      }}
+                    <button
+                      className="page-btn"
+                      disabled={reviewsPage >= totalReviewPages}
+                      onClick={() => setReviewsPage((prev) => Math.min(totalReviewPages, prev + 1))}
                     >
-                      {review.customer?.name || 'Anonymous'}
-                    </span>
-                    <span
-                      style={{
-                        marginLeft: 'auto',
-                        color: '#9ca3af',
-                        fontSize: '12px',
-                      }}
-                    >
-                      {new Date(review.createdAt).toLocaleDateString()}
-                    </span>
+                      Next
+                    </button>
                   </div>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: '#4b5563',
-                      fontSize: '14px',
-                      lineHeight: '1.5',
-                    }}
-                  >
-                    {review.comment}
-                  </p>
-                  {review.sellerReply && (
-  <div style={{
-    marginTop: '12px',
-    padding: '10px 12px',
-    backgroundColor: '#ecfdf5',
-    border: '1px solid #a7f3d0',
-    borderRadius: '6px'
-  }}>
-    <div style={{
-      fontWeight: 600,
-      fontSize: '12px',
-      marginBottom: '4px',
-      color: '#065f46'
-    }}>
-      Seller Reply
-    </div>
-    <p style={{
-      margin: 0,
-      color: '#064e3b',
-      fontSize: '13px',
-      lineHeight: '1.5'
-    }}>
-      {review.sellerReply}
-    </p>
-  </div>
-)}
-                </div>
-              ))
+                )}
+              </>
             )}
           </div>
 
-          {/* Seller Dossier Card */}
           <div
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: '8px',
               padding: '1rem',
               marginTop: '24px',
-              background: '#fff',
+              background: 'var(--surface)',
             }}
           >
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
               Seller Dossier
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -474,21 +506,21 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                     width: '48px',
                     height: '48px',
                     borderRadius: '50%',
-                    background: '#f3f4f6',
+                    background: 'var(--bg-secondary)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#9ca3af',
+                    color: 'var(--text-muted)',
                   }}
                 >
                   ?
                 </div>
               )}
               <div>
-                <div style={{ fontWeight: 600 }}>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                   {store.name || 'Unknown'}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                   {store.description?.slice(0, 40) || '—'}
                 </div>
               </div>
@@ -496,21 +528,18 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
           </div>
         </div>
 
-        {/* Sticky Footer – Decision Area */}
         <div
           style={{
             padding: '24px',
-            borderTop: '1px solid #e5e7eb',
-            backgroundColor: '#fff',
+            borderTop: '1px solid var(--border)',
+            backgroundColor: 'var(--surface)',
             position: 'sticky',
             bottom: 0,
             zIndex: 10,
           }}
         >
-          {/* Dynamic buttons based on status */}
           {status === 'PendingApproval' && (
             <>
-              {/* Rejection Reason (shown to seller) */}
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
@@ -519,7 +548,9 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--input-border)',
+                  background: 'var(--input-bg)',
+                  color: 'var(--text-primary)',
                   borderRadius: '8px',
                   marginBottom: '12px',
                   fontSize: '0.85rem',
@@ -527,7 +558,6 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                   resize: 'vertical',
                 }}
               />
-              {/* Internal Admin Notes */}
               <textarea
                 value={internalNote}
                 onChange={(e) => setInternalNote(e.target.value)}
@@ -536,7 +566,9 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--input-border)',
+                  background: 'var(--input-bg)',
+                  color: 'var(--text-primary)',
                   borderRadius: '8px',
                   marginBottom: '16px',
                   fontSize: '0.85rem',
@@ -552,9 +584,9 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                     flex: 1,
                     padding: '10px',
                     borderRadius: '6px',
-                    border: '1px solid #10b981',
-                    backgroundColor: '#ecfdf5',
-                    color: '#047857',
+                    border: '1px solid var(--success)',
+                    backgroundColor: 'var(--success-bg)',
+                    color: 'var(--success-text)',
                     fontWeight: '600',
                     cursor: 'pointer',
                   }}
@@ -568,9 +600,9 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                     flex: 1,
                     padding: '10px',
                     borderRadius: '6px',
-                    border: '1px solid #ef4444',
-                    backgroundColor: '#fef2f2',
-                    color: '#b91c1c',
+                    border: '1px solid var(--danger)',
+                    backgroundColor: 'var(--danger-bg)',
+                    color: 'var(--danger-text)',
                     fontWeight: '600',
                     cursor: !rejectionReason.trim() ? 'not-allowed' : 'pointer',
                     opacity: !rejectionReason.trim() ? 0.6 : 1,
@@ -590,7 +622,7 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                 padding: '10px',
                 borderRadius: '6px',
                 border: 'none',
-                backgroundColor: '#ef4444',
+                backgroundColor: 'var(--danger)',
                 color: '#fff',
                 fontWeight: '600',
                 cursor: 'pointer',
@@ -608,7 +640,7 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                 padding: '10px',
                 borderRadius: '6px',
                 border: 'none',
-                backgroundColor: '#10b981',
+                backgroundColor: 'var(--success)',
                 color: '#fff',
                 fontWeight: '600',
                 cursor: 'pointer',
@@ -622,9 +654,9 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
             <div
               style={{
                 padding: '12px',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #f87171',
-                color: '#991b1b',
+                backgroundColor: 'var(--danger-bg)',
+                border: '1px solid var(--danger)',
+                color: 'var(--danger-text)',
                 borderRadius: '8px',
                 textAlign: 'center',
                 fontWeight: 'bold',

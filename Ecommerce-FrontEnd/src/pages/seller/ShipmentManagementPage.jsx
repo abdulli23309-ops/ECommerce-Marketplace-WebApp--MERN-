@@ -1,29 +1,7 @@
 import { useState, useEffect } from "react";
 import { fetchSellerOrders } from "../../services/sellerOrderService";
 import axiosInstance from "../../services/axiosInstance";
-
-const statusPillStyle = (status) => {
-  const base = {
-    padding: "4px 12px",
-    borderRadius: "999px",
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    display: "inline-block",
-    whiteSpace: "nowrap",
-  };
-  switch (status) {
-    case "Delivered":
-      return { ...base, backgroundColor: "#d1fae5", color: "#065f46" };
-    case "Processing":
-    case "Pending":
-    case "OutForDelivery":
-      return { ...base, backgroundColor: "#fef3c7", color: "#92400e" };
-    case "Cancelled":
-      return { ...base, backgroundColor: "#fee2e2", color: "#991b1b" };
-    default:
-      return { ...base, backgroundColor: "#f3f4f6", color: "#1f2937" };
-  }
-};
+import { getStatusBadgeStyle } from "../../utils/statusBadge";
 
 const renderItemSummary = (sellerOrders) => {
   const allItems = sellerOrders.flatMap(so => so.items || []);
@@ -31,13 +9,13 @@ const renderItemSummary = (sellerOrders) => {
   const first = allItems[0];
   const restCount = allItems.length - 1;
   return (
-    <div style={{ fontSize: "0.85rem", color: "#374151" }}>
+    <div style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>
       <span style={{ fontWeight: 500 }}>
         {first.productNameSnapshot || first.product?.name || "Product"}
       </span>
-      <span style={{ color: "#6b7280" }}> (x{first.quantity})</span>
+      <span style={{ color: "var(--text-secondary)" }}> (x{first.quantity})</span>
       {restCount > 0 && (
-        <span style={{ color: "#2563eb", fontWeight: 500, marginLeft: "0.25rem" }}>
+        <span style={{ color: "var(--info)", fontWeight: 500, marginLeft: "0.25rem" }}>
           + {restCount} more
         </span>
       )}
@@ -45,7 +23,6 @@ const renderItemSummary = (sellerOrders) => {
   );
 };
 
-// Status order for forward-only progression
 const shipmentStatusOrder = [
   "Pending",
   "Packed",
@@ -136,7 +113,6 @@ const ShipmentManagementPage = () => {
     const shipment = selectedOrder.sellerOrders[0]?.shipment;
     if (!shipment?._id) return;
 
-    // Prevent duplicate status update
     if (shipmentStatus === shipment.status) {
       alert("This status is already applied.");
       return;
@@ -170,36 +146,35 @@ const ShipmentManagementPage = () => {
   };
 
   if (loading)
-    return <div style={{ padding: "2rem", color: "#666" }}>Loading shipments...</div>;
+    return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Loading shipments...</div>;
 
   if (orders.length === 0) {
     return (
-      <div style={{ padding: "3rem", textAlign: "center", color: "#6b7280" }}>
+      <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-secondary)" }}>
         No orders awaiting shipment.
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "#111827" }}>
-      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem" }}>
+    <div style={{ padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
+      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem", color: "var(--text-primary)" }}>
         Shipment Management
       </h2>
 
-      {/* Table Header */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "2fr 1.5fr 1fr 1fr 1fr auto",
           gap: "1rem",
           padding: "0.75rem 1rem",
-          backgroundColor: "#f9fafb",
+          backgroundColor: "var(--bg-secondary)",
           borderRadius: "8px 8px 0 0",
-          border: "1px solid #e5e7eb",
+          border: "1px solid var(--border)",
           borderBottom: "none",
           fontWeight: 600,
           fontSize: "0.85rem",
-          color: "#4b5563",
+          color: "var(--text-secondary)",
           alignItems: "center",
         }}
       >
@@ -211,8 +186,7 @@ const ShipmentManagementPage = () => {
         <div>Actions</div>
       </div>
 
-      {/* Table Rows */}
-      <div style={{ border: "1px solid #e5e7eb", borderTop: "none", borderRadius: "0 0 8px 8px", overflow: "hidden" }}>
+      <div style={{ border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 8px 8px", overflow: "hidden" }}>
         {orders.map((order) => {
           const sellerOrders = order.sellerOrders || [];
           const firstSO = sellerOrders[0] || {};
@@ -228,35 +202,35 @@ const ShipmentManagementPage = () => {
                 gridTemplateColumns: "2fr 1.5fr 1fr 1fr 1fr auto",
                 gap: "1rem",
                 padding: "1rem",
-                borderBottom: "1px solid #f3f4f6",
+                borderBottom: "1px solid var(--border)",
                 alignItems: "center",
-                backgroundColor: "#fff",
+                backgroundColor: "var(--surface)",
                 transition: "background 0.2s",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#fff")}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--surface)")}
             >
               <div>
-                <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#111827" }}>
+                <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--text-primary)" }}>
                   Order #{order._id.toString().slice(-8).toUpperCase()}
                 </div>
-                <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: "2px" }}>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "2px" }}>
                   {order.customerName}
                 </div>
               </div>
 
               <div>{renderItemSummary(sellerOrders)}</div>
 
-              <div style={{ fontSize: "0.85rem", color: "#4b5563" }}>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
                 📍 {order.shippingLocation || '—'}
               </div>
 
               <div>
-                <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
                   {new Date(order.createdAt).toLocaleDateString()}
                 </div>
                 <div style={{ marginTop: "4px" }}>
-                  <span style={statusPillStyle(order.orderStatus)}>
+                  <span style={getStatusBadgeStyle(order.orderStatus)}>
                     {order.orderStatus}
                   </span>
                 </div>
@@ -265,31 +239,31 @@ const ShipmentManagementPage = () => {
               <div style={{ fontSize: "0.85rem" }}>
                 {shipment ? (
                   <div>
-                    <div style={{ fontWeight: 500, color: "#111827" }}>
+                    <div style={{ fontWeight: 500, color: "var(--text-primary)" }}>
                       {shipment.carrier || 'N/A'}
                     </div>
-                    <div style={{ color: "#6b7280", fontSize: "0.8rem" }}>
+                    <div style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>
                       {shipment.trackingNumber || 'No tracking'}
                     </div>
                   </div>
                 ) : (
-                  <span style={{ color: "#9ca3af" }}>Not yet created</span>
+                  <span style={{ color: "var(--text-muted)" }}>Not yet created</span>
                 )}
               </div>
 
               <div>
                 {isDelivered ? (
-                  <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>Delivered</span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>Delivered</span>
                 ) : isCancelled ? (
-                  <span style={{ color: "#9ca3af", fontSize: "0.85rem" }}>Cancelled</span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>Cancelled</span>
                 ) : (
                   <>
                     {!shipment ? (
                       <button
                         onClick={() => openShipmentDrawer(order)}
                         style={{
-                          backgroundColor: "#111827",
-                          color: "#fff",
+                          backgroundColor: "var(--primary)",
+                          color: "var(--primary-contrast)",
                           border: "none",
                           borderRadius: "6px",
                           padding: "6px 12px",
@@ -304,9 +278,9 @@ const ShipmentManagementPage = () => {
                       <button
                         onClick={() => openShipmentDrawer(order)}
                         style={{
-                          backgroundColor: "#f3f4f6",
-                          color: "#111827",
-                          border: "1px solid #d1d5db",
+                          backgroundColor: "var(--surface-hover)",
+                          color: "var(--text-primary)",
+                          border: "1px solid var(--border)",
                           borderRadius: "6px",
                           padding: "6px 12px",
                           fontSize: "0.8rem",
@@ -325,7 +299,6 @@ const ShipmentManagementPage = () => {
         })}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "2rem" }}>
           <button
@@ -335,7 +308,7 @@ const ShipmentManagementPage = () => {
           >
             Previous
           </button>
-          <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "#6b7280" }}>
+          <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
             Page {page} of {totalPages}
           </span>
           <button
@@ -348,7 +321,6 @@ const ShipmentManagementPage = () => {
         </div>
       )}
 
-      {/* Side Drawer */}
       {drawerOpen && selectedOrder && (
         <>
           <div
@@ -368,15 +340,15 @@ const ShipmentManagementPage = () => {
               width: "500px",
               maxWidth: "90vw",
               height: "100vh",
-              backgroundColor: "#fff",
+              backgroundColor: "var(--surface)",
               boxShadow: "-4px 0 24px rgba(0,0,0,0.1)",
               zIndex: 999,
               display: "flex",
               flexDirection: "column",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 2rem 1rem", borderBottom: "1px solid #e5e7eb" }}>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.5rem 2rem 1rem", borderBottom: "1px solid var(--border)" }}>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
                 {selectedOrder.sellerOrders[0]?.shipment ? "Manage Shipment" : "Create Shipment"}
               </h3>
               <button
@@ -386,7 +358,7 @@ const ShipmentManagementPage = () => {
                   border: "none",
                   fontSize: "1.5rem",
                   cursor: "pointer",
-                  color: "#6b7280",
+                  color: "var(--text-secondary)",
                 }}
               >
                 ×
@@ -395,21 +367,21 @@ const ShipmentManagementPage = () => {
 
             <div style={{ flex: 1, overflowY: "auto", padding: "2rem" }}>
               <div style={{ marginBottom: "2rem" }}>
-                <p style={{ fontWeight: 600, marginBottom: "0.5rem" }}>
+                <p style={{ fontWeight: 600, marginBottom: "0.5rem", color: "var(--text-primary)" }}>
                   Order #{selectedOrder._id.toString().slice(-8).toUpperCase()}
                 </p>
-                <p style={{ color: "#4b5563", fontSize: "0.9rem" }}>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
                   <strong>Customer:</strong> {selectedOrder.customerName}
                 </p>
-                <p style={{ color: "#4b5563", fontSize: "0.9rem" }}>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
                   <strong>Destination:</strong> {selectedOrder.shippingLocation}
                 </p>
               </div>
 
               <div style={{ marginBottom: "2rem" }}>
-                <h4 style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Items</h4>
+                <h4 style={{ fontWeight: 600, marginBottom: "0.5rem", color: "var(--text-primary)" }}>Items</h4>
                 {selectedOrder.sellerOrders.flatMap(so => so.items).map((item, idx) => (
-                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "0.3rem 0", fontSize: "0.9rem", color: "#374151" }}>
+                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "0.3rem 0", fontSize: "0.9rem", color: "var(--text-primary)" }}>
                     <span>{item.productNameSnapshot || item.product?.name || "Product"}</span>
                     <span>x{item.quantity}</span>
                   </div>
@@ -417,9 +389,9 @@ const ShipmentManagementPage = () => {
               </div>
 
               <div>
-                <h4 style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Shipment Details</h4>
+                <h4 style={{ fontWeight: 600, marginBottom: "0.5rem", color: "var(--text-primary)" }}>Shipment Details</h4>
                 <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem" }}>Courier</label>
+                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "var(--text-primary)" }}>Courier</label>
                   <input
                     type="text"
                     value={courier}
@@ -430,15 +402,16 @@ const ShipmentManagementPage = () => {
                       width: "100%",
                       padding: "0.5rem",
                       borderRadius: "6px",
-                      border: "1px solid #d1d5db",
+                      border: "1px solid var(--input-border)",
                       fontSize: "0.9rem",
                       opacity: selectedOrder.sellerOrders[0]?.shipment?._id ? 0.6 : 1,
-                      backgroundColor: selectedOrder.sellerOrders[0]?.shipment?._id ? "#f3f4f6" : "#fff",
+                      backgroundColor: selectedOrder.sellerOrders[0]?.shipment?._id ? "var(--disabled-bg)" : "var(--input-bg)",
+                      color: "var(--text-primary)",
                     }}
                   />
                 </div>
                 <div style={{ marginBottom: "1rem" }}>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem" }}>Tracking Number</label>
+                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "var(--text-primary)" }}>Tracking Number</label>
                   <input
                     type="text"
                     value={trackingNumber}
@@ -449,17 +422,18 @@ const ShipmentManagementPage = () => {
                       width: "100%",
                       padding: "0.5rem",
                       borderRadius: "6px",
-                      border: "1px solid #d1d5db",
+                      border: "1px solid var(--input-border)",
                       fontSize: "0.9rem",
                       opacity: selectedOrder.sellerOrders[0]?.shipment?._id ? 0.6 : 1,
-                      backgroundColor: selectedOrder.sellerOrders[0]?.shipment?._id ? "#f3f4f6" : "#fff",
+                      backgroundColor: selectedOrder.sellerOrders[0]?.shipment?._id ? "var(--disabled-bg)" : "var(--input-bg)",
+                      color: "var(--text-primary)",
                     }}
                   />
                 </div>
 
                 {selectedOrder.sellerOrders[0]?.shipment?._id && (
                   <div style={{ marginBottom: "1rem" }}>
-                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem" }}>Update Status</label>
+                    <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 500, marginBottom: "0.25rem", color: "var(--text-primary)" }}>Update Status</label>
                     <select
                       value={shipmentStatus}
                       onChange={(e) => setShipmentStatus(e.target.value)}
@@ -468,9 +442,10 @@ const ShipmentManagementPage = () => {
                         width: "100%",
                         padding: "0.5rem",
                         borderRadius: "6px",
-                        border: "1px solid #d1d5db",
+                        border: "1px solid var(--input-border)",
                         fontSize: "0.9rem",
-                        background: "#fff",
+                        background: "var(--input-bg)",
+                        color: "var(--text-primary)",
                         opacity: selectedOrder.sellerOrders[0]?.shipment?.status === "Delivered" ? 0.6 : 1,
                       }}
                     >
@@ -512,12 +487,11 @@ const ShipmentManagementPage = () => {
                 )}
               </div>
 
-              {/* Real backend trackingHistory timeline */}
               {selectedOrder.sellerOrders[0]?.shipment?.trackingHistory?.length > 0 && (
-                <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid #e5e7eb" }}>
-                  <h4 style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.75rem", color: "#111827" }}>Update History</h4>
+                <div style={{ marginTop: "2rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+                  <h4 style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.75rem", color: "var(--text-primary)" }}>Update History</h4>
                   <div style={{ position: "relative", paddingLeft: "1.5rem" }}>
-                    <div style={{ position: "absolute", left: "8px", top: "8px", bottom: "0", width: "1px", backgroundColor: "#e5e7eb" }} />
+                    <div style={{ position: "absolute", left: "8px", top: "8px", bottom: "0", width: "1px", backgroundColor: "var(--border)" }} />
                     {[...selectedOrder.sellerOrders[0].shipment.trackingHistory].reverse().map((entry, index) => (
                       <div key={index} style={{ position: "relative", marginBottom: "1rem", paddingLeft: "0.5rem" }}>
                         <div style={{
@@ -528,17 +502,17 @@ const ShipmentManagementPage = () => {
                           height: "8px",
                           borderRadius: "50%",
                           backgroundColor: "#2563eb",
-                          border: "2px solid #fff",
+                          border: "2px solid var(--surface)",
                           zIndex: 1,
                         }} />
-                        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.15rem" }}>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "0.15rem" }}>
                           {new Date(entry.timestamp).toLocaleString()}
                         </div>
-                        <div style={{ fontSize: "0.85rem", color: "#111827", fontWeight: 500 }}>
+                        <div style={{ fontSize: "0.85rem", color: "var(--text-primary)", fontWeight: 500 }}>
                           Status updated to <strong>{entry.status}</strong>
                         </div>
                         {entry.location && (
-                          <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                             Location: {entry.location}
                           </div>
                         )}
@@ -549,13 +523,13 @@ const ShipmentManagementPage = () => {
               )}
             </div>
 
-            <div style={{ padding: "1rem 2rem", borderTop: "1px solid #e5e7eb", display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+            <div style={{ padding: "1rem 2rem", borderTop: "1px solid var(--border)", display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
               <button
                 onClick={() => setDrawerOpen(false)}
                 style={{
-                  backgroundColor: "#f3f4f6",
-                  color: "#374151",
-                  border: "1px solid #d1d5db",
+                  backgroundColor: "var(--surface-hover)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--border)",
                   borderRadius: "6px",
                   padding: "0.5rem 1.5rem",
                   fontWeight: 600,
@@ -568,8 +542,8 @@ const ShipmentManagementPage = () => {
                 onClick={handleSaveShipment}
                 disabled={savingShipment}
                 style={{
-                  backgroundColor: "#111827",
-                  color: "#fff",
+                  backgroundColor: "var(--primary)",
+                  color: "var(--primary-contrast)",
                   border: "none",
                   borderRadius: "6px",
                   padding: "0.5rem 1.5rem",

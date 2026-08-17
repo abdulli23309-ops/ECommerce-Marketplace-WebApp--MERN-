@@ -7,7 +7,7 @@ const iconBtnStyle = {
   cursor: "pointer",
   padding: "4px",
   borderRadius: "4px",
-  color: "#6b7280",
+  color: "var(--text-secondary)",
   transition: "background 0.15s, color 0.15s",
 };
 
@@ -24,7 +24,7 @@ const DeleteIcon = () => (
 );
 
 const WarningIcon = () => (
-  <svg width="36" height="36" fill="none" stroke="#dc2626" viewBox="0 0 24 24">
+  <svg width="36" height="36" fill="none" stroke="var(--danger)" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
@@ -32,21 +32,30 @@ const WarningIcon = () => (
 const AdminBrandsPage = () => {
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState(null);
   const [form, setForm] = useState({ name: "" });
   const [error, setError] = useState(null);
 
-  // Delete confirmation modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [brandToDelete, setBrandToDelete] = useState(null);
 
   const fetchBrands = async () => {
     setLoading(true);
     try {
-      const res = await axiosInstance.get("/brands");
-      const brandsData = res.data?.data || [];
-      setBrands(brandsData.map((b) => ({ id: b._id, name: b.name })));
+      const res = await axiosInstance.get("/brands/paginated", {
+        params: { page, pageSize: 10 },
+      });
+
+      const payload = res.data?.data || {};
+      const items = payload.items || [];
+
+      setBrands(items.map((b) => ({ id: b._id, name: b.name })));
+      setTotalPages(payload.totalPages || 1);
     } catch (err) {
       console.error("Failed to load brands", err);
     } finally {
@@ -54,7 +63,9 @@ const AdminBrandsPage = () => {
     }
   };
 
-  useEffect(() => { fetchBrands(); }, []);
+  useEffect(() => {
+    fetchBrands();
+  }, [page]);
 
   const openAddBrand = () => {
     setEditingBrand(null);
@@ -98,8 +109,13 @@ const AdminBrandsPage = () => {
     if (!brandToDelete) return;
     try {
       await axiosInstance.delete(`/brands/${brandToDelete.id}`);
-      fetchBrands();
       closeDeleteModal();
+
+      if (brands.length === 1 && page > 1) {
+        setPage((prev) => prev - 1);
+      } else {
+        fetchBrands();
+      }
     } catch (err) {
       alert(err.response?.data?.message || "Cannot delete brand.");
       closeDeleteModal();
@@ -107,28 +123,33 @@ const AdminBrandsPage = () => {
   };
 
   return (
-    <div style={{ backgroundColor: "#f9fafb", minHeight: "100vh", padding: "2rem" }}>
+    <div style={{ backgroundColor: "var(--bg-secondary)", minHeight: "100vh", padding: "2rem" }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <div>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827", margin: 0 }}>Brand Management</h1>
-            <p style={{ color: "#6b7280", marginTop: "0.25rem" }}>Manage product brands</p>
+            <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+              Brand Management
+            </h1>
+            <p style={{ color: "var(--text-secondary)", marginTop: "0.25rem" }}>
+              Manage product brands
+            </p>
           </div>
+
           <button
             onClick={openAddBrand}
             style={{
               padding: "0.5rem 1.25rem",
               borderRadius: "8px",
               border: "none",
-              background: "#111827",
-              color: "#fff",
+              background: "var(--primary)",
+              color: "var(--primary-contrast)",
               fontWeight: 600,
               fontSize: "0.9rem",
               cursor: "pointer",
               transition: "background 0.2s",
             }}
-            onMouseEnter={(e) => (e.target.style.background = "#1f2937")}
-            onMouseLeave={(e) => (e.target.style.background = "#111827")}
+            onMouseEnter={(e) => (e.target.style.background = "var(--primary-hover)")}
+            onMouseLeave={(e) => (e.target.style.background = "var(--primary)")}
           >
             + Add Brand
           </button>
@@ -136,38 +157,59 @@ const AdminBrandsPage = () => {
 
         <div
           style={{
-            background: "#fff",
+            background: "var(--surface)",
             borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-            border: "1px solid #e5e7eb",
+            boxShadow: "0 1px 3px var(--shadow)",
+            border: "1px solid var(--border)",
             overflow: "hidden",
           }}
         >
           {loading ? (
-            <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>Loading...</div>
+            <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
+              Loading...
+            </div>
           ) : brands.length === 0 ? (
-            <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>No brands found.</div>
+            <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
+              No brands found.
+            </div>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid #f3f4f6", backgroundColor: "#f9fafb" }}>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Name</th>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "center", fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>Actions</th>
+                <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Name
+                  </th>
+                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "center", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {brands.map((brand) => (
                   <tr
                     key={brand.id}
-                    style={{ borderBottom: "1px solid #f3f4f6", transition: "background 0.15s" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                    style={{
+                      borderBottom: "1px solid var(--border)",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--surface)")}
                   >
-                    <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 600, color: "#111827" }}>{brand.name}</td>
+                    <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                      {brand.name}
+                    </td>
                     <td style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>
                       <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
-                        <button onClick={() => openEditBrand(brand)} style={iconBtnStyle} title="Edit"><EditIcon /></button>
-                        <button onClick={() => openDeleteModal(brand)} style={{ ...iconBtnStyle, color: "#dc2626" }} title="Delete"><DeleteIcon /></button>
+                        <button onClick={() => openEditBrand(brand)} style={iconBtnStyle} title="Edit">
+                          <EditIcon />
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(brand)}
+                          style={{ ...iconBtnStyle, color: "var(--danger)" }}
+                          title="Delete"
+                        >
+                          <DeleteIcon />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -176,6 +218,30 @@ const AdminBrandsPage = () => {
             </table>
           )}
         </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "1.5rem" }}>
+            <button
+              className="page-btn"
+              disabled={page <= 1}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              Previous
+            </button>
+
+            <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+              Page {page} of {totalPages}
+            </span>
+
+            <button
+              className="page-btn"
+              disabled={page >= totalPages}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              Next
+            </button>
+          </div>
+        )}
 
         {/* Add/Edit Modal */}
         {modalOpen && (
@@ -193,7 +259,7 @@ const AdminBrandsPage = () => {
           >
             <div
               style={{
-                background: "#fff",
+                background: "var(--surface)",
                 borderRadius: "12px",
                 padding: "2rem",
                 maxWidth: "420px",
@@ -204,6 +270,7 @@ const AdminBrandsPage = () => {
               <h3 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "1.5rem" }}>
                 {editingBrand ? "Edit Brand" : "Add Brand"}
               </h3>
+
               <div className="form-group">
                 <label className="form-label">Name</label>
                 <input
@@ -213,18 +280,41 @@ const AdminBrandsPage = () => {
                   required
                 />
               </div>
-              {error && <p className="error-text" style={{ color: "#dc2626", marginTop: "0.5rem" }}>{error}</p>}
+
+              {error && (
+                <p className="error-text" style={{ color: "var(--danger)", marginTop: "0.5rem" }}>
+                  {error}
+                </p>
+              )}
+
               <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
                 <button
                   className="btn-primary"
-                  style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "none", background: "#111827", color: "#fff", fontWeight: 600, cursor: "pointer" }}
+                  style={{
+                    padding: "0.5rem 1.25rem",
+                    borderRadius: "6px",
+                    border: "none",
+                    background: "var(--primary)",
+                    color: "var(--primary-contrast)",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
                   onClick={handleSave}
                 >
                   Save
                 </button>
+
                 <button
                   className="btn-edit-profile"
-                  style={{ padding: "0.5rem 1.25rem", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", color: "#374151", fontWeight: 600, cursor: "pointer" }}
+                  style={{
+                    padding: "0.5rem 1.25rem",
+                    borderRadius: "6px",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text-secondary)",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
                   onClick={() => setModalOpen(false)}
                 >
                   Cancel
@@ -250,7 +340,7 @@ const AdminBrandsPage = () => {
           >
             <div
               style={{
-                background: "#fff",
+                background: "var(--surface)",
                 borderRadius: "16px",
                 padding: "2rem",
                 maxWidth: "420px",
@@ -262,12 +352,15 @@ const AdminBrandsPage = () => {
               <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
                 <WarningIcon />
               </div>
-              <h3 style={{ textAlign: "center", fontSize: "1.25rem", fontWeight: 700, color: "#111827", marginBottom: "0.5rem" }}>
+
+              <h3 style={{ textAlign: "center", fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.5rem" }}>
                 Delete Brand?
               </h3>
-              <p style={{ textAlign: "center", color: "#6b7280", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
+
+              <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "0.95rem", marginBottom: "1.5rem" }}>
                 Are you sure you want to delete this brand?
               </p>
+
               <div style={{ display: "flex", gap: "1rem" }}>
                 <button
                   onClick={closeDeleteModal}
@@ -275,15 +368,16 @@ const AdminBrandsPage = () => {
                     flex: 1,
                     padding: "0.6rem 1rem",
                     borderRadius: "8px",
-                    border: "1px solid #d1d5db",
-                    background: "#fff",
-                    color: "#374151",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    color: "var(--text-secondary)",
                     fontWeight: 600,
                     cursor: "pointer",
                   }}
                 >
                   Cancel
                 </button>
+
                 <button
                   onClick={confirmDelete}
                   style={{
@@ -291,7 +385,7 @@ const AdminBrandsPage = () => {
                     padding: "0.6rem 1rem",
                     borderRadius: "8px",
                     border: "none",
-                    background: "#dc2626",
+                    background: "var(--danger)",
                     color: "#fff",
                     fontWeight: 600,
                     cursor: "pointer",

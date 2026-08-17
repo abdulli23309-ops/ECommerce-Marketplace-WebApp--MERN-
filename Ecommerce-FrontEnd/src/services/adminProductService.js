@@ -1,9 +1,19 @@
 import axiosInstance from "./axiosInstance";
 
-export const getProducts = async () => {
-  const { data } = await axiosInstance.get("/admin/products");
-  // data.data is now { products: [...], total, page, totalPages }
-  return data.data?.products || data.data || [];
+export const getProducts = async (params = {}) => {
+  const { data } = await axiosInstance.get("/admin/products", { params });
+  const payload = data.data || {};
+  const items = payload.products || payload.items || [];
+
+  return {
+    items,
+    total: payload.total ?? items.length,
+    page: payload.page ?? params.page ?? 1,
+    pageSize: payload.pageSize ?? params.pageSize ?? 10,
+    totalPages:
+      payload.totalPages ??
+      Math.ceil((payload.total ?? items.length) / (params.pageSize || 10)),
+  };
 };
 
 export const getProductById = async (productId) => {
@@ -11,16 +21,26 @@ export const getProductById = async (productId) => {
   return data.data;
 };
 
-// services/adminProductService.js
+export const getProductStats = async () => {
+  const { data } = await axiosInstance.get("/admin/products/stats");
+  return data.data || data;
+};
 
-export const updateProductStatus = async (productId, status, rejectionReason = '', internalNote = '') => {
+export const updateProductStatus = async (
+  productId,
+  status,
+  rejectionReason = "",
+  internalNote = ""
+) => {
   const payload = { status };
+
   if (rejectionReason) payload.rejectionReason = rejectionReason;
   if (internalNote) payload.internalNote = internalNote;
-  
+
   const { data } = await axiosInstance.put(
     `/admin/products/${productId}/status`,
     payload
   );
+
   return data.data || data;
 };

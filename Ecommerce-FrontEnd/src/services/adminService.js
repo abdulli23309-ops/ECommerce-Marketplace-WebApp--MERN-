@@ -1,19 +1,41 @@
 import axiosInstance from "./axiosInstance";
 
-// Helper to normalize backend paginated response
-const extractItems = (responseData) => {
-  if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
-    return responseData.items || responseData;
+const normalizeItems = (responseData) => {
+  if (Array.isArray(responseData)) return responseData;
+
+  if (
+    responseData &&
+    typeof responseData === "object" &&
+    Array.isArray(responseData.items)
+  ) {
+    return responseData.items;
   }
-  return Array.isArray(responseData) ? responseData : [];
+
+  return [];
+};
+
+const normalizePagination = (responseData, fallbackPage, fallbackPageSize) => {
+  const payload =
+    responseData && typeof responseData === "object" ? responseData : {};
+
+  const items = payload.items ? payload.items : normalizeItems(responseData);
+
+  const total = payload.total ?? items.length;
+  const page = payload.page ?? fallbackPage;
+  const pageSize = payload.pageSize ?? fallbackPageSize;
+  const totalPages =
+    payload.totalPages ?? Math.ceil(total / (pageSize || 1));
+
+  return { items, total, page, pageSize, totalPages };
 };
 
 // ---------- Sellers ----------
 export const getSellers = async () => {
   const { data } = await axiosInstance.get("/admin/sellers");
-  const sellers = extractItems(data.data);
+  const sellers = normalizeItems(data.data);
+
   return {
-    items: sellers.map(s => ({
+    items: sellers.map((s) => ({
       id: s._id,
       businessName: s.businessName,
       fullName: s.user?.name || "",
@@ -21,10 +43,10 @@ export const getSellers = async () => {
       storeName: s.store?.name || "",
       storeLogoUrl: s.store?.logo || "",
       storeDescription: s.store?.description || "",
-      phone: s.phone || "",           // <-- new
-      address: s.address || "",       // <-- new
-      taxId: s.taxId || "",           // <-- new
-      city: s.store?.city || "",      // <-- new
+      phone: s.phone || "",
+      address: s.address || "",
+      taxId: s.taxId || "",
+      city: s.store?.city || "",
       status: s.status,
     })),
     total: sellers.length,
@@ -34,21 +56,28 @@ export const getSellers = async () => {
 };
 
 export const approveSeller = async (sellerId) => {
-  const { data } = await axiosInstance.put(`/admin/sellers/${sellerId}/approve`);
+  const { data } = await axiosInstance.put(
+    `/admin/sellers/${sellerId}/approve`
+  );
   return data.data;
 };
 
 export const rejectSeller = async (sellerId, reason) => {
-  const { data } = await axiosInstance.put(`/admin/sellers/${sellerId}/reject`, { reason });
+  const { data } = await axiosInstance.put(
+    `/admin/sellers/${sellerId}/reject`,
+    { reason }
+  );
   return data.data;
 };
 
 // ---------- Products (admin) ----------
-export const getProducts = async () => {
-  const { data } = await axiosInstance.get("/admin/products");
-  const products = extractItems(data.data);
+export const getProducts = async (params = {}) => {
+  const { data } = await axiosInstance.get("/admin/products", { params });
+  const payload = data.data || {};
+  const products = payload.products || payload.items || [];
+
   return {
-    items: products.map(p => ({
+    items: products.map((p) => ({
       id: p._id,
       name: p.name,
       storeName: p.store?.name || "N/A",
@@ -56,35 +85,42 @@ export const getProducts = async () => {
       stockQuantity: p.stock,
       status: p.status,
     })),
-    total: products.length,
-    page: 1,
-    totalPages: 1,
+    total: payload.total ?? products.length,
+    page: payload.page ?? params.page ?? 1,
+    pageSize: payload.pageSize ?? params.pageSize ?? 10,
+    totalPages:
+      payload.totalPages ??
+      Math.ceil((payload.total ?? products.length) / (params.pageSize || 10)),
   };
 };
 
 export const updateProductStatus = async (productId, status) => {
-  const { data } = await axiosInstance.put(`/admin/products/${productId}/status`, { status });
+  const { data } = await axiosInstance.put(
+    `/admin/products/${productId}/status`,
+    { status }
+  );
   return data.data;
 };
 
 // ---------- Returns ----------
-export const getReturns = async () => {
-  const { data } = await axiosInstance.get("/returns/admin");
-  // The backend returns { success, data: [... ] }
+export const getReturns = async (params = {}) => {
+  const { data } = await axiosInstance.get("/returns/admin", { params });
   return data.data || data;
 };
 
 export const approveReturn = async (returnId) => {
-  const { data } = await axiosInstance.put(`/returns/${returnId}/admin-decision`, {
-    decision: 'APPROVE',
-  });
+  const { data } = await axiosInstance.put(
+    `/returns/${returnId}/admin-decision`,
+    { decision: "APPROVE" }
+  );
   return data.data;
 };
 
 export const rejectReturn = async (returnId) => {
-  const { data } = await axiosInstance.put(`/returns/${returnId}/admin-decision`, {
-    decision: 'REJECT',
-  });
+  const { data } = await axiosInstance.put(
+    `/returns/${returnId}/admin-decision`,
+    { decision: "REJECT" }
+  );
   return data.data;
 };
 
@@ -97,9 +133,14 @@ export const createRefund = async (returnRequestId) => {
 // ---------- Payments ----------
 export const getPayments = async (params = {}) => {
   const { data } = await axiosInstance.get("/admin/payments", { params });
-  const payments = extractItems(data.data);
+  const pagination = normalizePagination(
+    data.data,
+    params.page || 1,
+    params.pageSize || 10
+  );
+
   return {
-    items: payments.map(p => ({
+    items: pagination.items.map((p) => ({
       paymentId: p._id,
       orderId: p.parentOrder,
       method: p.method,
@@ -107,30 +148,34 @@ export const getPayments = async (params = {}) => {
       status: p.status,
       createdAt: p.createdAt,
     })),
-    total: data.data?.total ?? payments.length,
-    page: data.data?.page ?? params.page ?? 1,
-    totalPages: data.data?.totalPages ?? Math.ceil((data.data?.total ?? payments.length) / (params.pageSize || 10)),
+    total: pagination.total,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    totalPages: pagination.totalPages,
   };
 };
 
 // ---------- Admin Orders ----------
 export const getAdminOrders = async (params = {}) => {
   const { data } = await axiosInstance.get("/admin/orders", { params });
-  const items = extractItems(data.data);
-  return {
-    items,
-    total: items.length,
-    page: 1,
-    totalPages: 1,
-  };
+  return normalizePagination(
+    data.data,
+    params.page || 1,
+    params.pageSize || 10
+  );
 };
 
 // ---------- Admin Shipments ----------
 export const getAdminShipments = async (params = {}) => {
   const { data } = await axiosInstance.get("/admin/shipments", { params });
-  const items = extractItems(data.data);
+  const pagination = normalizePagination(
+    data.data,
+    params.page || 1,
+    params.pageSize || 10
+  );
+
   return {
-    items: items.map(s => ({
+    items: pagination.items.map((s) => ({
       id: s._id,
       sellerOrderId: s.sellerOrder?._id || s.sellerOrder,
       carrier: s.carrier,
@@ -138,22 +183,21 @@ export const getAdminShipments = async (params = {}) => {
       status: s.status,
       createdAt: s.createdAt,
     })),
-    total: items.length,
-    page: 1,
-    totalPages: 1,
+    total: pagination.total,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    totalPages: pagination.totalPages,
   };
 };
 
 // ---------- Admin Users ----------
 export const getAdminUsers = async (params = {}) => {
   const { data } = await axiosInstance.get("/admin/users", { params });
-  const items = extractItems(data.data);
-  return {
-    items,
-    total: items.length,
-    page: 1,
-    totalPages: 1,
-  };
+  return normalizePagination(
+    data.data,
+    params.page || 1,
+    params.pageSize || 10
+  );
 };
 
 // ---------- Admin Stats ----------

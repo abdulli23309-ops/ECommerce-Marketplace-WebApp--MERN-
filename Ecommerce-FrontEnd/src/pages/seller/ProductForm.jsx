@@ -52,13 +52,11 @@ const ProductFormModal = () => {
 
           if (product) {
             const catId = product.categoryId || product.category;
-            // First load subcategories for this product's category
             if (catId) {
               const subs = await fetchSubCategories(catId);
               setSubCategories(subs);
             }
 
-            // Now set all form fields – subcategories are already available
             setValue("name", product.name || "");
             setValue("description", product.description || "");
             setValue("price", product.price || product.basePrice || "");
@@ -82,14 +80,11 @@ const ProductFormModal = () => {
     load();
   }, [id, isEdit, setValue]);
 
-  // When selected category changes (e.g., user picks a different category in the form),
-  // reload subcategories and reset the subcategory field
   useEffect(() => {
     if (selectedCategoryId) {
       fetchSubCategories(selectedCategoryId)
         .then((data) => {
           setSubCategories(data);
-          // Only reset subcategory if the current value isn't in the new list
           const currentSub = watch("subCategory");
           if (currentSub && !data.some((s) => s.id === currentSub)) {
             setValue("subCategory", "");
@@ -102,13 +97,11 @@ const ProductFormModal = () => {
     }
   }, [selectedCategoryId]);
 
-  // Remove an existing image
   const removeExistingImage = (index) => {
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
     setImageError(null);
   };
 
-  // Handle new file selection
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     const totalAfterAdd = existingImages.length + newFiles.length + files.length;
@@ -130,7 +123,6 @@ const ProductFormModal = () => {
     e.target.value = "";
   };
 
-  // Remove a new file before upload
   const removeNewFile = (index) => {
     setNewFiles((prev) => prev.filter((_, i) => i !== index));
     setNewPreviews((prev) => {
@@ -140,7 +132,6 @@ const ProductFormModal = () => {
     setImageError(null);
   };
 
-  // Submit
   const onSubmit = async (data) => {
     setLoading(true);
     setError(null);
@@ -154,12 +145,10 @@ const ProductFormModal = () => {
       formData.append("subCategory", data.subCategory);
       if (data.brand) formData.append("brand", data.brand);
 
-      // Append kept existing images (as paths)
       if (existingImages.length > 0) {
         existingImages.forEach((img) => formData.append("existingImages", img));
       }
 
-      // Append new images
       if (newFiles.length > 0) {
         newFiles.forEach((file) => formData.append("images", file));
       }
@@ -190,7 +179,6 @@ const ProductFormModal = () => {
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={() => navigate("/seller/products")}
         style={{
@@ -201,7 +189,6 @@ const ProductFormModal = () => {
         }}
       />
 
-      {/* Modal */}
       <div
         style={{
           position: "fixed",
@@ -212,17 +199,16 @@ const ProductFormModal = () => {
           maxWidth: "90vw",
           maxHeight: "90vh",
           overflowY: "auto",
-          background: "#fff",
+          background: "var(--surface)",
           borderRadius: "12px",
           boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
           zIndex: 1000,
           padding: "2rem",
           boxSizing: "border-box",
           fontFamily: "Inter, system-ui, sans-serif",
-          color: "#111827",
+          color: "var(--text-primary)",
         }}
       >
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -231,7 +217,7 @@ const ProductFormModal = () => {
             marginBottom: "1.5rem",
           }}
         >
-          <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
             {isEdit ? "Edit Product" : "Add Product"}
           </h2>
           <button
@@ -241,7 +227,7 @@ const ProductFormModal = () => {
               border: "none",
               fontSize: "1.5rem",
               cursor: "pointer",
-              color: "#6b7280",
+              color: "var(--text-secondary)",
             }}
           >
             ×
@@ -249,7 +235,6 @@ const ProductFormModal = () => {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          {/* 2-column grid */}
           <div
             style={{
               display: "grid",
@@ -258,7 +243,6 @@ const ProductFormModal = () => {
               marginBottom: "1rem",
             }}
           >
-            {/* Name – full width */}
             <div className="form-group" style={{ gridColumn: "span 2" }}>
               <label className="form-label">Name</label>
               <input
@@ -268,7 +252,6 @@ const ProductFormModal = () => {
               />
             </div>
 
-            {/* Description – full width */}
             <div className="form-group" style={{ gridColumn: "span 2" }}>
               <label className="form-label">Description</label>
               <textarea
@@ -279,7 +262,6 @@ const ProductFormModal = () => {
               />
             </div>
 
-            {/* Price & Stock side-by-side */}
             <div className="form-group">
               <label className="form-label">Price (PKR)</label>
               <input
@@ -300,7 +282,6 @@ const ProductFormModal = () => {
               />
             </div>
 
-            {/* Category & Subcategory */}
             <div className="form-group">
               <label className="form-label">Category</label>
               <select
@@ -332,7 +313,6 @@ const ProductFormModal = () => {
               </select>
             </div>
 
-            {/* Brand – full width */}
             <div className="form-group" style={{ gridColumn: "span 2" }}>
               <label className="form-label">Brand</label>
               <select
@@ -350,13 +330,11 @@ const ProductFormModal = () => {
             </div>
           </div>
 
-          {/* Images Section */}
           <div className="form-group" style={{ marginBottom: "1rem" }}>
             <label className="form-label">
               Product Images ({existingImages.length + newFiles.length}/{maxTotalImages})
             </label>
 
-            {/* Existing Images */}
             {existingImages.length > 0 && (
               <div
                 style={{
@@ -383,7 +361,7 @@ const ProductFormModal = () => {
                         height: "100%",
                         objectFit: "cover",
                         borderRadius: "0.25rem",
-                        border: "1px solid #e5e7eb",
+                        border: "1px solid var(--border)",
                       }}
                     />
                     <button
@@ -413,7 +391,6 @@ const ProductFormModal = () => {
               </div>
             )}
 
-            {/* New Previews */}
             {newPreviews.length > 0 && (
               <div
                 style={{
@@ -436,7 +413,7 @@ const ProductFormModal = () => {
                         height: "100%",
                         objectFit: "cover",
                         borderRadius: "0.25rem",
-                        border: "1px solid #e5e7eb",
+                        border: "1px solid var(--border)",
                       }}
                     />
                     <button
@@ -466,7 +443,6 @@ const ProductFormModal = () => {
               </div>
             )}
 
-            {/* Upload Button */}
             {existingImages.length + newFiles.length < maxTotalImages && (
               <input
                 type="file"
@@ -477,13 +453,12 @@ const ProductFormModal = () => {
             )}
 
             {imageError && (
-              <p style={{ color: "#d11a2a", fontSize: "0.8rem", marginTop: "0.25rem" }}>
+              <p style={{ color: "var(--danger-text)", fontSize: "0.8rem", marginTop: "0.25rem" }}>
                 {imageError}
               </p>
             )}
           </div>
 
-          {/* Error / Submit */}
           {error && <p className="error-text">{error}</p>}
 
           <button

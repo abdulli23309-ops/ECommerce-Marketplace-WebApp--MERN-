@@ -68,12 +68,12 @@ const OrderConfirmationPage = () => {
 
   if (loading || polling) {
     return (
-      <div style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
+      <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
         <div
           style={{
             width: "28px",
             height: "28px",
-            border: "3px solid #e5e7eb",
+            border: "3px solid var(--border)",
             borderTopColor: "#2563eb",
             borderRadius: "50%",
             animation: "spin 0.8s linear infinite",
@@ -145,9 +145,9 @@ const OrderConfirmationPage = () => {
         maxWidth: "600px",
         margin: "2rem auto",
         padding: "2rem",
-        background: "#fff",
+        background: "var(--surface)",
         borderRadius: "16px",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+        boxShadow: "0 4px 24px var(--shadow)",
         fontFamily: "Inter, sans-serif",
       }}
     >
@@ -155,7 +155,7 @@ const OrderConfirmationPage = () => {
       <div style={{ textAlign: "center", marginBottom: "2rem" }}>
         <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>{icon}</div>
         <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>{title}</h2>
-        <p style={{ color: "#6b7280", marginTop: "0.5rem" }}>{subtitle}</p>
+        <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem" }}>{subtitle}</p>
       </div>
 
       {/* Details */}
@@ -216,7 +216,7 @@ const OrderConfirmationPage = () => {
       <div style={{ textAlign: "center", marginTop: "2rem" }}>
         <Link
           to="/orders"
-          style={{ color: "#2563eb", textDecoration: "none", fontWeight: 500 }}
+          style={{ color: "var(--info)", textDecoration: "none", fontWeight: 500 }}
         >
           View My Orders
         </Link>
@@ -227,9 +227,9 @@ const OrderConfirmationPage = () => {
               style={{
                 padding: "0.6rem 1.25rem",
                 borderRadius: "8px",
-                border: "1px solid #d1d5db",
-                background: "#fff",
-                color: "#374151",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                color: "var(--text-secondary)",
                 fontWeight: 600,
                 cursor: "pointer",
               }}
@@ -250,7 +250,7 @@ const rowStyle = {
   borderBottom: "1px solid #f3f4f6",
 };
 
-const labelStyle = { color: "#6b7280", fontSize: "0.9rem" };
-const valueStyle = { fontWeight: 500, color: "#111827", textAlign: "right" };
+const labelStyle = { color: "var(--text-secondary)", fontSize: "0.9rem" };
+const valueStyle = { fontWeight: 500, color: "var(--text-primary)", textAlign: "right" };
 
 export default OrderConfirmationPage;

@@ -6,6 +6,17 @@
     <link rel="shortcut icon" href="/vendorverse-mark.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VendorVerse</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var mode = stored === "light" || stored === "dark" ? stored : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", mode);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

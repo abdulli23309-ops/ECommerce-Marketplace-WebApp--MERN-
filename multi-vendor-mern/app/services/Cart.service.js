@@ -13,23 +13,40 @@ export const getCart = async (userId) => {
   }
   return cart;
 };
-
 export const addItem = async (userId, productId, quantity) => {
   const product = await productRepo.findPublicById(productId);
   if (!product) throw new ApiError(404, 'Product not found');
-  if (product.stock < quantity) throw new ApiError(400, 'Insufficient stock');
 
   let cart = await cartRepo.findByUserForMutation(userId);
+
   if (!cart) {
+    // New cart: requested quantity must not exceed stock
+    if (quantity > product.stock) {
+      throw new ApiError(400, 'Insufficient stock');
+    }
     await cartRepo.create(userId, [{ product: productId, quantity, price: product.price }]);
   } else {
     const existingItem = cart.items.find((i) => i.product.toString() === productId);
+
     if (existingItem) {
-      existingItem.quantity += quantity;
+      const newQuantity = existingItem.quantity + quantity;
+
+      if (newQuantity > product.stock) {
+        throw new ApiError(
+          400,
+          `Insufficient stock. Only ${product.stock - existingItem.quantity} more available.`
+        );
+      }
+
+      existingItem.quantity = newQuantity;
       existingItem.price = product.price;
     } else {
+      if (quantity > product.stock) {
+        throw new ApiError(400, 'Insufficient stock');
+      }
       cart.items.push({ product: productId, quantity, price: product.price });
     }
+
     await cart.save();
   }
 

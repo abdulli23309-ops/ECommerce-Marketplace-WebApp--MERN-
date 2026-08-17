@@ -34,7 +34,7 @@ const CartPage = () => {
     items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
   if (status === "loading") {
-    return <div style={{ padding: "3rem", color: "#666" }}>Loading cart...</div>;
+    return <div style={{ padding: "3rem", color: "var(--text-secondary)" }}>Loading cart...</div>;
   }
 
   if (items.length === 0) {
@@ -56,11 +56,10 @@ const CartPage = () => {
         {items.map((item) => (
           <div className="cart-item" key={item.cartItemId}>
             <div className="cart-item-details">
-              {/* Product image */}
               {item.productImage && (
                 <img
-                  src={item.productImage.startsWith("http") 
-                    ? item.productImage 
+                  src={item.productImage.startsWith("http")
+                    ? item.productImage
                     : `${import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1.*$/, "")}${item.productImage}`}
                   alt={item.productName}
                   style={{

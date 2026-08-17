@@ -75,7 +75,7 @@ export const findPublicWithFilters = async (filters = {}) => {
     sortBy,
     page = 1,
     pageSize = 12,
-    store,                     // ← new
+    store,
   } = filters;
 
   const query = {
@@ -83,7 +83,6 @@ export const findPublicWithFilters = async (filters = {}) => {
     status: 'Approved',
   };
 
-  // If a specific store is requested, filter by it; otherwise show products from all active sellers
   if (store) {
     query.store = store;
   } else {
@@ -97,9 +96,9 @@ export const findPublicWithFilters = async (filters = {}) => {
       { description: { $regex: search, $options: 'i' } },
     ];
   }
-  if (categoryId)   query.category = categoryId;
+  if (categoryId) query.category = categoryId;
   if (subCategoryId) query.subCategory = subCategoryId;
-  if (brandId)       query.brand = brandId;
+  if (brandId) query.brand = brandId;
   if (minPrice || maxPrice) {
     query.price = {};
     if (minPrice) query.price.$gte = Number(minPrice);
@@ -107,9 +106,9 @@ export const findPublicWithFilters = async (filters = {}) => {
   }
 
   let sortOption = { createdAt: -1 };
-  if (sortBy === 'price_asc')    sortOption = { price: 1 };
+  if (sortBy === 'price_asc') sortOption = { price: 1 };
   else if (sortBy === 'price_desc') sortOption = { price: -1 };
-  else if (sortBy === 'newest')    sortOption = { createdAt: -1 };
+  else if (sortBy === 'newest') sortOption = { createdAt: -1 };
 
   const skip = (Number(page) - 1) * Number(pageSize);
   const limit = Number(pageSize);
@@ -127,7 +126,7 @@ export const findPublicWithFilters = async (filters = {}) => {
   ]);
 
   return {
-     items: products,
+    items: products,
     page: Number(page),
     pageSize: limit,
     total,
@@ -191,3 +190,31 @@ export const getRatingStats = async (productId) => {
   };
 };
 
+// New method for global admin product statistics
+export const getAdminProductStats = async () => {
+  const [pendingApproval, highRiskFlags, approvedToday, totalProducts, rejectedCount] = await Promise.all([
+    Product.countDocuments({ isDeleted: false, status: 'PendingApproval' }),
+    Product.countDocuments({ isDeleted: false, status: { $in: ['Suspended', 'Rejected'] } }),
+    Product.countDocuments({
+      isDeleted: false,
+      status: 'Approved',
+      updatedAt: {
+        $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+      },
+    }),
+    Product.countDocuments({ isDeleted: false }),
+    Product.countDocuments({ isDeleted: false, status: 'Rejected' }),
+  ]);
+
+  const rejectionRate = totalProducts
+    ? ((rejectedCount / totalProducts) * 100).toFixed(1) + '%'
+    : '0%';
+
+  return {
+    pendingApproval,
+    highRiskFlags,
+    approvedToday,
+    rejectionRate,
+    totalProducts,
+  };
+};

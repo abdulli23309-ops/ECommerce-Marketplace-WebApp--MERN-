@@ -8,6 +8,7 @@ import BrandLogo from "../components/common/BrandLogo";
 import Footer from "../components/common/Footer";
 import useIdleLogout from '../hooks/useIdleLogout';
 import { clearPermissions } from '../store/permissionsSlice';
+import ThemeToggle from "../components/common/ThemeToggle";
 
 const SellerLayout = () => {
   const dispatch = useDispatch();
@@ -117,7 +118,7 @@ const SellerLayout = () => {
     <>
       <div className="dashboard-layout">
         <aside className="dashboard-sidebar">
-          {/* Header – overflow‑proof */}
+          {/* Header – overflow-proof */}
           <div
             style={{
               height: `${headerHeight}px`,
@@ -126,19 +127,24 @@ const SellerLayout = () => {
               justifyContent: "center",
               alignItems: "flex-start",
               padding: "0 1.25rem",
-              borderBottom: "1px solid #e5e7eb",
+              borderBottom: "1px solid var(--border)",
               boxSizing: "border-box",
               gap: "4px",
               minWidth: 0,
             }}
           >
-            <div
+            {/* Logo link to homepage */}
+            <Link
+              to="/"
+              aria-label="VendorVerse home"
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "0.5rem",
                 minWidth: 0,
                 maxWidth: "100%",
+                textDecoration: "none",
+                color: "inherit",
               }}
             >
               <BrandLogo
@@ -162,7 +168,7 @@ const SellerLayout = () => {
                   textOverflow: "ellipsis",
                 }}
               />
-            </div>
+            </Link>
 
             <span
               style={{
@@ -170,12 +176,12 @@ const SellerLayout = () => {
                 fontWeight: 700,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                color: "#4b5563",
-                background: "#f3f4f6",
+                color: "var(--text-secondary)",
+                background: "var(--bg-secondary)",
                 padding: "2px 6px",
                 borderRadius: "4px",
                 lineHeight: 1,
-                border: "1px solid #e5e7eb",
+                border: "1px solid var(--border)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -206,7 +212,6 @@ const SellerLayout = () => {
               </Link>
             </PermissionGate>
 
-            {/* Orders link with notification badge */}
             <PermissionGate permission="Seller.Orders.View">
               <Link
                 className="dashboard-nav-link"
@@ -222,8 +227,8 @@ const SellerLayout = () => {
                 </span>
                 {unreadCount > 0 && (
                   <span style={{
-                    backgroundColor: '#ef4444',
-                    color: '#fff',
+                    backgroundColor: 'var(--danger)',
+                    color: '#ffffff',
                     borderRadius: '50%',
                     padding: '2px 6px',
                     fontSize: '0.75rem',
@@ -253,8 +258,8 @@ const SellerLayout = () => {
                 </span>
                 {!dismissedShipments && pendingShipments > 0 && (
                   <span style={{
-                    backgroundColor: '#ef4444',
-                    color: '#fff',
+                    backgroundColor: 'var(--danger)',
+                    color: '#ffffff',
                     borderRadius: '50%',
                     padding: '2px 6px',
                     fontSize: '0.75rem',
@@ -268,7 +273,6 @@ const SellerLayout = () => {
               </Link>
             </PermissionGate>
 
-            {/* Returns with badge */}
             <PermissionGate permission="Seller.Orders.View">
               <Link
                 className="dashboard-nav-link"
@@ -284,8 +288,8 @@ const SellerLayout = () => {
                 </span>
                 {!dismissedReturns && returnsActionCount > 0 && (
                   <span style={{
-                    backgroundColor: '#ef4444',
-                    color: '#fff',
+                    backgroundColor: 'var(--danger)',
+                    color: '#ffffff',
                     borderRadius: '50%',
                     padding: '2px 6px',
                     fontSize: '0.75rem',
@@ -334,7 +338,10 @@ const SellerLayout = () => {
             )}
           </nav>
 
-          <div className="dashboard-footer">
+          <div className="dashboard-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <ThemeToggle />
+            </div>
             <button onClick={handleLogout} className="btn-logout">
               <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -345,10 +352,10 @@ const SellerLayout = () => {
         </aside>
 
         <main className="dashboard-main">
-          <Outlet/>
+          <Outlet />
         </main>
       </div>
-      <Footer/>
+      <Footer />
     </>
   );
 };

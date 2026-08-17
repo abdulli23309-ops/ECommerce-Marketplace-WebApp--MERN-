@@ -1,28 +1,6 @@
 import { useState, useEffect } from "react";
 import { getPayments } from "../../services/adminService";
-
-const statusPillStyle = (status) => {
-  const base = {
-    padding: "4px 12px",
-    borderRadius: "999px",
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    display: "inline-block",
-    whiteSpace: "nowrap",
-  };
-  switch (status) {
-    case "Completed":
-      return { ...base, backgroundColor: "#dcfce7", color: "#166534" };
-    case "Pending":
-      return { ...base, backgroundColor: "#fef3c7", color: "#92400e" };
-    case "Failed":
-      return { ...base, backgroundColor: "#fee2e2", color: "#991b1b" };
-    case "Refunded":
-      return { ...base, backgroundColor: "#e0e7ff", color: "#3730a3" };
-    default:
-      return { ...base, backgroundColor: "#f3f4f6", color: "#1f2937" };
-  }
-};
+import { getStatusBadgeStyle } from "../../utils/statusBadge";
 
 const AdminPaymentsPage = () => {
   const [payments, setPayments] = useState([]);
@@ -70,8 +48,8 @@ const AdminPaymentsPage = () => {
   };
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "#111827" }}>
-      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem" }}>Payments</h2>
+    <div style={{ padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
+      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem", color: "var(--text-primary)" }}>Payments</h2>
 
       {/* Toolbar */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" }}>
@@ -85,7 +63,9 @@ const AdminPaymentsPage = () => {
               flex: 1,
               padding: "0.5rem 0.75rem",
               borderRadius: "6px",
-              border: "1px solid #d1d5db",
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)",
               fontSize: "0.875rem",
             }}
           />
@@ -94,9 +74,9 @@ const AdminPaymentsPage = () => {
             style={{
               padding: "0.5rem 1rem",
               borderRadius: "6px",
-              border: "1px solid #d1d5db",
-              background: "#111827",
-              color: "#fff",
+              border: "1px solid var(--border)",
+              background: "var(--primary)",
+              color: "var(--primary-contrast)",
               fontWeight: 600,
               cursor: "pointer",
             }}
@@ -111,9 +91,10 @@ const AdminPaymentsPage = () => {
           style={{
             padding: "0.5rem 0.75rem",
             borderRadius: "6px",
-            border: "1px solid #d1d5db",
+            border: "1px solid var(--input-border)",
             fontSize: "0.875rem",
-            background: "#fff",
+            background: "var(--input-bg)",
+            color: "var(--text-primary)",
           }}
         >
           <option value="">All Statuses</option>
@@ -129,9 +110,10 @@ const AdminPaymentsPage = () => {
           style={{
             padding: "0.5rem 0.75rem",
             borderRadius: "6px",
-            border: "1px solid #d1d5db",
+            border: "1px solid var(--input-border)",
             fontSize: "0.875rem",
-            background: "#fff",
+            background: "var(--input-bg)",
+            color: "var(--text-primary)",
           }}
         >
           <option value="">All Methods</option>
@@ -146,9 +128,10 @@ const AdminPaymentsPage = () => {
           style={{
             padding: "0.5rem 0.75rem",
             borderRadius: "6px",
-            border: "1px solid #d1d5db",
+            border: "1px solid var(--input-border)",
             fontSize: "0.875rem",
-            background: "#fff",
+            background: "var(--input-bg)",
+            color: "var(--text-primary)",
           }}
         >
           <option value="newest">Newest</option>
@@ -159,42 +142,50 @@ const AdminPaymentsPage = () => {
       </div>
 
       {/* Table */}
-      <div style={{ background: "#fff", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", border: "1px solid #e5e7eb", overflow: "auto" }}>
+      <div style={{
+        background: "var(--surface)",
+        borderRadius: "12px",
+        boxShadow: "0 1px 3px var(--shadow)",
+        border: "1px solid var(--border)",
+        overflow: "auto"
+      }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid #e5e7eb", background: "#f9fafb" }}>
-              <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "#4b5563" }}>Payment ID</th>
-              <th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>Order ID</th>
-              <th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>Method</th>
-              <th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>Amount</th>
-              <th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>Status</th>
-              <th style={{ padding: "0.75rem 1rem", textAlign: "left" }}>Date</th>
+            <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
+              <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)" }}>Payment ID</th>
+              <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)" }}>Order ID</th>
+              <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)" }}>Method</th>
+              <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)" }}>Amount</th>
+              <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)" }}>Status</th>
+              <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)" }}>Date</th>
             </tr>
           </thead>
           <tbody>
             {payments.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>
+                <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
                   No payments found.
                 </td>
               </tr>
             ) : (
               payments.map((p) => (
-                <tr key={p.paymentId} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ padding: "0.75rem 1rem", fontWeight: 500 }}>
+                <tr key={p.paymentId} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td style={{ padding: "0.75rem 1rem", fontWeight: 500, color: "var(--text-primary)" }}>
                     {p.paymentId?.slice(0, 8).toUpperCase() ?? "—"}
                   </td>
-                  <td style={{ padding: "0.75rem 1rem" }}>
+                  <td style={{ padding: "0.75rem 1rem", color: "var(--text-primary)" }}>
                     {p.orderId?.slice(0, 8).toUpperCase() ?? "—"}
                   </td>
-                  <td style={{ padding: "0.75rem 1rem" }}>{p.method || "—"}</td>
-                  <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>
+                  <td style={{ padding: "0.75rem 1rem", color: "var(--text-primary)" }}>
+                    {p.method || "—"}
+                  </td>
+                  <td style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "var(--text-primary)" }}>
                     PKR {p.amount?.toLocaleString()}
                   </td>
                   <td style={{ padding: "0.75rem 1rem" }}>
-                    <span style={statusPillStyle(p.status)}>{p.status}</span>
+                    <span style={getStatusBadgeStyle(p.status)}>{p.status}</span>
                   </td>
-                  <td style={{ padding: "0.75rem 1rem", color: "#6b7280" }}>
+                  <td style={{ padding: "0.75rem 1rem", color: "var(--text-secondary)" }}>
                     {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"}
                   </td>
                 </tr>
@@ -213,15 +204,16 @@ const AdminPaymentsPage = () => {
             style={{
               padding: "0.5rem 1rem",
               borderRadius: "6px",
-              border: "1px solid #d1d5db",
-              background: "#fff",
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text-primary)",
               cursor: page <= 1 ? "not-allowed" : "pointer",
               fontWeight: 500,
             }}
           >
             Previous
           </button>
-          <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "#6b7280" }}>
+          <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
             Page {page} of {totalPages}
           </span>
           <button
@@ -230,8 +222,9 @@ const AdminPaymentsPage = () => {
             style={{
               padding: "0.5rem 1rem",
               borderRadius: "6px",
-              border: "1px solid #d1d5db",
-              background: "#fff",
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text-primary)",
               cursor: page >= totalPages ? "not-allowed" : "pointer",
               fontWeight: 500,
             }}

@@ -5,9 +5,18 @@ export const getAllProducts = (filters) => productRepo.findAllAdmin(filters);
 export const getProductById = (productId) =>
   productRepo.findByIdAdmin(productId);
 
-export const updateProductStatus = async (productId, status, reason, internalNote) => {
+export const updateProductStatus = async (
+  productId,
+  status,
+  reason,
+  internalNote
+) => {
   const update = { status };
+
   if (reason) update.rejectionReason = reason;
   if (internalNote) update.internalNote = internalNote;
+
   return productRepo.updateById(productId, update);
 };
+
+export const getProductStats = () => productRepo.getAdminProductStats();

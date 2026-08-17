@@ -22,12 +22,12 @@ const ReturnDetailsPage = () => {
     fetchReturn();
   }, [returnId]);
 
-  if (loading) return <div style={{ padding: "2rem", color: "#666" }}>Loading return...</div>;
-  if (!returnReq) return <div style={{ padding: "2rem", color: "#666" }}>Return not found.</div>;
+  if (loading) return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Loading return...</div>;
+  if (!returnReq) return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Return not found.</div>;
 
   return (
     <div style={{ maxWidth: "600px", margin: "2rem auto", padding: "0 1rem" }}>
-      <Link to="/returns" style={{ color: "#6b7280", textDecoration: "none", fontSize: "0.9rem", display: "inline-block", marginBottom: "1rem" }}>
+      <Link to="/returns" style={{ color: "var(--text-secondary)", textDecoration: "none", fontSize: "0.9rem", display: "inline-block", marginBottom: "1rem" }}>
         ← Back to returns
       </Link>
       {/* Render the detail directly, not as a modal */}

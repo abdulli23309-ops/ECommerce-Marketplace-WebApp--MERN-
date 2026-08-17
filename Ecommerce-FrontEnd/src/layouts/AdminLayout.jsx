@@ -7,19 +7,18 @@ import BrandLogo from "../components/common/BrandLogo";
 import Footer from "../components/common/Footer";
 import useIdleLogout from '../hooks/useIdleLogout';
 import { clearPermissions } from '../store/permissionsSlice';
+import ThemeToggle from "../components/common/ThemeToggle";
 
 const AdminLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   useIdleLogout();
 
-  // Admin stats for badges
   const [pendingSellers, setPendingSellers] = useState(0);
   const [pendingProducts, setPendingProducts] = useState(0);
   const [pendingReturns, setPendingReturns] = useState(0);
   const [pendingRefunds, setPendingRefunds] = useState(0);
 
-  // Dismissed badge flags
   const [dismissedSellers, setDismissedSellers] = useState(false);
   const [dismissedProducts, setDismissedProducts] = useState(false);
   const [dismissedReturns, setDismissedReturns] = useState(false);
@@ -39,7 +38,6 @@ const AdminLayout = () => {
 
   const fetchPendingRefunds = async () => {
     try {
-      // Get returns that are ready for refund and not yet refunded
       const res = await axiosInstance.get('/admin/returns', { params: { status: 'SELLER_RECEIVED' } });
       const data = res.data?.data || res.data;
       const returns = Array.isArray(data) ? data : data.items || [];
@@ -70,7 +68,6 @@ const AdminLayout = () => {
   return (
     <>
       <div className="dashboard-layout">
-        {/* Sidebar */}
         <aside className="dashboard-sidebar">
           {/* Admin Header */}
           <div
@@ -81,19 +78,24 @@ const AdminLayout = () => {
               justifyContent: "center",
               alignItems: "flex-start",
               padding: "0 1.25rem",
-              borderBottom: "1px solid #e5e7eb",
+              borderBottom: "1px solid var(--border)",
               boxSizing: "border-box",
               gap: "4px",
               minWidth: 0,
             }}
           >
-            <div
+            {/* Logo link to homepage */}
+            <Link
+              to="/"
+              aria-label="VendorVerse home"
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "0.5rem",
                 minWidth: 0,
                 maxWidth: "100%",
+                textDecoration: "none",
+                color: "inherit",
               }}
             >
               <BrandLogo
@@ -117,7 +119,7 @@ const AdminLayout = () => {
                   textOverflow: "ellipsis",
                 }}
               />
-            </div>
+            </Link>
 
             <span
               style={{
@@ -125,12 +127,12 @@ const AdminLayout = () => {
                 fontWeight: 700,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                color: "#4b5563",
-                background: "#f3f4f6",
+                color: "var(--text-secondary)",
+                background: "var(--bg-secondary)",
                 padding: "2px 6px",
                 borderRadius: "4px",
                 lineHeight: 1,
-                border: "1px solid #e5e7eb",
+                border: "1px solid var(--border)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -150,7 +152,6 @@ const AdminLayout = () => {
               Dashboard
             </Link>
 
-            {/* Sellers with badge */}
             <Link
               to="/admin/sellers"
               className="dashboard-nav-link"
@@ -164,13 +165,12 @@ const AdminLayout = () => {
                 Sellers
               </span>
               {!dismissedSellers && pendingSellers > 0 && (
-                <span style={{ backgroundColor: '#ef4444', color: '#fff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+                <span style={{ backgroundColor: 'var(--danger)', color: '#ffffff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
                   {pendingSellers}
                 </span>
               )}
             </Link>
 
-            {/* Products with badge */}
             <Link
               to="/admin/products"
               className="dashboard-nav-link"
@@ -184,13 +184,12 @@ const AdminLayout = () => {
                 Products
               </span>
               {!dismissedProducts && pendingProducts > 0 && (
-                <span style={{ backgroundColor: '#ef4444', color: '#fff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+                <span style={{ backgroundColor: 'var(--danger)', color: '#ffffff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
                   {pendingProducts}
                 </span>
               )}
             </Link>
 
-            {/* Returns with badge */}
             <Link
               to="/admin/returns"
               className="dashboard-nav-link"
@@ -204,13 +203,12 @@ const AdminLayout = () => {
                 Returns
               </span>
               {!dismissedReturns && pendingReturns > 0 && (
-                <span style={{ backgroundColor: '#ef4444', color: '#fff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+                <span style={{ backgroundColor: 'var(--danger)', color: '#ffffff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
                   {pendingReturns}
                 </span>
               )}
             </Link>
 
-            {/* Refunds with badge */}
             <Link
               to="/admin/refunds"
               className="dashboard-nav-link"
@@ -224,7 +222,7 @@ const AdminLayout = () => {
                 Refunds
               </span>
               {!dismissedRefunds && pendingRefunds > 0 && (
-                <span style={{ backgroundColor: '#ef4444', color: '#fff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+                <span style={{ backgroundColor: 'var(--danger)', color: '#ffffff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
                   {pendingRefunds}
                 </span>
               )}
@@ -289,7 +287,10 @@ const AdminLayout = () => {
             </Link>
           </nav>
 
-          <div className="dashboard-footer">
+          <div className="dashboard-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <ThemeToggle />
+            </div>
             <button onClick={handleLogout} className="btn-logout">
               <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
 
-// ---------- Inline SVG Icons ----------
 const Icon = ({ type }) => {
   const iconProps = {
     width: 24,
@@ -87,33 +86,33 @@ const SellerDashboardPage = () => {
   }, []);
 
   if (loading)
-    return <div style={{ padding: "2rem", color: "#666" }}>Loading dashboard...</div>;
+    return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Loading dashboard...</div>;
   if (!stats)
-    return <div style={{ padding: "2rem", color: "#666" }}>Could not load stats.</div>;
+    return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Could not load stats.</div>;
 
   const productCards = [
     {
       label: "Total Products",
       value: stats.totalProducts ?? 0,
       icon: "products",
-      color: "#4f46e5",
-      bg: "#eef2ff",
+      color: "var(--info)",
+      bg: "var(--info-bg)",
       to: "/seller/products",
     },
     {
       label: "Approved Products",
       value: stats.approvedProducts ?? 0,
       icon: "approved",
-      color: "#059669",
-      bg: "#ecfdf5",
+      color: "var(--success)",
+      bg: "var(--success-bg)",
       to: "/seller/products",
     },
     {
       label: "Pending Approval",
       value: stats.pendingProducts ?? 0,
       icon: "pending",
-      color: "#d97706",
-      bg: "#fffbeb",
+      color: "var(--warning)",
+      bg: "var(--warning-bg)",
       to: "/seller/products",
     },
   ];
@@ -123,24 +122,24 @@ const SellerDashboardPage = () => {
       label: "Today's Orders",
       value: stats.todayOrders ?? 0,
       icon: "today",
-      color: "#2563eb",
-      bg: "#eff6ff",
+      color: "var(--info)",
+      bg: "var(--info-bg)",
       to: "/seller/orders",
     },
     {
       label: "Monthly Orders",
       value: stats.monthlyOrders ?? 0,
       icon: "month",
-      color: "#7c3aed",
-      bg: "#f5f3ff",
+      color: "var(--info)",
+      bg: "var(--info-bg)",
       to: "/seller/orders",
     },
     {
       label: "Total Revenue",
       value: `PKR ${Number(stats.totalRevenue ?? 0).toLocaleString()}`,
       icon: "revenue",
-      color: "#059669",
-      bg: "#ecfdf5",
+      color: "var(--success)",
+      bg: "var(--success-bg)",
       highlight: true,
       to: "/seller/orders",
     },
@@ -148,16 +147,16 @@ const SellerDashboardPage = () => {
       label: "Pending Shipments",
       value: stats.pendingShipments ?? 0,
       icon: "shipments",
-      color: "#d97706",
-      bg: "#fffbeb",
+      color: "var(--warning)",
+      bg: "var(--warning-bg)",
       to: "/seller/shipments",
     },
     {
       label: "Cancelled Orders",
       value: stats.cancelledOrders ?? 0,
       icon: "cancel",
-      color: "#dc2626",
-      bg: "#fef2f2",
+      color: "var(--danger)",
+      bg: "var(--danger-bg)",
       to: "/seller/orders",
     },
     {
@@ -165,15 +164,15 @@ const SellerDashboardPage = () => {
       value: stats.averageRating ? `${stats.averageRating.toFixed(1)} ★` : "N/A",
       sub: `${stats.totalReviews ?? 0} reviews`,
       icon: "rating",
-      color: "#eab308",
-      bg: "#fefce8",
+      color: "var(--warning)",
+      bg: "var(--warning-bg)",
       to: "/seller/reviews",
     },
   ];
 
   const cardStyle = {
-    background: "#fff",
-    border: "1px solid #f1f5f9",
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
     borderRadius: "16px",
     padding: "1.25rem",
     display: "flex",
@@ -184,14 +183,14 @@ const SellerDashboardPage = () => {
   };
 
   const hoverStyle = {
-    boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+    boxShadow: "0 8px 24px var(--shadow)",
     transform: "translateY(-2px)",
   };
 
   const handleCardClick = (to) => navigate(to);
 
   return (
-    <div style={{ padding: "1.5rem", fontFamily: "Inter, system-ui, sans-serif", color: "#111827" }}>
+    <div style={{ padding: "1.5rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
       <h2 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "1.5rem" }}>Dashboard</h2>
 
       {/* Product Overview */}
@@ -210,7 +209,7 @@ const SellerDashboardPage = () => {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {card.label}
                 </span>
                 <span style={{
@@ -221,7 +220,7 @@ const SellerDashboardPage = () => {
                   <Icon type={card.icon} />
                 </span>
               </div>
-              <span style={{ fontSize: "1.75rem", fontWeight: 700, color: "#111827" }}>
+              <span style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
                 {card.value}
               </span>
             </div>
@@ -245,7 +244,7 @@ const SellerDashboardPage = () => {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {card.label}
                 </span>
                 <span style={{
@@ -259,12 +258,12 @@ const SellerDashboardPage = () => {
               <span style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
-                color: card.highlight ? "#059669" : "#111827"
+                color: "var(--text-primary)"
               }}>
                 {card.value}
               </span>
               {card.sub && (
-                <span style={{ fontSize: "0.85rem", color: "#6b7280" }}>
+                <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
                   {card.sub}
                 </span>
               )}
@@ -279,9 +278,9 @@ const SellerDashboardPage = () => {
 const sectionHeaderStyle = {
   fontSize: "1rem",
   fontWeight: 600,
-  color: "#374151",
+  color: "var(--text-secondary)",
   marginBottom: "1rem",
-  borderBottom: "1px solid #e5e7eb",
+  borderBottom: "1px solid var(--border)",
   paddingBottom: "0.5rem",
 };
 

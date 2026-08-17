@@ -73,14 +73,14 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
           transform: "translate(-50%, -50%)",
           width: "500px",
           maxWidth: "90vw",
-          background: "#fff",
+          background: "var(--surface)",
           borderRadius: "12px",
           boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
           zIndex: 1000,
           padding: "2rem",
           boxSizing: "border-box",
           fontFamily: "Inter, system-ui, sans-serif",
-          color: "#111827",
+          color: "var(--text-primary)",
         }}
       >
         <div
@@ -91,7 +91,7 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
             marginBottom: "1.5rem",
           }}
         >
-          <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
+          <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "var(--text-primary)" }}>
             Shipment for Order #{parentOrderId}
           </h3>
           <button
@@ -101,7 +101,7 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
               border: "none",
               fontSize: "1.5rem",
               cursor: "pointer",
-              color: "#6b7280",
+              color: "var(--text-secondary)",
             }}
           >
             ×
@@ -113,20 +113,21 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
             style={{
               marginBottom: "1.5rem",
               padding: "0.75rem",
-              background: "#f9fafb",
+              background: "var(--bg-secondary)",
               borderRadius: "6px",
+              border: "1px solid var(--border)",
             }}
           >
-            <p style={{ margin: "0 0 0.5rem", fontWeight: 600 }}>
+            <p style={{ margin: "0 0 0.5rem", fontWeight: 600, color: "var(--text-primary)" }}>
               Current Status: {shipment.status}
             </p>
             {shipment.trackingHistory?.length > 0 && (
               <div>
-                <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0 0 0.25rem" }}>
+                <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "0 0 0.25rem" }}>
                   Tracking History:
                 </p>
                 {shipment.trackingHistory.map((th, i) => (
-                  <div key={i} style={{ fontSize: "0.8rem", color: "#374151" }}>
+                  <div key={i} style={{ fontSize: "0.8rem", color: "var(--text-primary)" }}>
                     {th.status} {th.note && `– ${th.note}`} –{" "}
                     {new Date(th.timestamp).toLocaleString()}
                   </div>
@@ -137,7 +138,7 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
         )}
 
         {!shipment && (
-          <p style={{ color: "#6b7280", marginBottom: "1rem" }}>
+          <p style={{ color: "var(--text-secondary)", marginBottom: "1rem" }}>
             No shipment created yet. Fill in the details below.
           </p>
         )}
@@ -150,6 +151,7 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
                 fontWeight: 600,
                 marginBottom: "0.25rem",
                 fontSize: "0.9rem",
+                color: "var(--text-primary)",
               }}
             >
               Carrier
@@ -177,6 +179,7 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
                 fontWeight: 600,
                 marginBottom: "0.25rem",
                 fontSize: "0.9rem",
+                color: "var(--text-primary)",
               }}
             >
               Tracking Number
@@ -200,6 +203,7 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
                   fontWeight: 600,
                   marginBottom: "0.25rem",
                   fontSize: "0.9rem",
+                  color: "var(--text-primary)",
                 }}
               >
                 Update Status
@@ -234,7 +238,7 @@ const ShipmentModal = ({ sellerOrderId, parentOrderId, shipment, onClose, onSave
           {message && (
             <p
               style={{
-                color: message.includes("Failed") ? "#d11a2a" : "#000",
+                color: message.includes("Failed") ? "var(--danger-text)" : "var(--success-text)",
                 fontSize: "0.85rem",
                 marginBottom: "1rem",
               }}

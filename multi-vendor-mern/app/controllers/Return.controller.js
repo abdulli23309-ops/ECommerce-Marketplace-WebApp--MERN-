@@ -31,10 +31,27 @@ export const uploadReturnImage = asyncHandler(async (req, res) => {
 });
 
 export const getAdminReturns = asyncHandler(async (req, res) => {
-  // Admins can see all returns; filter by status if provided in query
-  const filter = req.query.status ? { status: req.query.status } : {};
-  const returns = await returnService.getAllReturns(filter);
-  new ApiResponse(200, returns, 'Admin returns retrieved').send(res);
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const pageSize = Math.min(Math.max(parseInt(req.query.pageSize, 10) || 10, 1), 100);
+
+  const status = req.query.status || undefined;
+
+  const statusesParam = req.query.statuses;
+  const statuses = statusesParam
+    ? String(statusesParam)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+  const result = await returnService.getAllReturnsPaginated({
+    page,
+    pageSize,
+    status,
+    statuses,
+  });
+
+  new ApiResponse(200, result, 'Admin returns retrieved').send(res);
 });
 
 export const adminDecision = asyncHandler(async (req, res) => {

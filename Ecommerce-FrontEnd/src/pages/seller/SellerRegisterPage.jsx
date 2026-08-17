@@ -1,4 +1,3 @@
-// SellerRegisterPage.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
@@ -86,9 +85,8 @@ const SellerRegisterPage = () => {
     }));
   };
 
-  // ----- Rejected / Pending / Loading states unchanged -----
   if (profileStatus === null) {
-    return <div style={styles.centeredMessage}><p style={{ color: "#6b7280" }}>Loading...</p></div>;
+    return <div style={styles.centeredMessage}><p style={{ color: "var(--text-secondary)" }}>Loading...</p></div>;
   }
 
   if (profileStatus === "Rejected") {
@@ -112,13 +110,12 @@ const SellerRegisterPage = () => {
           <div style={styles.iconRow}><div style={styles.iconCircleGreen}>✓</div></div>
           <h2 style={styles.heading}>Application Submitted</h2>
           <p style={styles.subheading}>Your seller application is now under review.</p>
-          <p style={{ color: "#4b5563", fontSize: "0.9rem", marginBottom: "1.5rem" }}>Once approved, you'll be able to manage your store and products.</p>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>Once approved, you'll be able to manage your store and products.</p>
         </div>
       </div>
     );
   }
 
-  // ----- Registration Form -----
   return (
     <div style={styles.wrapper}>
       <div style={styles.card}>
@@ -186,7 +183,7 @@ const SellerRegisterPage = () => {
                   {store.logoPreview ? (
                     <img src={store.logoPreview} alt="Logo preview" style={styles.logoPreview} />
                   ) : (
-                    <div style={{ color: "#6b7280" }}>
+                    <div style={{ color: "var(--text-muted)" }}>
                       <div style={{ fontSize: "2rem" }}>+</div>
                       <div>Click to upload logo</div>
                     </div>
@@ -196,7 +193,7 @@ const SellerRegisterPage = () => {
               </div>
               {error && <div style={styles.errorBox}>{error}</div>}
               <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
-                <button type="button" style={{ ...styles.primaryButton, background: "#f3f4f6", color: "#374151" }} onClick={() => setStep(1)}>Back</button>
+                <button type="button" style={{ ...styles.primaryButton, background: "var(--surface-hover)", color: "var(--text-primary)" }} onClick={() => setStep(1)}>Back</button>
                 <button type="submit" style={styles.primaryButton} disabled={loading || !store.name.trim()}>
                   {loading ? "Submitting..." : "Submit Application"}
                 </button>
@@ -209,33 +206,32 @@ const SellerRegisterPage = () => {
   );
 };
 
-// styles (same as before, no changes needed)
 const styles = {
-  wrapper: { maxWidth: "560px", margin: "2rem auto", padding: "0 1rem", fontFamily: "Inter, system-ui, sans-serif", color: "#111827" },
-  card: { background: "#fff", borderRadius: "16px", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", border: "1px solid #e5e7eb", padding: "2.5rem 2rem" },
+  wrapper: { maxWidth: "560px", margin: "2rem auto", padding: "0 1rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" },
+  card: { background: "var(--surface)", borderRadius: "16px", boxShadow: "0 4px 24px var(--shadow)", border: "1px solid var(--border)", padding: "2.5rem 2rem" },
   progressBar: { display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "2rem", gap: "0.5rem" },
-  progressStepActive: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.85rem", color: "#111827" },
-  progressNumberActive: { width: "24px", height: "24px", borderRadius: "50%", background: "#111827", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700 },
+  progressStepActive: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.85rem", color: "var(--text-primary)" },
+  progressNumberActive: { width: "24px", height: "24px", borderRadius: "50%", background: "var(--primary)", color: "var(--primary-contrast)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700 },
   progressLabelActive: {},
-  progressStepInactive: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 500, fontSize: "0.85rem", color: "#9ca3af" },
-  progressNumberInactive: { width: "24px", height: "24px", borderRadius: "50%", background: "#f3f4f6", color: "#6b7280", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 600 },
+  progressStepInactive: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 500, fontSize: "0.85rem", color: "var(--text-muted)" },
+  progressNumberInactive: { width: "24px", height: "24px", borderRadius: "50%", background: "var(--bg-secondary)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 600 },
   progressLabelInactive: {},
-  progressStepDone: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.85rem", color: "#10b981", cursor: "pointer" },
-  progressLine: { flex: 1, height: "2px", background: "#e5e7eb", maxWidth: "80px", margin: "0 0.25rem" },
-  heading: { fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.5rem 0", textAlign: "center" },
-  subheading: { color: "#6b7280", fontSize: "0.95rem", margin: "0 0 2rem 0", textAlign: "center", lineHeight: 1.5 },
+  progressStepDone: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.85rem", color: "var(--success)", cursor: "pointer" },
+  progressLine: { flex: 1, height: "2px", background: "var(--border)", maxWidth: "80px", margin: "0 0.25rem" },
+  heading: { fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.5rem 0", textAlign: "center", color: "var(--text-primary)" },
+  subheading: { color: "var(--text-secondary)", fontSize: "0.95rem", margin: "0 0 2rem 0", textAlign: "center", lineHeight: 1.5 },
   inputGroup: { marginBottom: "1.25rem" },
-  label: { display: "block", fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.5rem", color: "#374151" },
-  input: { width: "100%", padding: "0.75rem 1rem", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.95rem", outline: "none", boxSizing: "border-box" },
-  textarea: { width: "100%", padding: "0.75rem 1rem", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "0.95rem", outline: "none", resize: "vertical", boxSizing: "border-box" },
-  uploadZone: { border: "2px dashed #d1d5db", borderRadius: "8px", padding: "2rem", textAlign: "center", cursor: "pointer", background: "#f9fafb", marginTop: "0.25rem" },
+  label: { display: "block", fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.5rem", color: "var(--text-primary)" },
+  input: { width: "100%", padding: "0.75rem 1rem", borderRadius: "8px", border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--text-primary)", fontSize: "0.95rem", outline: "none", boxSizing: "border-box" },
+  textarea: { width: "100%", padding: "0.75rem 1rem", borderRadius: "8px", border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--text-primary)", fontSize: "0.95rem", outline: "none", resize: "vertical", boxSizing: "border-box" },
+  uploadZone: { border: "2px dashed var(--input-border)", borderRadius: "8px", padding: "2rem", textAlign: "center", cursor: "pointer", background: "var(--bg-secondary)", marginTop: "0.25rem" },
   logoPreview: { width: "100px", height: "100px", objectFit: "cover", borderRadius: "0.5rem" },
-  primaryButton: { padding: "0.75rem 1.5rem", borderRadius: "8px", background: "#111827", color: "#fff", fontWeight: 600, fontSize: "0.95rem", border: "none", cursor: "pointer", width: "100%" },
-  errorBox: { background: "#fef2f2", color: "#991b1b", padding: "0.75rem 1rem", borderRadius: "8px", fontSize: "0.9rem", marginBottom: "1rem" },
-  reasonBox: { background: "#f3f4f6", padding: "0.75rem 1rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.9rem", color: "#374151" },
+  primaryButton: { padding: "0.75rem 1.5rem", borderRadius: "8px", background: "var(--primary)", color: "var(--primary-contrast)", fontWeight: 600, fontSize: "0.95rem", border: "none", cursor: "pointer", width: "100%" },
+  errorBox: { background: "var(--danger-bg)", color: "var(--danger-text)", padding: "0.75rem 1rem", borderRadius: "8px", fontSize: "0.9rem", marginBottom: "1rem" },
+  reasonBox: { background: "var(--bg-secondary)", padding: "0.75rem 1rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.9rem", color: "var(--text-secondary)" },
   iconRow: { display: "flex", justifyContent: "center", marginBottom: "1.5rem" },
-  iconCircleGreen: { width: "48px", height: "48px", borderRadius: "50%", background: "#d1fae5", color: "#065f46", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: 700 },
-  iconCircleRed: { width: "48px", height: "48px", borderRadius: "50%", background: "#fee2e2", color: "#991b1b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: 700 },
+  iconCircleGreen: { width: "48px", height: "48px", borderRadius: "50%", background: "var(--success-bg)", color: "var(--success-text)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: 700 },
+  iconCircleRed: { width: "48px", height: "48px", borderRadius: "50%", background: "var(--danger-bg)", color: "var(--danger-text)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", fontWeight: 700 },
   centeredMessage: { padding: "3rem", textAlign: "center" },
 };
 

@@ -1,23 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useDispatch } from "react-redux"; // <-- added
+import { useDispatch } from "react-redux";
 import { fetchApprovedProducts } from "../../services/productService";
 import { getImageUrl } from "../../utils/imageHelper";
 import { fetchCategories, fetchSubCategories } from "../../services/categoryService";
 import { fetchBrands } from "../../services/brandService";
-import { addItemToWishlist } from "../../store/wishlistSlice"; // <-- added
+import { addItemToWishlist } from "../../store/wishlistSlice";
 
 const ProductListingPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const dispatch = useDispatch(); // <-- added
+  const dispatch = useDispatch();
 
-  // State for products, loading, etc.
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Filter state
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [brands, setBrands] = useState([]);
@@ -101,7 +99,6 @@ const ProductListingPage = () => {
 
   return (
     <div className="listing-page">
-      {/* Search Bar + Sort */}
       <div className="listing-toolbar">
         <form onSubmit={handleSearchSubmit} className="listing-search">
           <input
@@ -158,7 +155,7 @@ const ProductListingPage = () => {
 
         <main className="listing-products">
           {loading ? (
-            <p style={{ color: "#666" }}>Loading products...</p>
+            <p style={{ color: "var(--text-secondary)" }}>Loading products...</p>
           ) : products.length === 0 ? (
             <div className="empty-state">
               <p>No products found. Try adjusting your filters.</p>
@@ -188,7 +185,7 @@ const ProductListingPage = () => {
                         top: "8px",
                         right: "8px",
                         background: "none",
-                        border: "1px solid #d1d5db",
+                        border: "1px solid var(--border)",
                         borderRadius: "50%",
                         width: "32px",
                         height: "32px",
@@ -196,7 +193,7 @@ const ProductListingPage = () => {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "#4b5563",
+                        color: "var(--text-secondary)",
                       }}
                       title="Add to Wishlist"
                     >

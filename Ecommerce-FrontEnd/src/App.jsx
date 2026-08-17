@@ -52,8 +52,10 @@ import CustomerReturnsPage from "./pages/customer/CustomerReturnsPage";
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
 import SellerReturnsPage from "./pages/seller/SellerReturnsPage";
 import WishlistPage from "./pages/customer/WishlistPage"; // <-- add this import
+import { useTheme } from "./hooks/useTheme";
 
 const App = () => {
+  useTheme();
   const dispatch = useDispatch();
   const { accessToken } = useSelector(state => state.auth);
   const { codes } = useSelector(state => state.permissions);
@@ -82,7 +84,7 @@ const App = () => {
       </Route>
 
       {/* Customer routes that legitimately require an account – protected, allowed roles: Customer */}
-      <Route element={<ProtectedRoute allowedRoles={["Customer"]} />}>
+     <Route element={<ProtectedRoute />}>
         <Route element={<CustomerLayout />}>
           <Route path="/cart" element={<CartPage />} />
           <Route path="/wishlist" element={<WishlistPage />} /> {/* <-- add this route */}

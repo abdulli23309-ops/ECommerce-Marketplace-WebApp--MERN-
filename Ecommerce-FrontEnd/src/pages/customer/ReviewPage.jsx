@@ -119,8 +119,8 @@ const ReviewPage = () => {
     }
   };
 
-  if (loadingOrder) return <div style={{ padding: "2rem", color: "#666" }}>Loading...</div>;
-  if (!sellerOrder) return <div style={{ padding: "2rem", color: "#666" }}>Order details not found.</div>;
+  if (loadingOrder) return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Loading...</div>;
+  if (!sellerOrder) return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Order details not found.</div>;
 
   const product = sellerOrder.items?.[0];
   const productName = product?.productNameSnapshot || "Product";
@@ -130,12 +130,12 @@ const ReviewPage = () => {
   return (
     <div style={{
       maxWidth: "600px", margin: "2rem auto", padding: "2rem",
-      background: "#fff", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-      fontFamily: "Inter, system-ui, sans-serif", color: "#111827",
+      background: "var(--surface)", borderRadius: "12px", boxShadow: "0 4px 12px var(--shadow)",
+      fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)",
     }}>
       <button
         onClick={() => navigate(-1)}
-        style={{ background: "none", border: "none", color: "#6b7280", fontSize: "0.9rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}
+        style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.9rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}
       >
         ← Back
       </button>
@@ -145,7 +145,7 @@ const ReviewPage = () => {
         paddingBottom: "1.5rem", marginBottom: "1.5rem",
         borderBottom: "1px solid #f3f4f6",
       }}>
-        <div style={{ width: "64px", height: "64px", borderRadius: "8px", overflow: "hidden", background: "#f3f4f6" }}>
+        <div style={{ width: "64px", height: "64px", borderRadius: "8px", overflow: "hidden", background: "var(--bg-secondary)" }}>
           {productImage ? (
             <img src={getImageUrl(productImage)} alt={productName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
@@ -158,7 +158,7 @@ const ReviewPage = () => {
         </div>
         <div>
           <h2 style={{ fontSize: "1.1rem", fontWeight: 600, margin: "0 0 0.25rem" }}>{productName}</h2>
-          <p style={{ color: "#6b7280", fontSize: "0.85rem", margin: 0 }}>Sold by {storeName}</p>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: 0 }}>Sold by {storeName}</p>
         </div>
       </div>
 
@@ -189,9 +189,9 @@ const ReviewPage = () => {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="What did you love about this product? Share your experience..."
-            style={{ width: "100%", boxSizing: "border-box", borderRadius: "6px", padding: "0.75rem", border: "1px solid #d1d5db", fontFamily: "Inter, system-ui, sans-serif", fontSize: "0.9rem", background: "#f9fafb", outline: "none" }}
+            style={{ width: "100%", boxSizing: "border-box", borderRadius: "6px", padding: "0.75rem", border: "1px solid var(--border)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "0.9rem", background: "var(--bg-secondary)", outline: "none" }}
           />
-          <div style={{ textAlign: "right", fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.25rem" }}>{comment.length} / {maxCommentLength}</div>
+          <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>{comment.length} / {maxCommentLength}</div>
         </div>
 
         {/* Image Upload – supports multiple files up to 5 */}
@@ -207,8 +207,8 @@ const ReviewPage = () => {
               style={{
                 padding: "0.5rem 1.25rem",
                 borderRadius: "6px",
-                border: "2px dashed #d1d5db",
-                background: "#f9fafb",
+                border: "2px dashed var(--border)",
+                background: "var(--bg-secondary)",
                 cursor: selectedFiles.length >= MAX_FILES ? "not-allowed" : "pointer",
                 fontWeight: 500,
                 fontSize: "0.9rem",
@@ -226,7 +226,7 @@ const ReviewPage = () => {
               ref={fileInputRef}
               style={{ display: "none" }}
             />
-            <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
               {selectedFiles.length} / {MAX_FILES} selected
             </span>
           </div>
@@ -239,7 +239,7 @@ const ReviewPage = () => {
                   <img
                     src={URL.createObjectURL(file)}
                     alt={`Preview ${idx}`}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "4px", border: "1px solid #e5e7eb" }}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "4px", border: "1px solid var(--border)" }}
                   />
                   <button
                     type="button"
@@ -248,8 +248,8 @@ const ReviewPage = () => {
                       position: "absolute",
                       top: "-6px",
                       right: "-6px",
-                      background: "#fff",
-                      border: "1px solid #d1d5db",
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
                       borderRadius: "50%",
                       width: "20px",
                       height: "20px",
@@ -259,7 +259,7 @@ const ReviewPage = () => {
                       cursor: "pointer",
                       fontSize: "12px",
                       fontWeight: "bold",
-                      color: "#dc2626",
+                      color: "var(--danger)",
                     }}
                   >
                     ×
@@ -270,7 +270,7 @@ const ReviewPage = () => {
           )}
         </div>
 
-        {error && <p style={{ color: "#d11a2a", fontSize: "0.9rem", marginBottom: "1rem" }}>{error}</p>}
+        {error && <p style={{ color: "var(--danger)", fontSize: "0.9rem", marginBottom: "1rem" }}>{error}</p>}
 
         <button
           type="submit"
