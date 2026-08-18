@@ -13,6 +13,7 @@ export const getCart = async (userId) => {
   }
   return cart;
 };
+
 export const addItem = async (userId, productId, quantity) => {
   const product = await productRepo.findPublicById(productId);
   if (!product) throw new ApiError(404, 'Product not found');
@@ -20,7 +21,6 @@ export const addItem = async (userId, productId, quantity) => {
   let cart = await cartRepo.findByUserForMutation(userId);
 
   if (!cart) {
-    // New cart: requested quantity must not exceed stock
     if (quantity > product.stock) {
       throw new ApiError(400, 'Insufficient stock');
     }
@@ -71,7 +71,6 @@ export const removeItem = async (userId, productId) => {
 };
 
 export const clearCart = async (userId) => {
-  const cart = await cartRepo.clearCart(userId);
-  if (!cart) throw new ApiError(404, 'Cart not found');
+  await cartRepo.clearCart(userId);
   return getPopulatedCart(userId);
 };

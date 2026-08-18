@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { addRecentlyViewed } from "../../store/recentlyViewedSlice";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchProductById, fetchApprovedProducts } from "../../services/productService";
 import { fetchProductReviews } from "../../services/reviewService";
@@ -18,13 +19,12 @@ const ProductDetailPage = () => {
   const [reviewsPage, setReviewsPage] = useState(1);
   const [totalReviewPages, setTotalReviewPages] = useState(1);
   const [relatedProducts, setRelatedProducts] = useState([]);
-  const [mainImage, setMainImage] = useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState({ text: "", type: "" });
 
-  // Load product details and related products
   useEffect(() => {
     const loadProductData = async () => {
       setLoading(true);
@@ -32,16 +32,36 @@ const ProductDetailPage = () => {
         const productData = await fetchProductById(productId);
         setProduct(productData);
 
-        if (productData?.images?.length > 0) {
-          setMainImage(getImageUrl(productData.images[0]));
+        if (productData?.id) {
+          dispatch(addRecentlyViewed({
+            id: productData.id,
+            name: productData.name,
+            price: productData.price,
+            image: productData.images?.[0],
+          }));
         }
 
         try {
-          const allProducts = await fetchApprovedProducts({ page: 1, pageSize: 100 });
-          const related = (allProducts?.items || [])
-            .filter((p) => p.store === productData.store && p.id !== productId)
-            .slice(0, 4);
-          setRelatedProducts(related);
+          const storeId =
+            typeof productData.store === "object"
+              ? productData.store?._id || productData.store?.id
+              : productData.store;
+
+          if (storeId) {
+            const relatedRes = await fetchApprovedProducts({
+              store: storeId,
+              page: 1,
+              pageSize: 5,
+            });
+
+            const related = (relatedRes.items || [])
+              .filter((p) => p.id !== productId)
+              .slice(0, 4);
+
+            setRelatedProducts(related);
+          } else {
+            setRelatedProducts([]);
+          }
         } catch (error) {
           console.error("Failed to fetch related products:", error);
           setRelatedProducts([]);
@@ -58,12 +78,10 @@ const ProductDetailPage = () => {
     loadProductData();
   }, [productId]);
 
-  // Reset reviews page when product changes
   useEffect(() => {
     setReviewsPage(1);
   }, [productId]);
 
-  // Load paginated reviews
   useEffect(() => {
     const loadReviews = async () => {
       if (!productId) return;
@@ -150,10 +168,14 @@ const ProductDetailPage = () => {
     );
   }
 
+  const mainImage =
+    selectedImage ||
+    (product?.images?.length > 0 ? getImageUrl(product.images[0]) : "");
+
   return (
     <div className="product-detail-page">
       <div className="product-detail-container">
-        {/* --- Image Gallery --- */}
+        {/* Image gallery */}
         <div className="product-detail-gallery">
           <div className="product-detail-main-image">
             {mainImage ? (
@@ -184,7 +206,7 @@ const ProductDetailPage = () => {
                   key={index}
                   src={getImageUrl(img)}
                   alt={`${product.name} thumbnail ${index + 1}`}
-                  onClick={() => setMainImage(getImageUrl(img))}
+                  onClick={() => setSelectedImage(getImageUrl(img))}
                   style={{
                     width: "80px",
                     height: "80px",
@@ -199,7 +221,7 @@ const ProductDetailPage = () => {
           )}
         </div>
 
-        {/* --- Product Info & Actions --- */}
+        {/* Product info */}
         <div className="product-detail-info">
           <h1 className="product-detail-name" style={{ margin: "0 0 0.5rem 0" }}>
             {product.name}
@@ -234,7 +256,7 @@ const ProductDetailPage = () => {
             )}
           </div>
 
-          {/* Store Card */}
+          {/* Store card */}
           <div
             className="store-info-card"
             style={{
@@ -294,7 +316,7 @@ const ProductDetailPage = () => {
             {product.description || "No description available for this product."}
           </p>
 
-          {/* Cart Controls */}
+          {/* Cart controls */}
           {product.stock === 0 ? (
             <p
               className="out-of-stock"
@@ -391,7 +413,6 @@ const ProductDetailPage = () => {
             </div>
           )}
 
-          {/* Feedback Message */}
           {message.text && (
             <p
               style={{
@@ -410,7 +431,7 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      {/* --- Reviews Section --- */}
+      {/* Reviews */}
       <div className="reviews-section">
         <h2 className="section-title">Customer Reviews</h2>
         {reviews.length === 0 ? (
@@ -474,7 +495,7 @@ const ProductDetailPage = () => {
         )}
       </div>
 
-      {/* --- Related Products Section --- */}
+      {/* Related Products */}
       {relatedProducts.length > 0 && (
         <div className="related-products-section">
           <h2 className="section-title">More from {product.store?.name || "this store"}</h2>

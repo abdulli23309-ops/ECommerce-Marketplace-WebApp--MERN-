@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { fetchApprovedProducts } from "../../services/productService";
+import { fetchApprovedProducts, fetchSearchSuggestions } from "../../services/productService";
 import { getImageUrl } from "../../utils/imageHelper";
 import { fetchCategories, fetchSubCategories } from "../../services/categoryService";
 import { fetchBrands } from "../../services/brandService";
 import { addItemToWishlist } from "../../store/wishlistSlice";
+import Pagination from "../../components/common/Pagination";
 
 const ProductListingPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -28,6 +29,11 @@ const ProductListingPage = () => {
     search: searchParams.get("search") || "",
     sortBy: searchParams.get("sortBy") || "newest",
   });
+
+  const [suggestions, setSuggestions] = useState({ products: [], categories: [], brands: [] });
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+  const debounceRef = useRef(null);
 
   useEffect(() => {
     fetchCategories().then(setCategories).catch(console.error);
@@ -75,12 +81,45 @@ const ProductListingPage = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    if (name === "search") {
+      handleSearchInputChange(value);
+    } else {
+      setFilters(prev => ({ ...prev, [name]: value }));
+      setCurrentPage(1);
+    }
+  };
+
+  const handleSearchInputChange = (value) => {
+    setFilters(prev => ({ ...prev, search: value }));
     setCurrentPage(1);
+
+    const query = value.trim();
+    if (query.length < 2) {
+      setSuggestions({ products: [], categories: [], brands: [] });
+      setShowSuggestions(false);
+      setSuggestionLoading(false);
+      return;
+    }
+
+    setSuggestionLoading(true);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetchSearchSuggestions(query);
+        setSuggestions(res);
+        setShowSuggestions(true);
+      } catch {
+        setSuggestions({ products: [], categories: [], brands: [] });
+        setShowSuggestions(false);
+      } finally {
+        setSuggestionLoading(false);
+      }
+    }, 300);
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
+    setShowSuggestions(false);
     setCurrentPage(1);
   };
 
@@ -94,13 +133,15 @@ const ProductListingPage = () => {
       search: "",
       sortBy: "newest",
     });
+    setSuggestions({ products: [], categories: [], brands: [] });
+    setShowSuggestions(false);
     setCurrentPage(1);
   };
 
   return (
     <div className="listing-page">
       <div className="listing-toolbar">
-        <form onSubmit={handleSearchSubmit} className="listing-search">
+        <form onSubmit={handleSearchSubmit} className="listing-search" style={{ position: "relative" }}>
           <input
             type="text"
             name="search"
@@ -108,8 +149,105 @@ const ProductListingPage = () => {
             onChange={handleFilterChange}
             placeholder="Search products..."
             className="form-input"
+            onFocus={() => {
+              if (
+                suggestions.products.length ||
+                suggestions.categories.length ||
+                suggestions.brands.length
+              ) {
+                setShowSuggestions(true);
+              }
+            }}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setShowSuggestions(false);
+            }}
           />
           <button type="submit" className="btn-primary" style={{ width: "auto", padding: "0.5rem 1.5rem" }}>Search</button>
+
+          {showSuggestions && (
+            <div
+              className="suggestions-dropdown"
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                zIndex: 10,
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                boxShadow: "0 4px 12px var(--shadow)",
+                maxHeight: "320px",
+                overflowY: "auto",
+                marginTop: "4px",
+              }}
+            >
+              {suggestionLoading ? (
+                <div style={{ padding: "8px 12px", color: "var(--text-secondary)" }}>
+                  Loading...
+                </div>
+              ) : (
+                <>
+                  {suggestions.products.map((p) => (
+                    <Link
+                      key={p._id}
+                      to={`/products/${p._id}`}
+                      onClick={() => setShowSuggestions(false)}
+                      style={{
+                        display: "block",
+                        padding: "8px 12px",
+                        color: "var(--text-primary)",
+                        textDecoration: "none",
+                        borderBottom: "1px solid var(--border)",
+                      }}
+                    >
+                      {p.name}
+                    </Link>
+                  ))}
+                  {suggestions.categories.map((c) => (
+                    <Link
+                      key={`cat-${c._id}`}
+                      to={`/products?categoryId=${c._id}`}
+                      onClick={() => setShowSuggestions(false)}
+                      style={{
+                        display: "block",
+                        padding: "8px 12px",
+                        color: "var(--text-secondary)",
+                        textDecoration: "none",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      Category: {c.name}
+                    </Link>
+                  ))}
+                  {suggestions.brands.map((b) => (
+                    <Link
+                      key={`brand-${b._id}`}
+                      to={`/products?brandId=${b._id}`}
+                      onClick={() => setShowSuggestions(false)}
+                      style={{
+                        display: "block",
+                        padding: "8px 12px",
+                        color: "var(--text-secondary)",
+                        textDecoration: "none",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      Brand: {b.name}
+                    </Link>
+                  ))}
+                  {suggestions.products.length === 0 &&
+                    suggestions.categories.length === 0 &&
+                    suggestions.brands.length === 0 && (
+                      <div style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
+                        No suggestions found
+                      </div>
+                    )}
+                </>
+              )}
+            </div>
+          )}
         </form>
         <select name="sortBy" value={filters.sortBy} onChange={handleFilterChange} className="form-input" style={{ width: "auto" }}>
           <option value="newest">Newest</option>
@@ -205,13 +343,11 @@ const ProductListingPage = () => {
                 ))}
               </div>
 
-              {totalPages > 1 && (
-                <div className="pagination">
-                  <button className="page-btn" disabled={currentPage <= 1} onClick={() => setCurrentPage(prev => prev - 1)}>Previous</button>
-                  <span className="page-info">Page {currentPage} of {totalPages}</span>
-                  <button className="page-btn" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(prev => prev + 1)}>Next</button>
-                </div>
-              )}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </>
           )}
         </main>

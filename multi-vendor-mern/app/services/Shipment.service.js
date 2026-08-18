@@ -1,10 +1,10 @@
 import * as shipmentRepo from '../repositories/Shipment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import * as sellerProfileRepo from '../repositories/SellerProfile.repository.js';
+import { createNotification } from './Notification.service.js';
 import Payment from '../models/Payment.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
-// Check that the seller order belongs to a store owned by the logged‑in seller
 const verifySellerOwnership = async (sellerOrderId, userId) => {
   const sellerOrder = await orderRepo.findSellerOrderById(sellerOrderId);
   if (!sellerOrder) throw new ApiError(404, 'Seller order not found');
@@ -20,6 +20,7 @@ const verifySellerOwnership = async (sellerOrderId, userId) => {
   }
   return sellerOrder;
 };
+
 
 export const createShipment = async (sellerOrderId, data, userId) => {
   await verifySellerOwnership(sellerOrderId, userId);
@@ -48,7 +49,6 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
 
   const updated = await shipmentRepo.updateStatus(shipmentId, status, note || '');
 
-  // Map shipment status to seller order status
   const statusMapping = {
     Pending: 'Pending',
     Packed: 'Packed',
@@ -62,14 +62,12 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
     await orderRepo.updateSellerOrderStatus(shipment.sellerOrder, sellerOrderStatus);
   }
 
-  // Propagate to parent order when shipped or delivered
   const sellerOrder = await orderRepo.findSellerOrderById(shipment.sellerOrder);
   const parentOrderId = sellerOrder.parentOrder;
 
   if (['Dispatched', 'Shipped', 'OutForDelivery'].includes(status)) {
-    // Only upgrade parent to Shipped if it's currently Pending or Processing
-    const parentOrder = await orderRepo.findById(parentOrderId);
-    if (parentOrder && !['Shipped', 'Delivered', 'Cancelled'].includes(parentOrder.status)) {
+    const parentOrder = await orderRepo.findByIdQuery(parentOrderId);
+    if (parentOrder && !['Shipped', 'Delivered', 'Cancelled'].includes(parentOrder.orderStatus)) {
       await orderRepo.updateStatus(parentOrderId, 'Shipped');
     }
   }
@@ -81,7 +79,6 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
       await orderRepo.updateStatus(parentOrderId, 'Delivered');
     }
 
-    // Mark COD payment as Completed when the order is delivered
     const payment = await Payment.findOne({
       parentOrder: parentOrderId,
       method: 'CashOnDelivery',
@@ -93,6 +90,14 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
       await payment.save();
     }
   }
+  await createNotification(
+  userId,
+  'shipment',
+  'Shipment Updated',
+  `Shipment status is now ${status}`,
+  `/orders/${sellerOrder.parentOrder}`,
+  { sellerOrderId: sellerOrder._id }
+);
 
   return updated;
 };

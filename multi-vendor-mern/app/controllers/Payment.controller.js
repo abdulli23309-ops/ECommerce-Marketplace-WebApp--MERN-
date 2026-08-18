@@ -13,9 +13,9 @@ export const getPaymentStatus = asyncHandler(async (req, res) => {
 });
 
 export const createPaymentIntent = asyncHandler(async (req, res) => {
-  const { addressId, paymentMethod } = req.body;
+  const { addressId, paymentMethod, couponCode = null } = req.body;
   const userId = req.user.id;
-  const result = await paymentService.createPaymentIntent(userId, addressId, paymentMethod);
+  const result = await paymentService.createPaymentIntent(userId, addressId, paymentMethod, couponCode);
   new ApiResponse(200, result, 'Payment intent created').send(res);
 });
 

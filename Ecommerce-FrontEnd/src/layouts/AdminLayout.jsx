@@ -8,6 +8,7 @@ import Footer from "../components/common/Footer";
 import useIdleLogout from '../hooks/useIdleLogout';
 import { clearPermissions } from '../store/permissionsSlice';
 import ThemeToggle from "../components/common/ThemeToggle";
+import NotificationDropdown from "../components/common/NotificationDropdown";
 
 const AdminLayout = () => {
   const dispatch = useDispatch();
@@ -285,9 +286,27 @@ const AdminLayout = () => {
               </svg>
               Payments
             </Link>
+
+            {/* Priority 4 new links */}
+            <Link to="/admin/coupons" className="dashboard-nav-link">
+              <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5h14a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1zm0 8h14a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3a1 1 0 011-1z" />
+              </svg>
+              Coupons
+            </Link>
+
+            <Link to="/admin/audit-logs" className="dashboard-nav-link">
+              <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Audit Logs
+            </Link>
           </nav>
 
           <div className="dashboard-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <NotificationDropdown />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
               <ThemeToggle />
             </div>

@@ -12,6 +12,19 @@ const parentOrderSchema = new mongoose.Schema(
       default: 'Pending',
       enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
     },
+    // multi-vendor-mern/app/models/ParentOrder.model.js
+subtotal: {
+  type: Number,
+  default: 0,
+},
+discountAmount: {
+  type: Number,
+  default: 0,
+},
+couponCode: {
+  type: String,
+  default: null,
+},
     shippingFullName: { type: String, required: true },
     shippingPhone: { type: String, required: true },
     shippingAddressLine1: { type: String, required: true },

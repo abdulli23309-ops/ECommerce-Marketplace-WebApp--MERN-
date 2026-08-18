@@ -2548,3 +2548,94 @@ body, .customer-layout, .auth-layout, .dashboard-main, .dashboard-main-wrap {
   display: block;
   margin-bottom: 1rem;
 }
+
+.hero-search input {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.hero-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.hero-search input {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.hero-search input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Ensure hero banner doesn't clip dropdown */
+.hero-banner {
+  position: relative;
+  z-index: 10;
+  overflow: visible !important;
+}
+
+/* Ensure the search form and dropdown are above the hero background */
+.hero-search {
+  position: relative;
+  z-index: 30;
+}
+
+.hero-search .suggestions-dropdown {
+  z-index: 40;
+}
+
+/* Fix hero search input text visibility in both themes */
+.hero-search input {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.hero-search input::placeholder {
+  color: var(--text-muted);
+}
+.hero-search {
+  overflow: visible !important;
+}
+.hero-banner {
+  position: relative;
+  z-index: 10;
+  overflow: visible !important;
+}
+
+.hero-search {
+  position: relative;
+  z-index: 30;
+  overflow: visible !important;   /* ← this is the missing piece */
+}
+
+.hero-search .suggestions-dropdown {
+  z-index: 40;
+}
+/* Ensure all select elements (including address country dropdown) are theme-aware */
+select {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--input-border);
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  outline: none;
+  cursor: pointer;
+}
+
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+select option {
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
+/* Override for selects that already use .form-input to keep consistent */
+select.form-input {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  border-color: var(--input-border);
+}

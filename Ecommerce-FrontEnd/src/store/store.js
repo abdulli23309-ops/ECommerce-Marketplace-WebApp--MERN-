@@ -4,6 +4,7 @@ import permissionsReducer from "./permissionsSlice";
 import cartReducer from "./cartSlice";
 import wishlistReducer from "./wishlistSlice";
 import themeReducer from "./themeSlice";
+import recentlyViewedReducer from "./recentlyViewedSlice";
 
 export const store = configureStore({
   reducer: {
@@ -12,5 +13,6 @@ export const store = configureStore({
     permissions: permissionsReducer,
     wishlist: wishlistReducer,
     theme: themeReducer,
+    recentlyViewed: recentlyViewedReducer,
   },
 });

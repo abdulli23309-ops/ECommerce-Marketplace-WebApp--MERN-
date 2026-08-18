@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import stripe from '../stripe.js';
+import CouponUsage from '../models/CouponUsage.model.js';
 import PaymentTransaction from '../models/PaymentTransaction.model.js';
 import Product from '../models/Product.model.js';
 import * as paymentRepo from '../repositories/Payment.repository.js';
@@ -9,20 +10,20 @@ import * as addressRepo from '../repositories/Address.repository.js';
 import * as cartRepo from '../repositories/Cart.repository.js';
 import * as productRepo from '../repositories/Product.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
+import * as couponService from './Coupon.service.js';
+import * as couponRepo from '../repositories/Coupon.repository.js';
+import { createNotification } from './Notification.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
-export const checkout = async (userId, addressId) => {
-  // 1. Validate address
+export const checkout = async (userId, addressId, couponCode = null) => {
   const address = await addressRepo.findById(addressId, userId);
   if (!address) throw new ApiError(404, 'Address not found');
 
-  // 2. Get populated cart
   const cart = await cartRepo.findByUser(userId);
   if (!cart || cart.items.length === 0) {
     throw new ApiError(400, 'Cart is empty');
   }
 
-  // 3. Validate stock and group by store
   const storeItemsMap = new Map();
 
   for (const cartItem of cart.items) {
@@ -32,7 +33,6 @@ export const checkout = async (userId, addressId) => {
       throw new ApiError(400, `Insufficient stock for ${product.name}`);
     }
 
-    // Safely get the store ObjectId – populated or raw
     const storeId = (product.store?._id || product.store).toString();
 
     if (!storeItemsMap.has(storeId)) storeItemsMap.set(storeId, []);
@@ -44,30 +44,31 @@ export const checkout = async (userId, addressId) => {
     });
   }
 
-  // 4. Start transaction
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // 5. Create ParentOrder
     const parentOrder = await ParentOrder.create([{
       customer: userId,
-      shippingFullName: address.street,
-      shippingPhone: '03001234567',
+      shippingFullName: address.fullName || address.street,
+      shippingPhone: address.phoneNumber || '03001234567',
       shippingAddressLine1: address.street,
+      shippingAddressLine2: address.addressLine2 || '',
       shippingCity: address.city,
-      shippingState: address.state,
-      shippingPostalCode: address.postalCode,
+      shippingState: address.state || '',
+      shippingPostalCode: address.postalCode || '',
       totalAmount: 0,
+      subtotal: 0,
+      discountAmount: 0,
+      couponCode: null,
     }], { session });
 
     const createdParent = parentOrder[0];
-    let totalAmount = 0;
+    let subtotalAmount = 0;
 
-    // 6. Create SellerOrders and deduct stock
     for (const [storeIdStr, items] of storeItemsMap.entries()) {
       const subTotal = items.reduce((sum, item) => sum + item.unitPriceSnapshot * item.quantity, 0);
-      totalAmount += subTotal;
+      subtotalAmount += subTotal;
 
       await SellerOrder.create([{
         parentOrder: createdParent._id,
@@ -81,19 +82,41 @@ export const checkout = async (userId, addressId) => {
       }
     }
 
-    // Update total
-    createdParent.totalAmount = totalAmount;
+    let appliedCoupon = null;
+    let discountAmount = 0;
+
+    if (couponCode) {
+      appliedCoupon = await couponService.validateCoupon(couponCode, subtotalAmount);
+      discountAmount = couponService.calculateDiscount(appliedCoupon, subtotalAmount);
+    }
+
+    const finalTotal = subtotalAmount - discountAmount;
+
+    createdParent.subtotal = subtotalAmount;
+    createdParent.discountAmount = discountAmount;
+    createdParent.totalAmount = finalTotal;
+    if (appliedCoupon) {
+      createdParent.couponCode = appliedCoupon.code;
+    }
+
     await createdParent.save({ session });
 
-    // 7. Clear cart INSIDE transaction
-    cart.items = [];
-    await cart.save({ session });
+    if (appliedCoupon) {
+  await couponRepo.incrementUsage(appliedCoupon._id, session);
 
-    // 8. Commit
+  await CouponUsage.create([{
+    coupon: appliedCoupon._id,
+    user: userId,
+    parentOrder: createdParent._id,
+    discountAmount,
+  }], { session });
+}
+
+    await cartRepo.clearCart(userId, session);
+
     await session.commitTransaction();
     session.endSession();
 
-    // Return populated order
     const populatedOrder = await ParentOrder.findById(createdParent._id)
       .populate({ path: 'sellerOrders', select: 'store subTotal status items' })
       .lean();
@@ -107,18 +130,15 @@ export const checkout = async (userId, addressId) => {
   }
 };
 
-export const prepareOrder = async (userId, addressId, session) => {
-  // 1. Validate address
+export const prepareOrder = async (userId, addressId, session, couponCode = null) => {
   const address = await addressRepo.findById(addressId, userId);
   if (!address) throw new ApiError(404, 'Address not found');
 
-  // 2. Load cart
   const cart = await cartRepo.findByUser(userId);
   if (!cart || cart.items.length === 0) {
     throw new ApiError(400, 'Cart is empty');
   }
 
-  // 3. Validate stock & group by store (no deduction)
   const storeItemsMap = new Map();
   for (const cartItem of cart.items) {
     const product = await productRepo.findPublicById(cartItem.product);
@@ -126,6 +146,7 @@ export const prepareOrder = async (userId, addressId, session) => {
     if (product.stock < cartItem.quantity) {
       throw new ApiError(400, `Insufficient stock for ${product.name}`);
     }
+
     const storeId = (product.store?._id || product.store).toString();
     if (!storeItemsMap.has(storeId)) storeItemsMap.set(storeId, []);
     storeItemsMap.get(storeId).push({
@@ -136,7 +157,6 @@ export const prepareOrder = async (userId, addressId, session) => {
     });
   }
 
-  // 4. Create ParentOrder – use actual address fields
   const parentOrder = await ParentOrder.create([{
     customer: userId,
     shippingFullName: address.fullName || address.street,
@@ -147,15 +167,18 @@ export const prepareOrder = async (userId, addressId, session) => {
     shippingState: address.state || '',
     shippingPostalCode: address.postalCode || '',
     totalAmount: 0,
+    subtotal: 0,
+    discountAmount: 0,
+    couponCode: null,
   }], { session });
 
   const createdParent = parentOrder[0];
-  let totalAmount = 0;
+  let subtotalAmount = 0;
 
-  // 5. Create SellerOrders
   for (const [storeIdStr, items] of storeItemsMap.entries()) {
     const subTotal = items.reduce((sum, item) => sum + item.unitPriceSnapshot * item.quantity, 0);
-    totalAmount += subTotal;
+    subtotalAmount += subTotal;
+
     await SellerOrder.create([{
       parentOrder: createdParent._id,
       store: storeIdStr,
@@ -164,9 +187,31 @@ export const prepareOrder = async (userId, addressId, session) => {
     }], { session });
   }
 
-  // 6. Update ParentOrder total
-  createdParent.totalAmount = totalAmount;
+  let appliedCoupon = null;
+  let discountAmount = 0;
+
+  if (couponCode) {
+    appliedCoupon = await couponService.validateCoupon(couponCode, subtotalAmount);
+    discountAmount = couponService.calculateDiscount(appliedCoupon, subtotalAmount);
+  }
+
+  const finalTotal = subtotalAmount - discountAmount;
+
+  createdParent.subtotal = subtotalAmount;
+  createdParent.discountAmount = discountAmount;
+  createdParent.totalAmount = finalTotal;
+  if (appliedCoupon) {
+    createdParent.couponCode = appliedCoupon.code;
+  }
+
   await createdParent.save({ session });
+
+  // Important: For `prepareOrder`, we deliberately do NOT increment usage yet.
+  // The actual coupon redemption/increment should happen when payment is confirmed.
+  // If your payment service later calls `checkout()` to finalize, remove this comment
+  // and ensure `couponRepo.incrementUsage` is only called there.
+  // If you want to redeem immediately after creating the pending order, uncomment:
+  // if (appliedCoupon) await couponRepo.incrementUsage(appliedCoupon._id, session);
 
   return { parentOrder: createdParent, cart };
 };
@@ -175,14 +220,12 @@ export const cancelOrder = async (orderId, userId) => {
   const parentOrder = await orderRepo.findByIdForMutation(orderId, userId);
   if (!parentOrder) throw new ApiError(404, 'Order not found');
 
-  // ---------- Existing Pending path (COD / unpaid / no refund needed) ----------
+  // ---------- Pending orders ----------
   if (parentOrder.orderStatus === 'Pending') {
-    // If this was a COD order, stock was deducted at placement.
-    // We must restore it because the order never completed.
+    const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
     const payment = await paymentRepo.findByParentOrder(orderId);
 
     if (payment && payment.method === 'CashOnDelivery') {
-      const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
       for (const so of sellerOrders) {
         for (const item of so.items || []) {
           await Product.updateOne(
@@ -195,15 +238,23 @@ export const cancelOrder = async (orderId, userId) => {
 
     await orderRepo.updateStatus(orderId, 'Cancelled');
 
-    const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
     for (const so of sellerOrders) {
       await orderRepo.updateSellerOrderStatus(so._id, 'Cancelled');
     }
 
+    await createNotification(
+      userId,
+      'order',
+      'Order Cancelled',
+      `Order ${orderId} has been cancelled.`,
+      `/orders/${orderId}`,
+      { parentOrderId: orderId }
+    );
+
     return parentOrder;
   }
 
-  // ---------- New Stripe Processing path with automatic refund ----------
+  // ---------- Processing Stripe orders ----------
   if (parentOrder.orderStatus === 'Processing') {
     const payment = await paymentRepo.findByParentOrder(orderId);
 
@@ -225,7 +276,6 @@ export const cancelOrder = async (orderId, userId) => {
     session.startTransaction();
 
     try {
-      // 1. Refund via Stripe
       try {
         await stripe.refunds.create({ payment_intent: payment.stripePaymentIntentId });
       } catch (stripeError) {
@@ -234,11 +284,9 @@ export const cancelOrder = async (orderId, userId) => {
         throw new ApiError(502, 'Refund could not be processed, please try again or contact support');
       }
 
-      // 2. Mark payment as Refunded
       payment.status = 'Refunded';
       await payment.save({ session });
 
-      // 3. Manual PaymentTransaction record (simplified Phase 1 synthetic event ID)
       await PaymentTransaction.create([{
         payment: payment._id,
         type: 'refund',
@@ -248,7 +296,6 @@ export const cancelOrder = async (orderId, userId) => {
         stripeEventId: `manual-refund-${payment._id}-${Date.now()}`,
       }], { session });
 
-      // 4. Restore stock
       for (const so of sellerOrders) {
         for (const item of so.items || []) {
           await Product.updateOne(
@@ -259,8 +306,8 @@ export const cancelOrder = async (orderId, userId) => {
         }
       }
 
-      // 5. Cancel parent order and seller orders
       await orderRepo.updateStatus(orderId, 'Cancelled');
+
       for (const so of sellerOrders) {
         so.status = 'Cancelled';
         await so.save({ session });
@@ -268,6 +315,17 @@ export const cancelOrder = async (orderId, userId) => {
 
       await session.commitTransaction();
       session.endSession();
+
+      // Send notification after transaction commits
+      await createNotification(
+        userId,
+        'order',
+        'Order Cancelled',
+        `Order ${orderId} has been cancelled and refunded.`,
+        `/orders/${orderId}`,
+        { parentOrderId: orderId }
+      );
+
       return parentOrder;
     } catch (error) {
       await session.abortTransaction();
@@ -276,6 +334,5 @@ export const cancelOrder = async (orderId, userId) => {
     }
   }
 
-  // Any other status – not cancellable
   throw new ApiError(400, 'Only pending orders can be cancelled');
 };

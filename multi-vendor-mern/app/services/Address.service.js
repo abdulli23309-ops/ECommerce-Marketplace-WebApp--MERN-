@@ -4,11 +4,12 @@ import { ApiError } from '../utils/ApiError.util.js';
 export const getUserAddresses = (userId) => addressRepo.findByUser(userId);
 
 export const createAddress = async (userId, data) => {
-  const existingCount = await addressRepo.findByUser(userId).countDocuments();
+  const existingAddresses = await addressRepo.findByUser(userId);
 
   // If this is the user's first address, automatically make it default
   const newAddressData = { ...data, user: userId };
-  if (existingCount === 0) {
+
+  if (!existingAddresses || existingAddresses.length === 0) {
     newAddressData.isDefault = true;
   } else if (data.isDefault) {
     // If the new address is being set as default, unset previous defaults

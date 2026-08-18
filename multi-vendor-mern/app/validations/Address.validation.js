@@ -1,6 +1,8 @@
 import { body } from 'express-validator';
 
 export const createAddressValidation = [
+  body('fullName').trim().notEmpty().withMessage('Full name is required'),
+  body('phoneNumber').trim().notEmpty().withMessage('Phone number is required'),
   body('street').trim().notEmpty().withMessage('Street is required'),
   body('city').trim().notEmpty().withMessage('City is required'),
   body('state').trim().notEmpty().withMessage('State is required'),
@@ -10,6 +12,8 @@ export const createAddressValidation = [
 ];
 
 export const updateAddressValidation = [
+  body('fullName').optional().trim().notEmpty(),
+  body('phoneNumber').optional().trim().notEmpty(),
   body('street').optional().trim().notEmpty(),
   body('city').optional().trim().notEmpty(),
   body('state').optional().trim().notEmpty(),

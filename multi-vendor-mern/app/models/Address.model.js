@@ -8,6 +8,18 @@ const addressSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    fullName: {
+      type: String,
+      required: true,
+      trim: true,
+      default: '',
+    },
+    phoneNumber: {
+      type: String,
+      required: true,
+      trim: true,
+      default: '',
+    },
     street: {
       type: String,
       required: true,
@@ -41,7 +53,6 @@ const addressSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Enforce one default address per user at the database level
 addressSchema.index(
   { user: 1, isDefault: 1 },
   {

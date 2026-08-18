@@ -54,53 +54,236 @@ const labelStyle = { fontSize: "0.75rem", fontWeight: 500, color: "var(--text-se
 const flexRow = { display: "flex", gap: "24px" };
 const badgeStyle = { position: "absolute", top: "16px", right: "16px", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", padding: "4px 8px", borderRadius: "4px", fontSize: "12px", fontWeight: 500 };
 
+const COUNTRY_OPTIONS = [
+  "Pakistan",
+  "Saudi Arabia",
+  "USA",
+  "UK",
+  "Iraq",
+];
+
 const AddressBookPage = () => {
   const [addresses, setAddresses] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ fullName: "", phoneNumber: "", addressLine1: "", addressLine2: "", city: "", state: "", postalCode: "", isDefault: false });
+  const [form, setForm] = useState({
+    fullName: "",
+    phoneNumber: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "Pakistan",
+    isDefault: false,
+  });
 
-  const load = async () => { try { const data = await fetchAddresses(); setAddresses(data || []); } catch (err) { console.error(err); } finally { setLoading(false); } };
-  useEffect(() => { load(); }, []);
+  const load = async () => {
+    try {
+      const data = await fetchAddresses();
+      setAddresses(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const resetForm = () => { setForm({ fullName: "", phoneNumber: "", addressLine1: "", addressLine2: "", city: "", state: "", postalCode: "", isDefault: false }); setShowForm(false); setEditingId(null); };
-  const handleSubmit = async (e) => { e.preventDefault(); try { if (editingId) await updateAddress(editingId, form); else await addAddress(form); resetForm(); load(); } catch (err) { console.error("Failed to save address", err); } };
-  const handleEdit = (addr) => { setForm({ fullName: addr.fullName, phoneNumber: addr.phoneNumber, addressLine1: addr.addressLine1, addressLine2: addr.addressLine2 || "", city: addr.city, state: addr.state || "", postalCode: addr.postalCode || "", isDefault: addr.isDefault }); setEditingId(addr.id); setShowForm(true); };
-  const handleDelete = async (id) => { if (!window.confirm("Delete this address?")) return; await deleteAddress(id); load(); };
-  const handleSetDefault = async (id) => { await setDefaultAddress(id); load(); };
+  useEffect(() => {
+    load();
+  }, []);
 
-  if (loading) return <div style={pageStyle}><div style={{ textAlign: "center", color: "var(--text-secondary)", paddingTop: "80px" }}>Loading addresses...</div></div>;
+  const resetForm = () => {
+    setForm({
+      fullName: "",
+      phoneNumber: "",
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "Pakistan",
+      isDefault: false,
+    });
+    setShowForm(false);
+    setEditingId(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingId) {
+        await updateAddress(editingId, form);
+      } else {
+        await addAddress(form);
+      }
+      resetForm();
+      load();
+    } catch (err) {
+      console.error("Failed to save address", err);
+    }
+  };
+
+  const handleEdit = (addr) => {
+    setForm({
+      fullName: addr.fullName,
+      phoneNumber: addr.phoneNumber,
+      addressLine1: addr.addressLine1,
+      addressLine2: addr.addressLine2 || "",
+      city: addr.city,
+      state: addr.state || "",
+      postalCode: addr.postalCode || "",
+      country: addr.country || "Pakistan",
+      isDefault: addr.isDefault,
+    });
+    setEditingId(addr.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this address?")) return;
+    await deleteAddress(id);
+    load();
+  };
+
+  const handleSetDefault = async (id) => {
+    await setDefaultAddress(id);
+    load();
+  };
+
+  if (loading) {
+    return (
+      <div style={pageStyle}>
+        <div style={{ textAlign: "center", color: "var(--text-secondary)", paddingTop: "80px" }}>
+          Loading addresses...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={pageStyle}>
       <div style={containerStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 style={titleStyle}>Your Addresses</h2>
-          {!showForm && <button style={btnPrimaryStyle} onClick={() => { resetForm(); setShowForm(true); }}><Plus size={16} color="#fff" />Add Address</button>}
+          {!showForm && (
+            <button style={btnPrimaryStyle} onClick={() => { resetForm(); setShowForm(true); }}>
+              <Plus size={16} color="#fff" />
+              Add Address
+            </button>
+          )}
         </div>
 
         {showForm && (
           <form onSubmit={handleSubmit} style={cardStyle}>
-            <h3 style={{ fontWeight: 600, margin: "0 0 24px 0", fontSize: "1.1rem", color: "var(--text-primary)" }}>{editingId ? "Edit Address" : "New Address"}</h3>
+            <h3 style={{ fontWeight: 600, margin: "0 0 24px 0", fontSize: "1.1rem", color: "var(--text-primary)" }}>
+              {editingId ? "Edit Address" : "New Address"}
+            </h3>
+
             <div style={flexRow}>
-              <div style={{ flex: 1 }}><label style={labelStyle}>Full Name</label><input style={inputStyle} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required /></div>
-              <div style={{ flex: 1 }}><label style={labelStyle}>Phone Number</label><input style={inputStyle} value={form.phoneNumber} onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })} required /></div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Full Name</label>
+                <input
+                  style={inputStyle}
+                  value={form.fullName}
+                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                  required
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Phone Number</label>
+                <input
+                  style={inputStyle}
+                  value={form.phoneNumber}
+                  onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
+                  required
+                />
+              </div>
             </div>
-            <div style={{ marginTop: "16px" }}><label style={labelStyle}>Address Line 1</label><input style={inputStyle} value={form.addressLine1} onChange={(e) => setForm({ ...form, addressLine1: e.target.value })} required /></div>
-            <div style={{ marginTop: "16px" }}><label style={labelStyle}>Address Line 2 (optional)</label><input style={inputStyle} value={form.addressLine2} onChange={(e) => setForm({ ...form, addressLine2: e.target.value })} /></div>
+
+            <div style={{ marginTop: "16px" }}>
+              <label style={labelStyle}>Address Line 1</label>
+              <input
+                style={inputStyle}
+                value={form.addressLine1}
+                onChange={(e) => setForm({ ...form, addressLine1: e.target.value })}
+                required
+              />
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <label style={labelStyle}>Address Line 2 (optional)</label>
+              <input
+                style={inputStyle}
+                value={form.addressLine2}
+                onChange={(e) => setForm({ ...form, addressLine2: e.target.value })}
+              />
+            </div>
+
             <div style={{ ...flexRow, marginTop: "16px" }}>
-              <div style={{ flex: 1 }}><label style={labelStyle}>City</label><input style={inputStyle} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required /></div>
-              <div style={{ flex: 1 }}><label style={labelStyle}>State</label><input style={inputStyle} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} /></div>
-              <div style={{ flex: 1 }}><label style={labelStyle}>Postal Code</label><input style={inputStyle} value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} /></div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>City</label>
+                <input
+                  style={inputStyle}
+                  value={form.city}
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  required
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>State</label>
+                <input
+                  style={inputStyle}
+                  value={form.state}
+                  onChange={(e) => setForm({ ...form, state: e.target.value })}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Postal Code</label>
+                <input
+                  style={inputStyle}
+                  value={form.postalCode}
+                  onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                />
+              </div>
             </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <label style={labelStyle}>Country</label>
+              <select
+                style={{ ...inputStyle, borderBottom: "1px solid var(--border)" }}
+                value={form.country}
+                onChange={(e) => setForm({ ...form, country: e.target.value })}
+                required
+              >
+                {COUNTRY_OPTIONS.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-              <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} style={{ accentColor: "var(--primary)" }} />
-              <label style={{ ...labelStyle, marginBottom: 0, cursor: "pointer" }}>Set as default address</label>
+              <input
+                type="checkbox"
+                checked={form.isDefault}
+                onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
+                style={{ accentColor: "var(--primary)" }}
+              />
+              <label style={{ ...labelStyle, marginBottom: 0, cursor: "pointer" }}>
+                Set as default address
+              </label>
             </div>
+
             <div style={{ display: "flex", gap: "16px", marginTop: "24px" }}>
-              <button type="submit" style={btnPrimaryStyle}>{editingId ? "Update" : "Save"}</button>
-              <button type="button" style={btnSecondaryStyle} onClick={resetForm}>Cancel</button>
+              <button type="submit" style={btnPrimaryStyle}>
+                {editingId ? "Update" : "Save"}
+              </button>
+              <button type="button" style={btnSecondaryStyle} onClick={resetForm}>
+                Cancel
+              </button>
             </div>
           </form>
         )}
@@ -109,23 +292,68 @@ const AddressBookPage = () => {
           <div style={{ ...cardStyle, textAlign: "center", padding: "48px" }}>
             <MapPin size={64} color="var(--text-muted)" />
             <p style={{ color: "var(--text-secondary)", marginBottom: "24px" }}>No addresses saved yet.</p>
-            <button style={btnPrimaryStyle} onClick={() => { resetForm(); setShowForm(true); }}><Plus size={16} color="#fff" />Add New Address</button>
+            <button style={btnPrimaryStyle} onClick={() => { resetForm(); setShowForm(true); }}>
+              <Plus size={16} color="#fff" />
+              Add New Address
+            </button>
           </div>
         )}
 
         {!showForm && addresses.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
             {addresses.map((addr) => (
-              <div key={addr.id} style={{ width: "calc(50% - 8px)", border: "1px solid var(--border)", borderRadius: "12px", padding: "20px", position: "relative", backgroundColor: "var(--surface-elevated)", boxSizing: "border-box" }}>
+              <div
+                key={addr.id}
+                style={{
+                  width: "calc(50% - 8px)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "12px",
+                  padding: "20px",
+                  position: "relative",
+                  backgroundColor: "var(--surface-elevated)",
+                  boxSizing: "border-box",
+                }}
+              >
                 {addr.isDefault && <span style={badgeStyle}>Default</span>}
-                <p style={{ fontWeight: 500, fontSize: "1rem", color: "var(--text-primary)", margin: "0 0 8px" }}>{addr.fullName}</p>
-                <p style={{ color: "var(--text-secondary)", margin: "0 0 4px", fontSize: "0.9rem" }}>{addr.addressLine1}{addr.addressLine2 ? `, ${addr.addressLine2}` : ""}</p>
-                <p style={{ color: "var(--text-secondary)", margin: "0 0 4px", fontSize: "0.9rem" }}>{addr.city}{addr.state ? `, ${addr.state}` : ""} {addr.postalCode}</p>
-                <p style={{ color: "var(--text-secondary)", margin: "0 0 12px", fontSize: "0.9rem" }}>{addr.phoneNumber}</p>
+                <p style={{ fontWeight: 500, fontSize: "1rem", color: "var(--text-primary)", margin: "0 0 8px" }}>
+                  {addr.fullName}
+                </p>
+                <p style={{ color: "var(--text-secondary)", margin: "0 0 4px", fontSize: "0.9rem" }}>
+                  {addr.phoneNumber}
+                </p>
+                <p style={{ color: "var(--text-secondary)", margin: "0 0 4px", fontSize: "0.9rem" }}>
+                  {addr.addressLine1}{addr.addressLine2 ? `, ${addr.addressLine2}` : ""}
+                </p>
+                <p style={{ color: "var(--text-secondary)", margin: "0 0 4px", fontSize: "0.9rem" }}>
+                  {addr.city}{addr.state ? `, ${addr.state}` : ""} {addr.postalCode}
+                </p>
+                <p style={{ color: "var(--text-secondary)", margin: "0 0 4px", fontSize: "0.9rem" }}>
+                  {addr.country || "Pakistan"}
+                </p>
                 <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
-                  <button style={{ ...btnSecondaryStyle, padding: "4px 12px", fontSize: "0.8rem" }} onClick={() => handleEdit(addr)}><Edit size={14} />Edit</button>
-                  <button style={{ ...btnSecondaryStyle, padding: "4px 12px", fontSize: "0.8rem" }} onClick={() => handleDelete(addr.id)}><Trash size={14} />Delete</button>
-                  {!addr.isDefault && <button style={{ ...btnSecondaryStyle, padding: "4px 12px", fontSize: "0.8rem", borderColor: "var(--border)" }} onClick={() => handleSetDefault(addr.id)}><Check size={14} />Set Default</button>}
+                  <button
+                    style={{ ...btnSecondaryStyle, padding: "4px 12px", fontSize: "0.8rem" }}
+                    onClick={() => handleEdit(addr)}
+                  >
+                    <Edit size={14} />
+                    Edit
+                  </button>
+                  <button
+                    style={{ ...btnSecondaryStyle, padding: "4px 12px", fontSize: "0.8rem" }}
+                    onClick={() => handleDelete(addr.id)}
+                  >
+                    <Trash size={14} />
+                    Delete
+                  </button>
+                  {!addr.isDefault && (
+                    <button
+                      style={{ ...btnSecondaryStyle, padding: "4px 12px", fontSize: "0.8rem", borderColor: "var(--border)" }}
+                      onClick={() => handleSetDefault(addr.id)}
+                    >
+                      <Check size={14} />
+                      Set Default
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

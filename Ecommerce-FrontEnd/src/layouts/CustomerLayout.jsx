@@ -5,6 +5,7 @@ import { loadCart } from "../store/cartSlice";
 import BrandLogo from "../components/common/BrandLogo";
 import Footer from "../components/common/Footer";
 import ThemeToggle from "../components/common/ThemeToggle";
+import NotificationDropdown from "../components/common/NotificationDropdown";
 import { clearPermissions } from "../store/permissionsSlice";
 
 const CustomerLayout = () => {
@@ -78,6 +79,9 @@ const CustomerLayout = () => {
 
         <div className="navbar-actions">
           <ThemeToggle />
+
+          {/* Notification bell */}
+          <NotificationDropdown />
 
           {/* Cart is always available */}
           <div className="navbar-cart" onClick={() => navigate("/cart")}>

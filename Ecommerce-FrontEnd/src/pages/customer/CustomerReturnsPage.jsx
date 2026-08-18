@@ -3,12 +3,12 @@ import axiosInstance from "../../services/axiosInstance";
 import { getImageUrl } from "../../utils/imageHelper";
 import CustomerReturnDetail from "./CustomerReturnDetail";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import Pagination from "../../components/common/Pagination";
 
 const getStatusLabel = (status) => {
   const labels = { PENDING_ADMIN_REVIEW: "Under Admin Review", REJECTED_BY_ADMIN: "Request Rejected", PENDING_SELLER_REVIEW: "Awaiting Seller Review", APPROVED_PENDING_SHIPMENT: "Action Required: Ship Item", REJECTED_BY_SELLER: "Declined by Seller", ITEM_IN_TRANSIT: "Return In Transit", SELLER_RECEIVED: "Received by Seller", INSPECTED_AND_REFUNDED: "Refund Completed" };
   return labels[status] || status;
 };
-
 const getStatusStyle = getStatusBadgeStyle;
 
 const CustomerReturnsPage = () => {
@@ -16,7 +16,6 @@ const CustomerReturnsPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReturn, setSelectedReturn] = useState(null);
 
-  // Frontend-only pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const totalPages = Math.max(1, Math.ceil(returns.length / itemsPerPage));
@@ -63,27 +62,11 @@ const CustomerReturnsPage = () => {
         })}
       </div>
 
-      {returns.length > itemsPerPage && (
-        <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "2rem" }}>
-          <button
-            className="page-btn"
-            disabled={currentPage <= 1}
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-          >
-            Previous
-          </button>
-          <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            className="page-btn"
-            disabled={currentPage >= totalPages}
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-          >
-            Next
-          </button>
-        </div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {selectedReturn && <CustomerReturnDetail returnReq={selectedReturn} onClose={() => setSelectedReturn(null)} onUpdate={fetchReturns} />}
     </div>

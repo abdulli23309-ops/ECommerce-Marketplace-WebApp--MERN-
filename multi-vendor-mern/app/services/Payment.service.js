@@ -1,12 +1,14 @@
-import stripe from '../stripe.js';  // adjust path if needed
+import stripe from '../stripe.js';
 import PaymentTransaction from '../models/PaymentTransaction.model.js';
 import Cart from '../models/Cart.model.js';
 import Product from '../models/Product.model.js';
-import SellerOrder from '../models/SellerOrder.model.js';
-import ParentOrder from '../models/ParentOrder.model.js';  // used in catch block
+import ParentOrder from '../models/ParentOrder.model.js';
+import Coupon from '../models/Coupon.model.js';
+import CouponUsage from '../models/CouponUsage.model.js';
 import * as paymentRepo from '../repositories/Payment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import * as orderService from './Order.service.js';
+import * as couponService from './Coupon.service.js';
 import { createPaymentProcessor } from './payment/PaymentFactory.js';
 import { ApiError } from '../utils/ApiError.util.js';
 import mongoose from 'mongoose';
@@ -31,8 +33,37 @@ export const createPayment = async (parentOrderId, userId) => {
   return payment;
 };
 
+// Helper to redeem a coupon once an order is confirmed
+const redeemCoupon = async (parentOrder, session) => {
+  if (!parentOrder?.couponCode) return;
+
+  const coupon = await Coupon.findOne({
+    code: parentOrder.couponCode,
+    isDeleted: false,
+    isActive: true,
+  }).session(session);
+
+  if (!coupon) return;
+
+  const existingUsage = await CouponUsage.findOne({
+    parentOrder: parentOrder._id,
+  }).session(session);
+
+  if (existingUsage) return;
+
+  await CouponUsage.create([{
+    coupon: coupon._id,
+    user: parentOrder.customer,
+    parentOrder: parentOrder._id,
+    discountAmount: parentOrder.discountAmount || 0,
+  }], { session });
+
+  coupon.usageCount += 1;
+  await coupon.save({ session });
+};
+
 // ---------- NEW – Stripe/COD payment intent creation ----------
-export const createPaymentIntent = async (userId, addressId, paymentMethod) => {
+export const createPaymentIntent = async (userId, addressId, paymentMethod, couponCode = null) => {
   if (!['Stripe', 'CashOnDelivery'].includes(paymentMethod)) {
     throw new ApiError(400, `Unsupported payment method: ${paymentMethod}`);
   }
@@ -42,7 +73,7 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod) => {
 
   let parentOrder, payment;
   try {
-    const result = await orderService.prepareOrder(userId, addressId, session);
+    const result = await orderService.prepareOrder(userId, addressId, session, couponCode);
     parentOrder = result.parentOrder;
 
     const [paymentDoc] = await paymentRepo.create(
@@ -79,26 +110,40 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod) => {
       await payment.save();
       throw new ApiError(502, 'Payment processing failed. Please try again.');
     }
- } else if (paymentMethod === 'CashOnDelivery') {
-  await processor.process(payment, parentOrder);
+  } else if (paymentMethod === 'CashOnDelivery') {
+    await processor.process(payment, parentOrder);
 
-  // Deduct stock for COD orders
-  const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(parentOrder._id);
-  for (const so of sellerOrders) {
-    for (const item of so.items || []) {
-      await Product.updateOne(
-        { _id: item.product, stock: { $gte: item.quantity } },
-        { $inc: { stock: -item.quantity } }
-      );
+    // Deduct stock for COD orders
+    const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(parentOrder._id);
+    for (const so of sellerOrders) {
+      for (const item of so.items || []) {
+        await Product.updateOne(
+          { _id: item.product, stock: { $gte: item.quantity } },
+          { $inc: { stock: -item.quantity } }
+        );
+      }
+    }
+
+    // COD order is confirmed – clear cart immediately
+    await Cart.updateOne(
+      { user: userId },
+      { $set: { items: [] } }
+    );
+
+    // Redeem coupon since payment is confirmed immediately
+    const redemptionSession = await mongoose.startSession();
+    redemptionSession.startTransaction();
+    try {
+      await redeemCoupon(parentOrder, redemptionSession);
+      await redemptionSession.commitTransaction();
+      redemptionSession.endSession();
+    } catch (error) {
+      await redemptionSession.abortTransaction();
+      redemptionSession.endSession();
+      console.error('Failed to redeem coupon for COD order:', error);
+      // Do not fail the order if coupon redemption fails; log and continue
     }
   }
-
-  // COD order is confirmed – clear the cart immediately
-  await Cart.updateOne(
-    { user: userId },
-    { $set: { items: [] } }
-  );
-}
 
   return {
     payment: payment.toObject(),
@@ -129,12 +174,12 @@ export const handlePaymentSuccess = async (event) => {
   const paymentIntent = event.data.object;
   const stripePaymentIntentId = paymentIntent.id;
   const stripeEventId = event.id;
-const charge = paymentIntent.charges?.data?.[0];
-const cardDetails = charge?.payment_method_details?.card;
-const cardBrand = cardDetails?.brand || null;
-const cardLast4 = cardDetails?.last4 || null;
-const cardExpMonth = cardDetails?.exp_month || null;
-const cardExpYear = cardDetails?.exp_year || null;
+  const charge = paymentIntent.charges?.data?.[0];
+  const cardDetails = charge?.payment_method_details?.card;
+  const cardBrand = cardDetails?.brand || null;
+  const cardLast4 = cardDetails?.last4 || null;
+  const cardExpMonth = cardDetails?.exp_month || null;
+  const cardExpYear = cardDetails?.exp_year || null;
 
   console.log(`[WEBHOOK] Processing payment_intent.succeeded for PI: ${stripePaymentIntentId}`);
 
@@ -199,14 +244,18 @@ const cardExpYear = cardDetails?.exp_year || null;
 
     currentPayment.status = 'Completed';
     currentPayment.cardBrand = cardBrand;
-currentPayment.cardLast4 = cardLast4;
-currentPayment.cardExpMonth = cardExpMonth;
-currentPayment.cardExpYear = cardExpYear;
+    currentPayment.cardLast4 = cardLast4;
+    currentPayment.cardExpMonth = cardExpMonth;
+    currentPayment.cardExpYear = cardExpYear;
     currentPayment.paidAt = new Date();
     await currentPayment.save({ session });
 
     parentOrder.orderStatus = 'Processing';
     await parentOrder.save({ session });
+
+    console.log(`[WEBHOOK] Redeeming coupon for order ${parentOrder._id}`);
+
+    await redeemCoupon(parentOrder, session);
 
     console.log(`[WEBHOOK] Clearing cart for user ${parentOrder.customer}`);
 
@@ -225,11 +274,10 @@ currentPayment.cardExpYear = cardExpYear;
 
     console.error(`[WEBHOOK] Error processing payment: ${error.message}`);
 
-    // If stock deduction failed, mark order as Cancelled
     if (error.message.includes('Insufficient stock')) {
       await ParentOrder.findByIdAndUpdate(parentOrder._id, { orderStatus: 'Cancelled' });
     }
-    throw error; // rethrow to be caught by webhook handler
+    throw error;
   }
 };
 
@@ -285,8 +333,9 @@ export const handlePaymentFailure = async (event) => {
     throw error;
   }
 };
+
 export const getPaymentByOrderId = async (orderId, userId) => {
-  const order = await orderRepo.findById(orderId, userId);   // ensures ownership
+  const order = await orderRepo.findById(orderId, userId);
   if (!order) throw new ApiError(404, 'Order not found');
   const payment = await paymentRepo.findByParentOrder(orderId);
   if (!payment) throw new ApiError(404, 'Payment not found');

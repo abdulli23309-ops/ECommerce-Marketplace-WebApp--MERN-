@@ -3,6 +3,8 @@ import * as returnRepo from '../repositories/Return.repository.js';
 import * as paymentRepo from '../repositories/Payment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import Product from '../models/Product.model.js';
+import { createNotification } from './Notification.service.js';
+import { logAction } from './AdminAuditLog.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
 export const createRefund = async (returnRequestId, adminId) => {
@@ -58,6 +60,29 @@ export const createRefund = async (returnRequestId, adminId) => {
     processedBy: adminId,
     processedAt: new Date(),
   });
+
+  // Notify the customer that their refund has been processed
+  if (returnRequest.customer) {
+    await createNotification(
+      returnRequest.customer,
+      'refund',
+      'Refund Processed',
+      `Your refund for order ${sellerOrder.parentOrder} has been processed.`,
+      `/orders/${sellerOrder.parentOrder}`,
+      { returnRequestId: returnRequest._id, refundId: refund._id }
+    );
+  }
+
+  // Audit log
+  if (adminId) {
+    await logAction(
+      adminId,
+      'refund.create',
+      'Refund',
+      refund._id,
+      { amount: refund.amount, returnRequest: returnRequestId }
+    );
+  }
 
   return refund;
 };

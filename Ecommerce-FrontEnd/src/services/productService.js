@@ -9,7 +9,6 @@ const mapProduct = (p) => ({
 });
 
 export const fetchApprovedProducts = async (params = {}) => {
-  // backward compatibility: allow passing (page, pageSize) as numbers
   if (typeof params === 'number') {
     params = { page: arguments[0], pageSize: arguments[1] || 100 };
   }
@@ -31,4 +30,11 @@ export const fetchProductById = async (id) => {
   const { data } = await axiosInstance.get(`/products/${id}`);
   const product = data.data || data;
   return mapProduct(product);
+};
+
+export const fetchSearchSuggestions = async (query) => {
+  const { data } = await axiosInstance.get("/products/suggestions", {
+    params: { q: query },
+  });
+  return data.data || { products: [], categories: [], brands: [] };
 };

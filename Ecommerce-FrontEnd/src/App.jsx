@@ -51,8 +51,12 @@ import OrderConfirmationPage from "./pages/customer/OrderConfirmationPage";
 import CustomerReturnsPage from "./pages/customer/CustomerReturnsPage";
 import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
 import SellerReturnsPage from "./pages/seller/SellerReturnsPage";
-import WishlistPage from "./pages/customer/WishlistPage"; // <-- add this import
+import WishlistPage from "./pages/customer/WishlistPage";
 import { useTheme } from "./hooks/useTheme";
+
+// Priority 4 new pages
+import AdminAuditLogPage from "./pages/admin/AdminAuditLogPage";
+import AdminCouponsPage from "./pages/admin/AdminCouponsPage";
 
 const App = () => {
   useTheme();
@@ -87,7 +91,7 @@ const App = () => {
      <Route element={<ProtectedRoute />}>
         <Route element={<CustomerLayout />}>
           <Route path="/cart" element={<CartPage />} />
-          <Route path="/wishlist" element={<WishlistPage />} /> {/* <-- add this route */}
+          <Route path="/wishlist" element={<WishlistPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/orders" element={<OrderHistoryPage />} />
@@ -141,6 +145,9 @@ const App = () => {
           <Route path="/admin/shipments" element={<AdminShipmentsPage />} />
           <Route path="/admin/payments" element={<AdminPaymentsPage />} />
           <Route path="/admin/brands" element={<AdminBrandsPage />} />
+          {/* Priority 4 admin routes */}
+          <Route path="/admin/audit-logs" element={<AdminAuditLogPage />} />
+          <Route path="/admin/coupons" element={<AdminCouponsPage />} />
         </Route>
       </Route>
     </Routes>

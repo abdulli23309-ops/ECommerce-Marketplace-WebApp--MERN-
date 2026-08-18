@@ -9,6 +9,7 @@ import Footer from "../components/common/Footer";
 import useIdleLogout from '../hooks/useIdleLogout';
 import { clearPermissions } from '../store/permissionsSlice';
 import ThemeToggle from "../components/common/ThemeToggle";
+import NotificationDropdown from "../components/common/NotificationDropdown";
 
 const SellerLayout = () => {
   const dispatch = useDispatch();
@@ -339,6 +340,9 @@ const SellerLayout = () => {
           </nav>
 
           <div className="dashboard-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <NotificationDropdown />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
               <ThemeToggle />
             </div>

@@ -2,10 +2,10 @@ import Cart from '../models/Cart.model.js';
 
 export const findByUser = (userId) =>
   Cart.findOne({ user: userId })
-    .populate('items.product', 'name images price')   // ← populates everything: name, images, price, etc.
+    .populate('items.product', 'name images price')
     .lean();
-    
-    export const findByUserForMutation = (userId) =>
+
+export const findByUserForMutation = (userId) =>
   Cart.findOne({ user: userId });
 
 export const create = (userId, items = []) => Cart.create({ user: userId, items });
@@ -33,9 +33,11 @@ export const removeItem = async (userId, productId) => {
   return cart.save();
 };
 
-export const clearCart = async (userId) => {
-  const cart = await Cart.findOne({ user: userId });
-  if (!cart) return null;
-  cart.items = [];
-  return cart.save();
+export const clearCart = async (userId, session = undefined) => {
+  const cart = await Cart.findOneAndUpdate(
+    { user: userId },
+    { $set: { items: [] } },
+    { new: true, session }
+  );
+  return cart;
 };

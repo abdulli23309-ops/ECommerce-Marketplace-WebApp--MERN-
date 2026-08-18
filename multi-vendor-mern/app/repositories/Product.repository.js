@@ -190,17 +190,42 @@ export const getRatingStats = async (productId) => {
   };
 };
 
+export const findSuggestions = async (q, limit = 8) => {
+  if (!q || q.trim().length < 2) return [];
+  return Product.find({
+    isDeleted: false,
+    status: 'Approved',
+    name: { $regex: `^${q.trim()}`, $options: 'i' },
+  })
+    .select('_id name')
+    .limit(limit)
+    .lean();
+};
+
 // New method for global admin product statistics
 export const getAdminProductStats = async () => {
-  const [pendingApproval, highRiskFlags, approvedToday, totalProducts, rejectedCount] = await Promise.all([
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+  const [
+    pendingApproval,
+    highRiskFlags,
+    approvedToday,
+    totalProducts,
+    rejectedCount,
+  ] = await Promise.all([
     Product.countDocuments({ isDeleted: false, status: 'PendingApproval' }),
-    Product.countDocuments({ isDeleted: false, status: { $in: ['Suspended', 'Rejected'] } }),
+    Product.countDocuments({
+      isDeleted: false,
+      status: { $in: ['Suspended', 'Rejected'] },
+    }),
     Product.countDocuments({
       isDeleted: false,
       status: 'Approved',
-      updatedAt: {
-        $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-      },
+      approvedAt: { $gte: startOfToday, $lt: startOfTomorrow },
     }),
     Product.countDocuments({ isDeleted: false }),
     Product.countDocuments({ isDeleted: false, status: 'Rejected' }),

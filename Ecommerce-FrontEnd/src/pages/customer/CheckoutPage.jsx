@@ -5,6 +5,7 @@ import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { fetchCart } from "../../services/cartService";
 import { fetchAddresses } from "../../services/addressService";
 import { createPaymentIntent } from "../../services/orderService";
+import { validateCoupon } from "../../services/couponService";
 import { getImageUrl } from "../../utils/imageHelper";
 import { emptyCart } from "../../store/cartSlice";
 
@@ -83,7 +84,14 @@ const CheckoutPage = () => {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("card");
-  // Stripe Elements are rendered in an iframe and cannot consume CSS custom properties.
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState(null);
+
   const cardElementOptions = {
     style: {
       base: { fontSize: "16px", color: mode === "dark" ? "#f3f4f6" : "#424770", "::placeholder": { color: mode === "dark" ? "#71717a" : "#aab7c4" } },
@@ -118,13 +126,45 @@ const CheckoutPage = () => {
     load();
   }, [user, navigate]);
 
-  const calculateTotal = () => {
+  const cartTotal = () => {
     if (!cart?.items) return 0;
     return cart.items.reduce(
       (sum, item) => sum + item.unitPrice * item.quantity,
       0
     );
   };
+
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const res = await validateCoupon(couponCode.trim(), cartTotal());
+      setAppliedCoupon(res.coupon);
+      setDiscountAmount(res.discount || 0);
+      setCouponError(null);
+    } catch (err) {
+      console.error("Coupon validation failed", err);
+      setCouponError(err.response?.data?.message || "Invalid coupon code");
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setCouponCode("");
+    setCouponError(null);
+  };
+
+  const finalTotal = () => Math.max(0, cartTotal() - discountAmount);
 
   const handlePlaceOrder = async () => {
     if (!selectedAddressId) {
@@ -143,11 +183,14 @@ const CheckoutPage = () => {
           return;
         }
 
-        // Create payment intent and get client secret
-        const result = await createPaymentIntent(selectedAddressId, "Stripe");
+        // Pass coupon code to backend
+        const result = await createPaymentIntent(
+          selectedAddressId,
+          "Stripe",
+          appliedCoupon?.code || null
+        );
         const { clientSecret, order } = result;
 
-        // Stripe confirmCardPayment with return_url for 3DS
         const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
           clientSecret,
           {
@@ -164,17 +207,17 @@ const CheckoutPage = () => {
           return;
         }
 
-        // If no redirect (no 3DS), go directly to confirmation
         if (paymentIntent.status === "succeeded") {
           dispatch(emptyCart());
           navigate(`/order-confirmation/${order._id}?payment_intent=${paymentIntent.id}`);
-        } else {
-          // For requires_action or processing, Stripe will redirect automatically
-          // Do nothing – the return_url will handle the redirect
         }
       } else {
         // Cash on Delivery
-        const result = await createPaymentIntent(selectedAddressId, "CashOnDelivery");
+        const result = await createPaymentIntent(
+          selectedAddressId,
+          "CashOnDelivery",
+          appliedCoupon?.code || null
+        );
         dispatch(emptyCart());
         navigate(`/order-confirmation/${result.order._id}`);
       }
@@ -352,7 +395,7 @@ const CheckoutPage = () => {
                     : null;
 
                   return (
-                    <div key={item.cartItemId} style={orderSummaryItem}>
+                    <div key={item.cartItemId || `${item.productId}-${item.quantity}`} style={orderSummaryItem}>
                       {productImage ? (
                         <img
                           src={productImage}
@@ -382,18 +425,90 @@ const CheckoutPage = () => {
                 })}
               </div>
 
+              {/* Coupon Input */}
+              <div style={{ marginTop: '20px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    placeholder="Coupon code"
+                    disabled={!!appliedCoupon}
+                    style={{
+                      flex: 1,
+                      padding: '10px 12px',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      backgroundColor: 'var(--input-bg)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                  {!appliedCoupon ? (
+                    <button
+                      onClick={applyCoupon}
+                      disabled={couponLoading || !couponCode.trim()}
+                      style={{
+                        padding: '10px 16px',
+                        backgroundColor: couponLoading ? '#9ca3af' : '#4f46e5',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: couponLoading ? 'not-allowed' : 'pointer',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {couponLoading ? "..." : "Apply"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={removeCoupon}
+                      style={{
+                        padding: '10px 16px',
+                        backgroundColor: '#ef4444',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {couponError && (
+                  <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--danger)' }}>
+                    {couponError}
+                  </p>
+                )}
+                {appliedCoupon && (
+                  <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--success)' }}>
+                    Coupon <strong>{appliedCoupon.code}</strong> applied: -PKR {discountAmount.toLocaleString()}
+                  </p>
+                )}
+              </div>
+
               <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
                   <span>Subtotal</span>
-                  <span>PKR {calculateTotal().toLocaleString()}</span>
+                  <span>PKR {cartTotal().toLocaleString()}</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--success)' }}>
+                    <span>Discount</span>
+                    <span>-PKR {discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
                   <span>Shipping</span>
                   <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>Calculated next step</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #f3f4f6', fontWeight: 600, fontSize: '1rem', color: '#111827' }}>
                   <span>Total</span>
-                  <span>PKR {calculateTotal().toLocaleString()}</span>
+                  <span>PKR {finalTotal().toLocaleString()}</span>
                 </div>
               </div>
 

@@ -23,6 +23,11 @@ import sellerRoutes from './routes/Seller.routes.js';
 import adminProductRoutes from './routes/AdminProduct.routes.js';
 import webhookRouter from './routes/webhook.routes.js';
 
+// Priority 4 new routes
+import notificationRoutes from './routes/Notification.routes.js';
+import couponRoutes from './routes/Coupon.routes.js';
+import adminAuditLogRoutes from './routes/AdminAuditLog.routes.js';
+
 const app = express();
 
 // ---------- Stripe webhook MUST be mounted BEFORE global body parsers ----------
@@ -65,6 +70,11 @@ app.use('/api/v1/admin/products', adminProductRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/account', accountRoutes);
 app.use('/api/v1/seller', sellerRoutes);
+
+// Priority 4 new routes
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/coupons', couponRoutes);
+app.use('/api/v1/admin/audit-logs', adminAuditLogRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });

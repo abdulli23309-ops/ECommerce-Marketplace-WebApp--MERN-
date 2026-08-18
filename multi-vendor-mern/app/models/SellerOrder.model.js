@@ -5,7 +5,7 @@ const orderItemSchema = new mongoose.Schema(
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
-      default: null,   // nullable, just like ASP.NET (product may be deleted later)
+      default: null,
     },
     productNameSnapshot: {
       type: String,
@@ -20,7 +20,7 @@ const orderItemSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { _id: false }   // no separate _id for each item (like Cart)
+  { _id: false }
 );
 
 const sellerOrderSchema = new mongoose.Schema(
@@ -33,20 +33,29 @@ const sellerOrderSchema = new mongoose.Schema(
     store: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Store',
-      default: null,   // matches ASP.NET nullable StoreId
+      default: null,
     },
     subTotal: {
       type: Number,
       required: true,
     },
     isReadBySeller: {
-  type: Boolean,
-  default: false,
-},
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       default: 'Pending',
-      enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
+      enum: [
+        'Pending',
+        'Processing',
+        'Packed',
+        'Dispatched',
+        'OutForDelivery',
+        'Shipped',
+        'Delivered',
+        'Cancelled',
+      ],
     },
     items: [orderItemSchema],
   },

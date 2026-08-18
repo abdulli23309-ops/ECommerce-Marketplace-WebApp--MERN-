@@ -60,6 +60,36 @@ const Icon = ({ type }) => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
         </svg>
       );
+    case "low":
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M12 4a8 8 0 100 16 8 8 0 000-16z" />
+        </svg>
+      );
+    case "fulfilled":
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case "avgOrder":
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+      );
+    case "pendingReviews":
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      );
+    case "returnRate":
+      return (
+        <svg {...iconProps} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -115,6 +145,14 @@ const SellerDashboardPage = () => {
       bg: "var(--warning-bg)",
       to: "/seller/products",
     },
+    {
+      label: "Low Stock",
+      value: stats.lowStockCount ?? 0,
+      icon: "low",
+      color: "var(--danger)",
+      bg: "var(--danger-bg)",
+      to: "/seller/products",
+    },
   ];
 
   const salesCards = [
@@ -144,6 +182,22 @@ const SellerDashboardPage = () => {
       to: "/seller/orders",
     },
     {
+      label: "Fulfilled Orders",
+      value: stats.totalFulfilledOrders ?? 0,
+      icon: "fulfilled",
+      color: "var(--success)",
+      bg: "var(--success-bg)",
+      to: "/seller/orders",
+    },
+    {
+      label: "Avg Order Value",
+      value: `PKR ${Number(stats.averageOrderValue ?? 0).toLocaleString()}`,
+      icon: "avgOrder",
+      color: "var(--info)",
+      bg: "var(--info-bg)",
+      to: "/seller/orders",
+    },
+    {
       label: "Pending Shipments",
       value: stats.pendingShipments ?? 0,
       icon: "shipments",
@@ -158,6 +212,22 @@ const SellerDashboardPage = () => {
       color: "var(--danger)",
       bg: "var(--danger-bg)",
       to: "/seller/orders",
+    },
+    {
+      label: "Return Rate",
+      value: `${stats.returnRate ?? 0}%`,
+      icon: "returnRate",
+      color: "var(--danger)",
+      bg: "var(--danger-bg)",
+      to: "/seller/returns",
+    },
+    {
+      label: "Pending Reviews",
+      value: stats.pendingReviewsCount ?? 0,
+      icon: "pendingReviews",
+      color: "var(--warning)",
+      bg: "var(--warning-bg)",
+      to: "/seller/reviews",
     },
     {
       label: "Average Rating",
@@ -193,7 +263,6 @@ const SellerDashboardPage = () => {
     <div style={{ padding: "1.5rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
       <h2 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "1.5rem" }}>Dashboard</h2>
 
-      {/* Product Overview */}
       <section style={{ marginBottom: "2.5rem" }}>
         <h3 style={sectionHeaderStyle}>Product Overview</h3>
         <div style={gridStyle}>
@@ -228,8 +297,7 @@ const SellerDashboardPage = () => {
         </div>
       </section>
 
-      {/* Sales & Fulfillment */}
-      <section>
+      <section style={{ marginBottom: "2.5rem" }}>
         <h3 style={sectionHeaderStyle}>Sales & Fulfillment</h3>
         <div style={gridStyle}>
           {salesCards.map((card) => (
@@ -271,6 +339,65 @@ const SellerDashboardPage = () => {
           ))}
         </div>
       </section>
+
+      {/* Top Selling Products */}
+      {stats.topSellingProducts && stats.topSellingProducts.length > 0 && (
+        <section style={{ marginBottom: "2.5rem" }}>
+          <h3 style={sectionHeaderStyle}>Top Selling Products</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", background: "var(--surface)", border: "1px solid var(--border)" }}>
+              <thead>
+                <tr style={{ background: "var(--bg-secondary)" }}>
+                  <th style={thStyle}>Product</th>
+                  <th style={thStyle}>Quantity Sold</th>
+                  <th style={thStyle}>Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.topSellingProducts.map((p) => (
+                  <tr key={p.productId} style={{ borderBottom: "1px solid var(--border)" }}>
+                    <td style={tdStyle}>{p.name}</td>
+                    <td style={tdStyle}>{p.quantitySold}</td>
+                    <td style={tdStyle}>PKR {Number(p.revenue || 0).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Sales Trend */}
+      {stats.salesTrend && stats.salesTrend.length > 0 && (
+        <section>
+          <h3 style={sectionHeaderStyle}>Sales Trend (Last 7 Days)</h3>
+          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+            {stats.salesTrend.map((day) => (
+              <div
+                key={day.date}
+                style={{
+                  flex: "1 1 120px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "12px",
+                  padding: "1rem",
+                  textAlign: "center",
+                }}
+              >
+                <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
+                  {day.date}
+                </p>
+                <p style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-primary)" }}>
+                  {day.orderCount} orders
+                </p>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                  PKR {Number(day.revenue || 0).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
@@ -288,6 +415,19 @@ const gridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
   gap: "1rem",
+};
+
+const thStyle = {
+  textAlign: "left",
+  padding: "12px 16px",
+  fontWeight: 600,
+  borderBottom: "1px solid var(--border)",
+  color: "var(--text-primary)",
+};
+
+const tdStyle = {
+  padding: "12px 16px",
+  color: "var(--text-secondary)",
 };
 
 export default SellerDashboardPage;

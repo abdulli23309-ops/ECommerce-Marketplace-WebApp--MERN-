@@ -45,13 +45,13 @@ const productSchema = new mongoose.Schema(
       index: true,
     },
     rejectionReason: {
-  type: String,
-  default: null,
-},
-internalNote: {
-  type: String,
-  default: null,
-},
+      type: String,
+      default: null,
+    },
+    internalNote: {
+      type: String,
+      default: null,
+    },
     brand: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Brand',
@@ -59,10 +59,14 @@ internalNote: {
       index: true,
     },
     status: {
-  type: String,
-  enum: ['PendingApproval', 'Approved', 'Rejected', 'Suspended', 'Archived'],
-  default: 'PendingApproval',
-},
+      type: String,
+      enum: ['PendingApproval', 'Approved', 'Rejected', 'Suspended', 'Archived'],
+      default: 'PendingApproval',
+    },
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
     isDeleted: {
       type: Boolean,
       default: false,
@@ -72,7 +76,6 @@ internalNote: {
   { timestamps: true }
 );
 
-// Prevent duplicate product names within the same store for non-deleted products
 productSchema.index(
   { name: 1, store: 1 },
   { unique: true, partialFilterExpression: { isDeleted: false } }

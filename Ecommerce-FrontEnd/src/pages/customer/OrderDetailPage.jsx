@@ -5,7 +5,6 @@ import { fetchMyReviews } from "../../services/reviewService";
 
 const statusSteps = ["Pending", "Processing", "Shipped", "Out for Delivery", "Delivered"];
 
-// ---------- Stepper Component ----------
 const StepProgress = ({ currentStep, isCancelled }) => {
   if (isCancelled) {
     return (
@@ -79,7 +78,6 @@ const StepProgress = ({ currentStep, isCancelled }) => {
   );
 };
 
-// ---------- Shipment Info ----------
 const ShipmentInfo = ({ shipment }) => {
   if (!shipment) {
     return (
@@ -105,7 +103,7 @@ const ShipmentInfo = ({ shipment }) => {
           {shipment.trackingHistory.map((th, i) => (
             <div key={i} style={{ marginBottom: "0.25rem", fontSize: "0.8rem" }}>
               <span style={{ fontWeight: 500 }}>{th.status}</span>
-              {th.location && <span> – {th.location}</span>}
+              {th.note && <span> – {th.note}</span>}
               <span style={{ color: "var(--text-secondary)", marginLeft: "0.5rem" }}>{new Date(th.timestamp).toLocaleString()}</span>
             </div>
           ))}
@@ -115,7 +113,6 @@ const ShipmentInfo = ({ shipment }) => {
   );
 };
 
-// ---------- Main Component ----------
 const OrderDetailPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();

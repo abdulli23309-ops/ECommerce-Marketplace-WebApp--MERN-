@@ -15,12 +15,13 @@ export const placeOrder = async (addressId) => {
   return data.data;
 };
 
-export const createPaymentIntent = async (addressId, paymentMethod) => {
-  const { data } = await axiosInstance.post('/payments/create-intent', {
+export const createPaymentIntent = async (addressId, paymentMethod, couponCode = null) => {
+  const { data } = await axiosInstance.post("/payments/create-intent", {
     addressId,
     paymentMethod,
+    couponCode,
   });
-  return data.data; // { payment, order, clientSecret }
+  return data.data || data;
 };
 
 export const cancelOrder = async (orderId) => {

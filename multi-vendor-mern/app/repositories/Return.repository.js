@@ -85,5 +85,16 @@ export const updateStatusAndNotes = (id, status, processedBy, notes, noteType) =
   return ReturnRequest.findByIdAndUpdate(id, update, { new: true });
 };
 
+export const findDuplicateReturn = ({
+  customerId,
+  productId,
+  sellerOrderId,
+}) =>
+  ReturnRequest.findOne({
+    customer: customerId,
+    product: productId,
+    sellerOrder: sellerOrderId,
+  });
+
 export const updateById = (id, update) =>
   ReturnRequest.findByIdAndUpdate(id, update, { new: true });
