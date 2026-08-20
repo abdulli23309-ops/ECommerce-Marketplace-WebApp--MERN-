@@ -1,18 +1,25 @@
 import { useSelector } from "react-redux";
 
-const PermissionGate = ({ permission, children, fallback = null }) => {
-  const permissions = useSelector((state) => state.permissions.codes);
+const PermissionGate = ({ permission, children }) => {
+  const { user } = useSelector((state) => state.auth);
+  const { codes } = useSelector((state) => state.permissions);
 
-  if (!permissions || permissions.length === 0) {
-    // Loading state – you can return null or a placeholder
+  const roles = Array.isArray(user?.roles)
+    ? user.roles
+    : user?.role
+      ? [user.role]
+      : [];
+
+  const isAdmin = roles.includes("Admin") || roles.includes("SuperAdmin");
+
+  const hasPermission =
+    isAdmin || (codes && codes.includes(permission));
+
+  if (!hasPermission) {
     return null;
   }
 
-  if (permissions.includes(permission)) {
-    return children;
-  }
-
-  return fallback;
+  return children;
 };
 
 export default PermissionGate;

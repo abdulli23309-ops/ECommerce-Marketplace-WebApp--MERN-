@@ -5,6 +5,14 @@ import { fetchSellerProducts, deleteProduct } from "../../services/sellerProduct
 import PermissionGate from "../../components/common/PermissionGate";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
 
+// --- Helper: warning state (stock ≤ 5 or avg rating < 2.0) ---
+const isWarningState = (product) => {
+  const lowStock = Number(product.stock) <= 5;
+  const lowRating =
+    product.averageRating > 0 && Number(product.averageRating) < 2.0;
+  return lowStock || lowRating;
+};
+
 const SellerProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,68 +74,89 @@ const SellerProductsPage = () => {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
-                <tr key={product._id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle" }}>
-                    <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-                      <img
-                        src={getImageUrl(product.images?.[0]) || "/placeholder.png"}
-                        alt={product.name}
-                        style={{
-                          width: "48px",
-                          height: "48px",
-                          borderRadius: "4px",
-                          objectFit: "cover",
-                          border: "1px solid var(--border)",
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{product.name}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                          ID: {product._id.slice(-8)}
+              {products.map((product) => {
+                const isWarning = isWarningState(product);
+                return (
+                  <tr
+                    key={product._id}
+                    className={isWarning ? "warning-flag-red" : ""}
+                    style={{ borderBottom: "1px solid var(--border)" }}
+                  >
+                    <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle" }}>
+                      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                        <img
+                          src={getImageUrl(product.images?.[0]) || "/placeholder.png"}
+                          alt={product.name}
+                          style={{
+                            width: "48px",
+                            height: "48px",
+                            borderRadius: "4px",
+                            objectFit: "cover",
+                            border: "1px solid var(--border)",
+                          }}
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{product.name}</div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                            ID: {product._id.slice(-8)}
+                          </div>
+                          {isWarning && (
+                            <span className="warning-badge-text" style={{
+                              display: "inline-block",
+                              marginTop: "4px",
+                              background: "var(--danger-bg)",
+                              color: "var(--danger-text)",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              fontSize: "0.65rem",
+                              fontWeight: 600,
+                            }}>
+                              {product.stock <= 5 ? "Low Stock" : "Low Rating"}
+                            </span>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", fontWeight: 600, color: "var(--text-primary)" }}>
-                    PKR {product.price?.toLocaleString()}
-                  </td>
-                  <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", color: "var(--text-primary)" }}>
-                    {product.stockQuantity ?? product.stock ?? 0}
-                  </td>
-                  <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle" }}>
-                    <span style={getStatusBadgeStyle(product.status)}>{product.status}</span>
-                  </td>
-                  <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", color: product.avgRating > 0 ? "var(--warning)" : "var(--text-muted)" }}>
-                    {product.avgRating > 0 ? `${product.avgRating} ★` : "No rating"}
-                  </td>
-                  <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", color: "var(--text-secondary)" }}>
-                    {product.reviewCount || 0}
-                  </td>
-                  <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle" }}>
-                    <PermissionGate permission="Seller.Products.Edit">
-                      <Link
-                        to={`/seller/products/edit/${product._id}`}
-                        className="btn-edit"
-                        style={{ marginRight: "0.5rem" }}
-                      >
-                        Edit
-                      </Link>
-                    </PermissionGate>
-                    <PermissionGate permission="Seller.Products.Delete">
-                      <button
-                        onClick={() => handleDelete(product._id)}
-                        className="btn-delete"
-                      >
-                        Delete
-                      </button>
-                    </PermissionGate>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", fontWeight: 600, color: "var(--text-primary)" }}>
+                      PKR {product.price?.toLocaleString()}
+                    </td>
+                    <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", color: "var(--text-primary)" }}>
+                      {product.stockQuantity ?? product.stock ?? 0}
+                    </td>
+                    <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle" }}>
+                      <span style={getStatusBadgeStyle(product.status)}>{product.status}</span>
+                    </td>
+                    <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", color: product.avgRating > 0 ? "var(--warning)" : "var(--text-muted)" }}>
+                      {product.avgRating > 0 ? `${product.avgRating} ★` : "No rating"}
+                    </td>
+                    <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle", color: "var(--text-secondary)" }}>
+                      {product.reviewCount || 0}
+                    </td>
+                    <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle" }}>
+                      <PermissionGate permission="Seller.Products.Edit">
+                        <Link
+                          to={`/seller/products/edit/${product._id}`}
+                          className="btn-edit"
+                          style={{ marginRight: "0.5rem" }}
+                        >
+                          Edit
+                        </Link>
+                      </PermissionGate>
+                      <PermissionGate permission="Seller.Products.Delete">
+                        <button
+                          onClick={() => handleDelete(product._id)}
+                          className="btn-delete"
+                        >
+                          Delete
+                        </button>
+                      </PermissionGate>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

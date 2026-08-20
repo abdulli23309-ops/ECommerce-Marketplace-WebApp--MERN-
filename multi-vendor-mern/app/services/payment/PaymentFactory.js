@@ -1,16 +1,19 @@
 import StripeProcessor from './processors/StripeProcessor.js';
-import CodProcessor from './processors/CodProcessor.js';
-
-const processors = {
-  Stripe: StripeProcessor,
-  CashOnDelivery: CodProcessor,
-  // Future: PayPal, JazzCash, etc.
-};
+import CashOnDeliveryProcessor from './processors/CashOnDeliveryProcessor.js';
+import EasyPaisaProcessor from './processors/EasyPaisaProcessor.js';
+import JazzCashProcessor from './processors/JazzCashProcessor.js';
 
 export const createPaymentProcessor = (method) => {
-  const Processor = processors[method];
-  if (!Processor) {
-    throw new Error(`Unsupported payment method: ${method}`);
+  switch (method) {
+    case 'Stripe':
+      return new StripeProcessor();
+    case 'CashOnDelivery':
+      return new CashOnDeliveryProcessor();
+    case 'EasyPaisa':
+      return new EasyPaisaProcessor();
+    case 'JazzCash':
+      return new JazzCashProcessor();
+    default:
+      throw new Error(`Unsupported payment method: ${method}`);
   }
-  return new Processor();
 };

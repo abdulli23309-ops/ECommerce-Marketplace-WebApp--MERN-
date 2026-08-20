@@ -18,6 +18,11 @@ export const getPublicStore = asyncHandler(async (req, res) => {
 
 export const getMyStore = asyncHandler(async (req, res) => {
   const store = await storeService.getMyStore(req.user.id);
+
+  if (!store) {
+    return new ApiResponse(200, null, 'No store found').send(res);
+  }
+
   new ApiResponse(200, store, 'Store retrieved').send(res);
 });
 

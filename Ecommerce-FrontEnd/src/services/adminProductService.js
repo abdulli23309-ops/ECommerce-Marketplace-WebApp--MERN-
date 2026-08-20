@@ -44,3 +44,18 @@ export const updateProductStatus = async (
 
   return data.data || data;
 };
+
+export const warnProduct = async (productId, reason = "") => {
+  const { data } = await axiosInstance.post(
+    `/admin/products/${productId}/warn`,
+    { reason }
+  );
+  return data.data || data;
+};
+
+export const getProductModerationStatus = async (productId) => {
+  const { data } = await axiosInstance.get(
+    `/admin/products/${productId}/moderation-status`
+  );
+  return data.data || data;
+};

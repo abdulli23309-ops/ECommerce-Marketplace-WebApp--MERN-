@@ -67,10 +67,47 @@ const productSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    
     isDeleted: {
       type: Boolean,
       default: false,
       index: true,
+    },
+
+    // ---- Priority 5: product rating moderation state ----
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
+    lowRatingStatus: {
+      type: Boolean,
+      default: false,
+    },
+    warningCount: {
+      type: Number,
+      default: 0,
+    },
+    warningHistory: [
+      {
+        warnedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        reason: {
+          type: String,
+          default: '',
+        },
+        warnedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
+    // ---- Priority 5.8: seller-provided free delivery ----
+    freeDelivery: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
@@ -82,4 +119,5 @@ productSchema.index(
 );
 
 const Product = mongoose.model('Product', productSchema);
+
 export default Product;

@@ -1,8 +1,8 @@
 import * as shipmentRepo from '../repositories/Shipment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import * as sellerProfileRepo from '../repositories/SellerProfile.repository.js';
-import { createNotification } from './Notification.service.js';
 import Payment from '../models/Payment.model.js';
+import { createNotification } from './Notification.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
 const verifySellerOwnership = async (sellerOrderId, userId) => {
@@ -18,9 +18,26 @@ const verifySellerOwnership = async (sellerOrderId, userId) => {
   if (store.sellerProfile.toString() !== profile._id.toString()) {
     throw new ApiError(403, 'You do not own this store');
   }
+
   return sellerOrder;
 };
 
+const notifyCustomerForShipment = async (parentOrderId, sellerOrderId, status) => {
+  const parentOrder = await orderRepo.findByIdQuery(parentOrderId);
+
+  if (!parentOrder || !parentOrder.customer) {
+    return;
+  }
+
+  await createNotification(
+    parentOrder.customer,
+    'shipment',
+    'Shipment Updated',
+    `Your package status is now ${status}.`,
+    `/orders/${parentOrderId}`,
+    { sellerOrderId: sellerOrderId.toString(), shipmentStatus: status }
+  );
+};
 
 export const createShipment = async (sellerOrderId, data, userId) => {
   await verifySellerOwnership(sellerOrderId, userId);
@@ -38,6 +55,15 @@ export const createShipment = async (sellerOrderId, data, userId) => {
   });
 
   await orderRepo.updateSellerOrderStatus(sellerOrderId, 'Processing');
+
+  // Notify customer that shipment was created
+  const sellerOrder = await orderRepo.findSellerOrderById(sellerOrderId);
+  await notifyCustomerForShipment(
+    sellerOrder.parentOrder,
+    sellerOrderId,
+    'Pending'
+  );
+
   return shipment;
 };
 
@@ -90,14 +116,9 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
       await payment.save();
     }
   }
-  await createNotification(
-  userId,
-  'shipment',
-  'Shipment Updated',
-  `Shipment status is now ${status}`,
-  `/orders/${sellerOrder.parentOrder}`,
-  { sellerOrderId: sellerOrder._id }
-);
+
+  // Notify customer for every shipment status update
+  await notifyCustomerForShipment(parentOrderId, shipment.sellerOrder, status);
 
   return updated;
 };
@@ -112,7 +133,19 @@ export const updateShipmentInfo = async (shipmentId, data, userId) => {
   if (data.carrier !== undefined) update.carrier = data.carrier;
   if (data.trackingNumber !== undefined) update.trackingNumber = data.trackingNumber;
 
-  return shipmentRepo.updateById(shipmentId, update);
+  const updated = await shipmentRepo.updateById(shipmentId, update);
+
+  // Optionally notify customer that tracking details were updated
+  const sellerOrder = await orderRepo.findSellerOrderById(shipment.sellerOrder);
+  if (sellerOrder?.parentOrder) {
+    await notifyCustomerForShipment(
+      sellerOrder.parentOrder,
+      shipment.sellerOrder,
+      'Tracking Updated'
+    );
+  }
+
+  return updated;
 };
 
 export const getShipment = async (sellerOrderId, userId) => {

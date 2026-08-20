@@ -1,256 +1,200 @@
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
 
 const OrderConfirmationPage = () => {
   const { orderId } = useParams();
-  const [searchParams] = useSearchParams();
-  const paymentIntentId = searchParams.get("payment_intent");
-
   const [order, setOrder] = useState(null);
   const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [polling, setPolling] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    let mounted = true;
-    let pollTimer = null;
-    let attempts = 0;
-    const MAX_ATTEMPTS = 10; // 10 × 2s = 20s timeout
+    if (!orderId) return;
 
-    const fetchDetails = async () => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+
       try {
-        if (mounted) setLoading(true);
+        const [orderRes, paymentRes] = await Promise.all([
+          axiosInstance.get(`/orders/${orderId}`),
+          axiosInstance.get(`/payments/order/${orderId}`),
+        ]);
 
-        // Fetch order once
-        if (!order) {
-          const orderRes = await axiosInstance.get(`/orders/${orderId}`);
-          if (mounted) setOrder(orderRes.data.data || orderRes.data);
-        }
-
-        const paymentRes = await axiosInstance.get(`/payments/order/${orderId}`);
-        const payData = paymentRes.data.data || paymentRes.data;
-        const currentPayment = Array.isArray(payData) ? payData[0] : payData;
-        if (mounted) setPayment(currentPayment);
-
-        // If Stripe and status is still Pending, keep polling
-        if (
-          currentPayment?.method === "Stripe" &&
-          currentPayment?.status === "Pending" &&
-          attempts < MAX_ATTEMPTS
-        ) {
-          attempts += 1;
-          if (mounted) setPolling(true);
-          pollTimer = setTimeout(fetchDetails, 2000);
-          return;
-        }
-
-        if (mounted) {
-          setPolling(false);
-          setLoading(false);
-        }
+        setOrder(orderRes.data?.data || orderRes.data || null);
+        setPayment(paymentRes.data?.data || paymentRes.data || null);
       } catch (err) {
-        console.error("Failed to load confirmation", err);
-        if (mounted) {
-          setPolling(false);
-          setLoading(false);
-        }
+        console.error("Failed to load confirmation data", err);
+        setError("Could not load order confirmation details.");
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchDetails();
-
-    return () => {
-      mounted = false;
-      if (pollTimer) clearTimeout(pollTimer);
-    };
+    load();
   }, [orderId]);
 
-  if (loading || polling) {
+  if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
-        <div
-          style={{
-            width: "28px",
-            height: "28px",
-            border: "3px solid var(--border)",
-            borderTopColor: "#2563eb",
-            borderRadius: "50%",
-            animation: "spin 0.8s linear infinite",
-            margin: "0 auto 12px",
-          }}
-        />
-        <p>Processing payment...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ textAlign: "center", padding: "4rem", color: "var(--text-secondary)" }}>
+        <p>Loading order confirmation...</p>
       </div>
     );
   }
 
-  if (!order || !payment) {
+  if (error || !order) {
     return (
-      <div style={{ textAlign: "center", padding: "2rem" }}>
-        Order not found.
+      <div style={{ textAlign: "center", padding: "4rem", color: "var(--text-secondary)" }}>
+        <h2>Something went wrong</h2>
+        <p>{error || "Order not found."}</p>
+        <Link to="/orders">View My Orders</Link>
       </div>
     );
   }
 
-  // ----- Determine visual state -----
-  const isStripe = payment.method === "Stripe";
-  const isPaid = payment.status === "Completed";
-  const isFailed = isStripe && payment.status === "Failed";
-  const isRefunded = payment.status === "Refunded";
-  const isCOD = payment.method === "CashOnDelivery";
+  const paid = payment?.status === "Completed";
+  const failed = payment?.status === "Failed";
+  const pending = !paid && !failed;
 
-  let icon = "📦";
-  let title = "Order Placed";
-  let subtitle = "Your order has been placed successfully.";
-  let statusLabel = "Pending";
-  let statusColor = "#92400e";
+  const statusText = failed
+    ? "Payment Failed"
+    : paid
+      ? "Payment Successful!"
+      : "Payment Pending";
 
-  if (isStripe && isPaid) {
-    icon = "✅";
-    title = "Payment Successful!";
-    subtitle = "Your payment has been processed.";
-    statusLabel = "Paid";
-    statusColor = "#065f46";
-  } else if (isFailed) {
-    icon = "❌";
-    title = "Payment Failed";
-    subtitle = "We couldn't process your payment. Please try again.";
-    statusLabel = "Failed";
-    statusColor = "#b91c1c";
-  } else if (isRefunded) {
-    icon = "↩️";
-    title = "Payment Refunded";
-    subtitle = "This payment has been refunded.";
-    statusLabel = "Refunded";
-    statusColor = "#4338ca";
-  } else if (isCOD) {
-    icon = "📦";
-    title = "Order Placed!";
-    subtitle = "Your order has been placed successfully and will be delivered soon.";
-    statusLabel = "Pending";
-    statusColor = "#92400e";
-  } else if (isStripe && payment.status === "Pending") {
-    icon = "⏳";
-    title = "Payment Pending";
-    subtitle = "Your payment is still processing. Please wait.";
-    statusLabel = "Pending";
-    statusColor = "#92400e";
-  }
+  const statusStyle = failed
+    ? { backgroundColor: "var(--danger-bg)", color: "var(--danger-text)" }
+    : paid
+      ? { backgroundColor: "var(--success-bg)", color: "var(--success-text)" }
+      : { backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" };
+
+  // ----- Safe order values -----
+  const subtotal = Number(order.subtotal ?? 0);
+  const discountAmount = Number(order.discountAmount ?? 0);
+  const deliveryCharges = Number(order.deliveryCharges ?? 0);
+  const freeDeliveryDiscount = Number(order.freeDeliveryDiscount ?? 0);
+  const totalAmount = Number(order.totalAmount ?? 0);
 
   return (
-    <div
-      style={{
-        maxWidth: "600px",
-        margin: "2rem auto",
-        padding: "2rem",
-        background: "var(--surface)",
-        borderRadius: "16px",
-        boxShadow: "0 4px 24px var(--shadow)",
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
-      {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-        <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>{icon}</div>
-        <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>{title}</h2>
-        <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem" }}>{subtitle}</p>
+    <div style={{ maxWidth: "720px", margin: "0 auto", padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
+      <div
+        style={{
+          ...statusStyle,
+          padding: "1.25rem 1.5rem",
+          borderRadius: "12px",
+          marginBottom: "2rem",
+          textAlign: "center",
+          fontWeight: 700,
+          fontSize: "1.25rem",
+        }}
+      >
+        {paid ? "✅" : failed ? "❌" : "⏳"} {statusText}
       </div>
 
-      {/* Details */}
-      <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1.5rem" }}>
-        <div style={rowStyle}>
-          <span style={labelStyle}>Order Number</span>
-          <span style={valueStyle}>#{order._id.slice(-8).toUpperCase()}</span>
-        </div>
-        <div style={rowStyle}>
-          <span style={labelStyle}>Date</span>
-          <span style={valueStyle}>{new Date(order.createdAt).toLocaleString()}</span>
-        </div>
-        <div style={rowStyle}>
-          <span style={labelStyle}>Total Amount</span>
-          <span style={valueStyle}>PKR {payment.amount.toLocaleString()}</span>
-        </div>
-        <div style={rowStyle}>
-          <span style={labelStyle}>Payment Method</span>
-          <span style={valueStyle}>
-            {isCOD ? "Cash on Delivery" : "Credit/Debit Card"}
-          </span>
-        </div>
-        <div style={rowStyle}>
-          <span style={labelStyle}>Status</span>
-          <span style={{ ...valueStyle, fontWeight: 700, color: statusColor }}>
-            {statusLabel}
-          </span>
-        </div>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", padding: "2rem", boxShadow: "0 1px 3px var(--shadow)" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem" }}>
+          Order Summary
+        </h2>
 
-        {isStripe && isPaid && payment.cardLast4 && (
-          <>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Card</span>
-              <span style={valueStyle}>
-                {payment.cardBrand?.toUpperCase() || "Card"} **** {payment.cardLast4}
-              </span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Expiry</span>
-              <span style={valueStyle}>
-                {payment.cardExpMonth}/{payment.cardExpYear}
-              </span>
-            </div>
-          </>
-        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.95rem" }}>
+          {/* Order metadata */}
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--text-secondary)" }}>Order Number</span>
+            <strong>#{order._id?.slice(-8).toUpperCase()}</strong>
+          </div>
 
-        {paymentIntentId && (
-          <div style={rowStyle}>
-            <span style={labelStyle}>Transaction ID</span>
-            <span style={{ ...valueStyle, fontSize: "0.8rem", wordBreak: "break-all" }}>
-              {paymentIntentId}
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--text-secondary)" }}>Date</span>
+            <span>{new Date(order.createdAt).toLocaleString()}</span>
+          </div>
+
+          {/* ----- BREAKDOWN ROWS ----- */}
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--text-secondary)" }}>Subtotal</span>
+            <span>PKR {subtotal.toLocaleString()}</span>
+          </div>
+
+          {discountAmount > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--text-secondary)" }}>Discount</span>
+              <span>-PKR {discountAmount.toLocaleString()}</span>
+            </div>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--text-secondary)" }}>Delivery Charges</span>
+            <span>PKR {deliveryCharges.toLocaleString()}</span>
+          </div>
+
+          {freeDeliveryDiscount > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--text-secondary)" }}>Free Delivery Discount</span>
+              <span>-PKR {freeDeliveryDiscount.toLocaleString()}</span>
+            </div>
+          )}
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              borderTop: "1px solid var(--border)",
+              paddingTop: "0.75rem",
+              marginTop: "0.5rem",
+            }}
+          >
+            <strong>Final Total</strong>
+            <strong>PKR {totalAmount.toLocaleString()}</strong>
+          </div>
+
+          {/* Payment details */}
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--text-secondary)" }}>Payment Method</span>
+            <span>
+              {payment?.method === "CashOnDelivery"
+                ? "Cash on Delivery"
+                : payment?.method === "Stripe"
+                  ? "Credit/Debit Card"
+                  : payment?.method === "EasyPaisa"
+                    ? "EasyPaisa"
+                    : payment?.method === "JazzCash"
+                      ? "JazzCash"
+                      : "N/A"}
             </span>
           </div>
-        )}
+
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ color: "var(--text-secondary)" }}>Status</span>
+            <span>{payment?.status || order.orderStatus}</span>
+          </div>
+
+          {payment?.transactionId && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "var(--text-secondary)" }}>Transaction ID</span>
+              <span>{payment.transactionId}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Action */}
       <div style={{ textAlign: "center", marginTop: "2rem" }}>
         <Link
           to="/orders"
-          style={{ color: "var(--info)", textDecoration: "none", fontWeight: 500 }}
+          style={{
+            display: "inline-block",
+            padding: "0.75rem 1.5rem",
+            background: "var(--primary)",
+            color: "var(--primary-contrast)",
+            textDecoration: "none",
+            borderRadius: "8px",
+            fontWeight: 600,
+          }}
         >
           View My Orders
         </Link>
-        {isFailed && (
-          <div style={{ marginTop: "1rem" }}>
-            <button
-              onClick={() => window.history.back()}
-              style={{
-                padding: "0.6rem 1.25rem",
-                borderRadius: "8px",
-                border: "1px solid var(--border)",
-                background: "var(--surface)",
-                color: "var(--text-secondary)",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Retry Payment
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
 };
-
-const rowStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  padding: "0.5rem 0",
-  borderBottom: "1px solid #f3f4f6",
-};
-
-const labelStyle = { color: "var(--text-secondary)", fontSize: "0.9rem" };
-const valueStyle = { fontWeight: 500, color: "var(--text-primary)", textAlign: "right" };
 
 export default OrderConfirmationPage;

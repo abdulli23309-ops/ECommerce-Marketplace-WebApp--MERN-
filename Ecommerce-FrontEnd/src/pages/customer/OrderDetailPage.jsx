@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { fetchOrderById, cancelOrder } from "../../services/orderService";
+import { fetchOrderById, cancelOrder, fetchPaymentByOrder } from "../../services/orderService";
 import { fetchMyReviews } from "../../services/reviewService";
 
 const statusSteps = ["Pending", "Processing", "Shipped", "Out for Delivery", "Delivered"];
@@ -117,6 +117,7 @@ const OrderDetailPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
+  const [payment, setPayment] = useState(null); // new state
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -139,6 +140,14 @@ const OrderDetailPage = () => {
       }
     };
     load();
+  }, [orderId]);
+
+  // Fetch payment separately
+  useEffect(() => {
+    if (!orderId) return;
+    fetchPaymentByOrder(orderId)
+      .then((data) => setPayment(data))
+      .catch(() => setPayment(null));
   }, [orderId]);
 
   const handleCancelClick = () => setIsCancelModalOpen(true);
@@ -190,8 +199,8 @@ const OrderDetailPage = () => {
 
   const isStripeRefundCancellation =
     order?.orderStatus === 'Processing' &&
-    order.payment?.method === 'Stripe' &&
-    order.payment?.status === 'Completed';
+    payment?.method === 'Stripe' &&
+    payment?.status === 'Completed';
 
   const canCancel = order && !isCancelled && (
     (
@@ -208,6 +217,17 @@ const OrderDetailPage = () => {
 
   if (loading) return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Loading order...</div>;
   if (!order) return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Order not found.</div>;
+
+  // Payment display helpers
+  const paymentMethodDisplay = payment?.method
+    ? payment.method === "CashOnDelivery"
+      ? "Cash on Delivery"
+      : payment.method === "Stripe"
+        ? "Credit/Debit Card"
+        : payment.method
+    : "—";
+
+  const paymentStatusDisplay = payment?.status || "—";
 
   return (
     <div style={{ maxWidth: "960px", margin: "0 auto", padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
@@ -228,12 +248,15 @@ const OrderDetailPage = () => {
         <h2 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0 0 0.5rem" }}>
           Order #{order._id.slice(0, 8).toUpperCase()}
         </h2>
-        <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+        <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
           <span>Placed: {new Date(order.createdAt).toLocaleString()}</span>
           <span>Total: <strong style={{ color: "var(--text-primary)" }}>PKR {order.totalAmount.toLocaleString()}</strong></span>
           {isCancelled && (
             <span style={{ color: "var(--danger)", fontWeight: 600 }}>(Cancelled)</span>
           )}
+          {/* --- NEW: Payment details --- */}
+          <span>Payment: <strong style={{ color: "var(--text-primary)" }}>{paymentMethodDisplay}</strong></span>
+          <span>Payment Status: <strong style={{ color: "var(--text-primary)" }}>{paymentStatusDisplay}</strong></span>
         </div>
       </div>
 

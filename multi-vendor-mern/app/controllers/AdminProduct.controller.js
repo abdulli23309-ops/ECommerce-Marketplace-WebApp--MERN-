@@ -13,16 +13,31 @@ export const getProductById = asyncHandler(async (req, res) => {
 });
 
 export const updateProductStatus = asyncHandler(async (req, res) => {
-  const { status, rejectionReason, internalNote } = req.body;
+  const { status, reason, internalNote } = req.body;
 
-  const updatedProduct = await adminProductService.updateProductStatus(
+  const product = await adminProductService.updateProductStatus(
     req.params.id,
     status,
-    rejectionReason,
-    internalNote
+    reason,
+    internalNote,
+    req.user.id
   );
 
-  new ApiResponse(200, updatedProduct, 'Product status updated').send(res);
+  new ApiResponse(200, product, 'Product status updated').send(res);
+});
+
+export const getProductModerationStatus = asyncHandler(async (req, res) => {
+  const status = await adminProductService.getProductModerationStatus(req.params.id);
+  new ApiResponse(200, status, 'Product moderation status retrieved').send(res);
+});
+
+export const warnProduct = asyncHandler(async (req, res) => {
+  const product = await adminProductService.warnProduct(
+    req.params.id,
+    req.body.reason,
+    req.user.id
+  );
+  new ApiResponse(200, product, 'Product warning issued').send(res);
 });
 
 export const getProductStats = asyncHandler(async (req, res) => {

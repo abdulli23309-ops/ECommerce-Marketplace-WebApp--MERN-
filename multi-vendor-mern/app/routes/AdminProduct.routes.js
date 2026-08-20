@@ -10,5 +10,7 @@ router.get('/', adminProductController.getAllProducts);
 router.get('/stats', adminProductController.getProductStats);
 router.get('/:id', adminProductController.getProductById);
 router.put('/:id/status', adminProductController.updateProductStatus);
+router.get('/:id/moderation-status', adminProductController.getProductModerationStatus);
+router.post('/:id/warn', adminProductController.warnProduct);
 
 export default router;

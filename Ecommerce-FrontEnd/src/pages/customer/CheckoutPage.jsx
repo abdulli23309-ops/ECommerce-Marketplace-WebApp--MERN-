@@ -9,13 +9,13 @@ import { validateCoupon } from "../../services/couponService";
 import { getImageUrl } from "../../utils/imageHelper";
 import { emptyCart } from "../../store/cartSlice";
 
-// ---------- Simple inline SVG icons (sizes fixed) ----------
 const CreditCard = () => (
   <svg style={{ width: 24, height: 24 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <rect x="1" y="4" width="22" height="16" rx="2" />
     <line x1="1" y1="10" x2="23" y2="10" />
   </svg>
 );
+
 const Truck = () => (
   <svg style={{ width: 24, height: 24 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <rect x="1" y="3" width="15" height="13" />
@@ -24,30 +24,49 @@ const Truck = () => (
     <circle cx="18.5" cy="18.5" r="2.5" />
   </svg>
 );
+
+const MobileIcon = () => (
+  <svg style={{ width: 24, height: 24 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <rect x="5" y="2" width="14" height="20" rx="2" />
+    <line x1="12" y1="18" x2="12.01" y2="18" />
+  </svg>
+);
+
+const WalletIcon = () => (
+  <svg style={{ width: 24, height: 24 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <rect x="2" y="5" width="20" height="14" rx="2" />
+    <line x1="2" y1="10" x2="22" y2="10" />
+  </svg>
+);
+
 const MapPin = () => (
   <svg style={{ width: 20, height: 20 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
     <circle cx="12" cy="10" r="3" />
   </svg>
 );
+
 const Plus = () => (
   <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <line x1="12" y1="5" x2="12" y2="19" />
     <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
+
 const CheckCircle2 = () => (
   <svg style={{ width: 20, height: 20 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
     <polyline points="22 4 12 14.01 9 11.01" />
   </svg>
 );
+
 const Lock = () => (
   <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <rect x="3" y="11" width="18" height="11" rx="2" />
     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
 );
+
 const ShoppingBag = () => (
   <svg style={{ width: 20, height: 20 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
@@ -56,7 +75,6 @@ const ShoppingBag = () => (
   </svg>
 );
 
-// Common styles
 const pageBg = { minHeight: '100vh', backgroundColor: 'var(--bg-secondary)', fontFamily: 'Arial, sans-serif' };
 const container = { maxWidth: '1200px', margin: '0 auto', padding: '40px 16px' };
 const twoCol = { display: 'flex', gap: '32px', flexWrap: 'wrap' };
@@ -65,8 +83,8 @@ const rightCol = { flex: '1', minWidth: '280px' };
 const card = { backgroundColor: 'var(--surface)', borderRadius: '16px', boxShadow: '0 1px 3px var(--shadow)', border: '1px solid var(--border)', padding: '24px' };
 const sectionTitle = { fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' };
 const btnPrimary = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px 20px', backgroundColor: 'var(--primary)', color: 'var(--primary-contrast)', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' };
-const btnGhost = { background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' };
-const inputRadio = { accentColor: '#4f46e5', marginRight: '12px' };
+const btnGhost = { background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' };
+const inputRadio = { accentColor: 'var(--primary)', marginRight: '12px' };
 const orderSummaryItem = { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' };
 
 const CheckoutPage = () => {
@@ -84,8 +102,8 @@ const CheckoutPage = () => {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("card");
+  const [mobileAccount, setMobileAccount] = useState("");
 
-  // Coupon state
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -105,6 +123,11 @@ const CheckoutPage = () => {
       return;
     }
 
+    if (user.emailVerified !== true) {
+      navigate("/verify-email", { state: { from: "/checkout" } });
+      return;
+    }
+
     const load = async () => {
       try {
         const [cartData, addressData] = await Promise.all([
@@ -117,7 +140,6 @@ const CheckoutPage = () => {
         if (defaultAddr) setSelectedAddressId(defaultAddr.id);
         else if (addressData.length > 0) setSelectedAddressId(addressData[0].id);
       } catch (err) {
-        console.error("Failed to load checkout data", err);
         setError("Could not load cart or addresses.");
       } finally {
         setLoading(false);
@@ -128,27 +150,18 @@ const CheckoutPage = () => {
 
   const cartTotal = () => {
     if (!cart?.items) return 0;
-    return cart.items.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0
-    );
+    return cart.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   };
 
   const applyCoupon = async () => {
-    if (!couponCode.trim()) {
-      setCouponError("Please enter a coupon code");
-      return;
-    }
-
+    if (!couponCode.trim()) return setCouponError("Please enter a coupon code");
     setCouponLoading(true);
     setCouponError(null);
     try {
       const res = await validateCoupon(couponCode.trim(), cartTotal());
       setAppliedCoupon(res.coupon);
       setDiscountAmount(res.discount || 0);
-      setCouponError(null);
     } catch (err) {
-      console.error("Coupon validation failed", err);
       setCouponError(err.response?.data?.message || "Invalid coupon code");
       setAppliedCoupon(null);
       setDiscountAmount(0);
@@ -166,11 +179,13 @@ const CheckoutPage = () => {
 
   const finalTotal = () => Math.max(0, cartTotal() - discountAmount);
 
+  const isMobileValid = /^03\d{9}$/.test(mobileAccount);
+  const requiresMobile = paymentMethod === "easypaisa" || paymentMethod === "jazzcash";
+  const canPlaceOrder = placing || !selectedAddressId || (paymentMethod === "card" && !stripe) || (requiresMobile && !isMobileValid);
+
   const handlePlaceOrder = async () => {
-    if (!selectedAddressId) {
-      setError("Please select a delivery address.");
-      return;
-    }
+    if (!selectedAddressId) return setError("Please select a delivery address.");
+    if (requiresMobile && !isMobileValid) return setError("Please enter a valid mobile account number (03XXXXXXXXX).");
 
     setPlacing(true);
     setError(null);
@@ -183,23 +198,13 @@ const CheckoutPage = () => {
           return;
         }
 
-        // Pass coupon code to backend
-        const result = await createPaymentIntent(
-          selectedAddressId,
-          "Stripe",
-          appliedCoupon?.code || null
-        );
+        const result = await createPaymentIntent(selectedAddressId, "Stripe", appliedCoupon?.code || null);
         const { clientSecret, order } = result;
 
-        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-          clientSecret,
-          {
-            payment_method: {
-              card: elements.getElement(CardElement),
-            },
-            return_url: `${window.location.origin}/order-confirmation/${order._id}`,
-          }
-        );
+        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: { card: elements.getElement(CardElement) },
+          return_url: `${window.location.origin}/order-confirmation/${order._id}`,
+        });
 
         if (stripeError) {
           setError(stripeError.message);
@@ -212,164 +217,111 @@ const CheckoutPage = () => {
           navigate(`/order-confirmation/${order._id}?payment_intent=${paymentIntent.id}`);
         }
       } else {
-        // Cash on Delivery
         const result = await createPaymentIntent(
           selectedAddressId,
-          "CashOnDelivery",
-          appliedCoupon?.code || null
+          paymentMethod === "cod" ? "CashOnDelivery" : paymentMethod === "easypaisa" ? "EasyPaisa" : "JazzCash",
+          appliedCoupon?.code || null,
+          paymentMethod === "easypaisa" || paymentMethod === "jazzcash" ? mobileAccount : null
         );
         dispatch(emptyCart());
         navigate(`/order-confirmation/${result.order._id}`);
       }
     } catch (err) {
-      console.error("Failed to place order", err);
-      setError("Order could not be placed. Please try again.");
+      setError(err.response?.data?.message || "Order could not be placed. Please try again.");
     } finally {
       setPlacing(false);
     }
   };
 
-  if (loading) {
+  if (user && user.emailVerified !== true) {
     return (
-      <div style={{ ...pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#6b7280', animation: 'pulse 1.5s infinite' }}>Loading checkout...</div>
+      <div style={{ ...pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+        <div style={{ ...card, maxWidth: '480px', width: '100%', textAlign: 'center' }}>
+          <h2 style={{ color: 'var(--text-primary)', marginBottom: '12px' }}>Email Verification Required</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+            Please verify your email before placing an order.
+          </p>
+          <button style={btnPrimary} onClick={() => navigate('/verify-email')}>
+            Verify Email
+          </button>
+        </div>
       </div>
     );
   }
 
+  if (loading) {
+    return <div style={{ ...pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: 'var(--text-secondary)', animation: 'pulse 1.5s infinite' }}>Loading checkout...</div>
+    </div>;
+  }
+
   if (!cart || cart.items?.length === 0) {
-    return (
-      <div style={{ ...pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>
-        <ShoppingBag />
-        <p style={{ fontSize: '1.125rem' }}>Your cart is empty.</p>
-        <button
-          onClick={() => navigate("/cart")}
-          style={{ marginTop: '16px', background: 'none', border: 'none', color: '#111827', textDecoration: 'underline', cursor: 'pointer' }}
-        >
-          Go to Cart
-        </button>
-      </div>
-    );
+    return <div style={{ ...pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+      <ShoppingBag />
+      <p style={{ fontSize: '1.125rem' }}>Your cart is empty.</p>
+      <button onClick={() => navigate("/cart")} style={{ marginTop: '16px', background: 'none', border: 'none', color: 'var(--text-primary)', textDecoration: 'underline', cursor: 'pointer' }}>
+        Go to Cart
+      </button>
+    </div>;
   }
 
   return (
     <div style={pageBg}>
       <div style={container}>
         <div style={twoCol}>
-          {/* Left Column */}
           <div style={leftCol}>
-            {/* Delivery Address */}
             <div style={card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={sectionTitle}>
-                  <MapPin /> Delivery Address
-                </h2>
-                <button style={btnGhost} onClick={() => navigate("/addresses")}>
-                  <Plus /> Add New
-                </button>
+                <h2 style={sectionTitle}><MapPin /> Delivery Address</h2>
+                <button style={btnGhost} onClick={() => navigate("/addresses")}><Plus /> Add New</button>
               </div>
 
               {addresses.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px', border: '2px dashed #d1d5db', borderRadius: '8px' }}>
-                  <p style={{ color: '#6b7280', marginBottom: '12px' }}>No saved addresses yet.</p>
-                  <button style={btnPrimary} onClick={() => navigate("/addresses")}>
-                    <Plus /> Add an Address
-                  </button>
+                <div style={{ textAlign: 'center', padding: '24px', border: '2px dashed var(--border)', borderRadius: '8px' }}>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '12px' }}>No saved addresses yet.</p>
+                  <button style={btnPrimary} onClick={() => navigate("/addresses")}><Plus /> Add an Address</button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {addresses.map((addr) => (
-                    <label
-                      key={addr.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '12px',
-                        padding: '16px',
-                        borderRadius: '8px',
-                        border: selectedAddressId === addr.id ? '2px solid #4f46e5' : '1px solid #ddd',
-                        backgroundColor: selectedAddressId === addr.id ? '#eef2ff' : '#fff',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="address"
-                        style={inputRadio}
-                        checked={selectedAddressId === addr.id}
-                        onChange={() => setSelectedAddressId(addr.id)}
-                      />
+                    <label key={addr.id} className={`checkout-select-card ${selectedAddressId === addr.id ? "selected" : ""}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '16px', borderRadius: '8px', border: selectedAddressId === addr.id ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: selectedAddressId === addr.id ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                      <input type="radio" name="address" style={inputRadio} checked={selectedAddressId === addr.id} onChange={() => setSelectedAddressId(addr.id)} />
                       <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: 500, color: '#111827' }}>{addr.fullName}</p>
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '2px' }}>
-                          {addr.addressLine1}
-                          {addr.addressLine2 ? `, ${addr.addressLine2}` : ""}, {addr.city}
+                        <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{addr.fullName}</p>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {addr.addressLine1}{addr.addressLine2 ? `, ${addr.addressLine2}` : ""}, {addr.city}
                           {addr.state ? `, ${addr.state}` : ""} {addr.postalCode || ""}
                         </p>
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '2px' }}>Phone: {addr.phoneNumber}</p>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Phone: {addr.phoneNumber}</p>
                       </div>
-                      {addr.isDefault && (
-                        <span style={{ fontSize: '0.75rem', backgroundColor: '#f3f4f6', color: '#6b7280', padding: '2px 8px', borderRadius: '999px' }}>
-                          Default
-                        </span>
-                      )}
+                      {addr.isDefault && <span style={{ fontSize: '0.75rem', backgroundColor: 'var(--surface-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '999px' }}>Default</span>}
                     </label>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Payment Method */}
             <div style={card}>
               <h2 style={sectionTitle}>Payment Method</h2>
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                {/* Credit Card */}
-                <button
-                  onClick={() => setPaymentMethod("card")}
-                  style={{
-                    flex: '1 1 45%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '24px',
-                    borderRadius: '12px',
-                    border: paymentMethod === "card" ? '2px solid #4f46e5' : '1px solid #ddd',
-                    backgroundColor: paymentMethod === "card" ? '#eef2ff' : '#fff',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                    <CreditCard />
-                    {paymentMethod === "card" && <CheckCircle2 />}
-                  </div>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1f2937' }}>Credit / Debit Card</span>
+                <button onClick={() => setPaymentMethod("card")} className={`checkout-select-card ${paymentMethod === "card" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px', borderRadius: '12px', border: paymentMethod === "card" ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: paymentMethod === "card" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <CreditCard />
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Credit / Debit Card</span>
                 </button>
 
-                {/* COD */}
-                <button
-                  onClick={() => setPaymentMethod("cod")}
-                  style={{
-                    flex: '1 1 45%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '24px',
-                    borderRadius: '12px',
-                    border: paymentMethod === "cod" ? '2px solid #4f46e5' : '1px solid #ddd',
-                    backgroundColor: paymentMethod === "cod" ? '#eef2ff' : '#fff',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                    <Truck />
-                    {paymentMethod === "cod" && <CheckCircle2 />}
-                  </div>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#1f2937' }}>Cash on Delivery</span>
+                <button onClick={() => setPaymentMethod("cod")} className={`checkout-select-card ${paymentMethod === "cod" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px', borderRadius: '12px', border: paymentMethod === "cod" ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: paymentMethod === "cod" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <Truck />
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Cash on Delivery</span>
+                </button>
+
+                <button onClick={() => setPaymentMethod("easypaisa")} className={`checkout-select-card ${paymentMethod === "easypaisa" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px', borderRadius: '12px', border: paymentMethod === "easypaisa" ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: paymentMethod === "easypaisa" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <MobileIcon />
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>EasyPaisa (Test)</span>
+                </button>
+
+                <button onClick={() => setPaymentMethod("jazzcash")} className={`checkout-select-card ${paymentMethod === "jazzcash" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px', borderRadius: '12px', border: paymentMethod === "jazzcash" ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: paymentMethod === "jazzcash" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <WalletIcon />
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>JazzCash (Test)</span>
                 </button>
               </div>
 
@@ -378,175 +330,68 @@ const CheckoutPage = () => {
                   <CardElement options={cardElementOptions} />
                 </div>
               )}
+
+              {(paymentMethod === "easypaisa" || paymentMethod === "jazzcash") && (
+                <div style={{ marginTop: '24px' }}>
+                  <label className="form-label">Mobile Account Number</label>
+                  <input
+                    type="tel"
+                    value={mobileAccount}
+                    onChange={(e) => setMobileAccount(e.target.value)}
+                    placeholder={paymentMethod === "easypaisa" ? "e.g. 03451234567" : "e.g. 03001234567"}
+                    className="form-input"
+                    maxLength="11"
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Test success: {paymentMethod === "easypaisa" ? "03451234567" : "03001234567"}
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Test failure: 03009999999
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right Column – Order Summary */}
           <div style={rightCol}>
             <div style={{ ...card, position: 'sticky', top: '96px' }}>
-              <h2 style={sectionTitle}>
-                <ShoppingBag /> Order Summary
-              </h2>
-
+              <h2 style={sectionTitle}><ShoppingBag /> Order Summary</h2>
               <div style={{ maxHeight: '256px', overflowY: 'auto', paddingRight: '8px' }}>
                 {cart.items.map((item) => {
-                  const productImage = item.productImage
-                    ? getImageUrl(item.productImage)
-                    : null;
-
+                  const productImage = item.productImage ? getImageUrl(item.productImage) : null;
                   return (
                     <div key={item.cartItemId || `${item.productId}-${item.quantity}`} style={orderSummaryItem}>
-                      {productImage ? (
-                        <img
-                          src={productImage}
-                          alt={item.productName}
-                          style={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: '6px',
-                            objectFit: 'cover',
-                            flexShrink: 0,
-                          }}
-                        />
-                      ) : (
-                        <div style={{ width: 48, height: 48, borderRadius: '6px', backgroundColor: '#f3f4f6', flexShrink: 0 }} />
-                      )}
+                      {productImage ? <img src={productImage} alt={item.productName} style={{ width: 48, height: 48, borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} /> : <div style={{ width: 48, height: 48, borderRadius: '6px', backgroundColor: 'var(--surface-hover)', flexShrink: 0 }} />}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.productName}
-                        </p>
-                        <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Qty: {item.quantity}</p>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Qty: {item.quantity}</p>
                       </div>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>
-                        PKR {(item.unitPrice * item.quantity).toLocaleString()}
-                      </p>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>PKR {(item.unitPrice * item.quantity).toLocaleString()}</p>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Coupon Input */}
               <div style={{ marginTop: '20px' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="Coupon code"
-                    disabled={!!appliedCoupon}
-                    style={{
-                      flex: 1,
-                      padding: '10px 12px',
-                      border: '1px solid var(--border)',
-                      borderRadius: '8px',
-                      fontSize: '0.875rem',
-                      backgroundColor: 'var(--input-bg)',
-                      color: 'var(--text-primary)',
-                    }}
-                  />
-                  {!appliedCoupon ? (
-                    <button
-                      onClick={applyCoupon}
-                      disabled={couponLoading || !couponCode.trim()}
-                      style={{
-                        padding: '10px 16px',
-                        backgroundColor: couponLoading ? '#9ca3af' : '#4f46e5',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: couponLoading ? 'not-allowed' : 'pointer',
-                        fontWeight: 600,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {couponLoading ? "..." : "Apply"}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={removeCoupon}
-                      style={{
-                        padding: '10px 16px',
-                        backgroundColor: '#ef4444',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      Remove
-                    </button>
-                  )}
+                  <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Coupon code" disabled={!!appliedCoupon} style={{ flex: 1, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.875rem', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)' }} />
+                  {!appliedCoupon ? <button onClick={applyCoupon} disabled={couponLoading || !couponCode.trim()} style={{ padding: '10px 16px', backgroundColor: couponLoading ? 'var(--disabled-bg)' : 'var(--primary)', color: 'var(--primary-contrast)', border: 'none', borderRadius: '8px', cursor: couponLoading ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>{couponLoading ? "..." : "Apply"}</button> : <button onClick={removeCoupon} style={{ padding: '10px 16px', backgroundColor: 'var(--danger)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>Remove</button>}
                 </div>
-                {couponError && (
-                  <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--danger)' }}>
-                    {couponError}
-                  </p>
-                )}
-                {appliedCoupon && (
-                  <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--success)' }}>
-                    Coupon <strong>{appliedCoupon.code}</strong> applied: -PKR {discountAmount.toLocaleString()}
-                  </p>
-                )}
+                {couponError && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--danger)' }}>{couponError}</p>}
+                {appliedCoupon && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--success-text)' }}>Coupon <strong>{appliedCoupon.code}</strong> applied: -PKR {discountAmount.toLocaleString()}</p>}
               </div>
 
-              <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
-                  <span>Subtotal</span>
-                  <span>PKR {cartTotal().toLocaleString()}</span>
-                </div>
-                {discountAmount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--success)' }}>
-                    <span>Discount</span>
-                    <span>-PKR {discountAmount.toLocaleString()}</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
-                  <span>Shipping</span>
-                  <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>Calculated next step</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #f3f4f6', fontWeight: 600, fontSize: '1rem', color: '#111827' }}>
-                  <span>Total</span>
-                  <span>PKR {finalTotal().toLocaleString()}</span>
-                </div>
+              <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}><span>Subtotal</span><span>PKR {cartTotal().toLocaleString()}</span></div>
+                {discountAmount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--success-text)' }}><span>Discount</span><span>-PKR {discountAmount.toLocaleString()}</span></div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}><span>Shipping</span><span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Calculated at backend</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)', fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}><span>Total</span><span>PKR {finalTotal().toLocaleString()}</span></div>
               </div>
 
-              {error && (
-                <p style={{ marginTop: '16px', fontSize: '0.875rem', color: '#dc2626', backgroundColor: '#fef2f2', padding: '12px', borderRadius: '8px' }}>
-                  {error}
-                </p>
-              )}
+              {error && <p style={{ marginTop: '16px', fontSize: '0.875rem', color: 'var(--danger-text)', backgroundColor: 'var(--danger-bg)', padding: '12px', borderRadius: '8px' }}>{error}</p>}
 
-              <button
-                onClick={handlePlaceOrder}
-                disabled={placing || !selectedAddressId || (paymentMethod === "card" && !stripe)}
-                style={{
-                  marginTop: '24px',
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  backgroundColor: (placing || !selectedAddressId || (paymentMethod === "card" && !stripe)) ? '#9ca3af' : '#111827',
-                  color: '#fff',
-                  padding: '12px',
-                  borderRadius: '12px',
-                  fontWeight: 600,
-                  border: 'none',
-                  cursor: (placing || !selectedAddressId || (paymentMethod === "card" && !stripe)) ? 'not-allowed' : 'pointer',
-                  opacity: (placing || !selectedAddressId || (paymentMethod === "card" && !stripe)) ? 0.5 : 1,
-                  transition: 'all 0.2s',
-                }}
-              >
-                {placing ? (
-                  <span>Processing...</span>
-                ) : (
-                  <>
-                    <Lock />
-                    Place Order
-                  </>
-                )}
+              <button onClick={handlePlaceOrder} disabled={canPlaceOrder} style={{ marginTop: '24px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: canPlaceOrder ? 'var(--disabled-bg)' : 'var(--primary)', color: 'var(--primary-contrast)', padding: '12px', borderRadius: '12px', fontWeight: 600, border: 'none', cursor: canPlaceOrder ? 'not-allowed' : 'pointer', opacity: canPlaceOrder ? 0.5 : 1, transition: 'all 0.2s' }}>
+                {placing ? <span>Processing...</span> : <><Lock /> Place Order</>}
               </button>
             </div>
           </div>

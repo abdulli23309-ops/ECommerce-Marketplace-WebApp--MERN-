@@ -16,6 +16,7 @@ const seedCheckoutData = async ({ stock = 10 } = {}) => {
     email: `customer-${Date.now()}@example.com`,
     password: 'password123',
     role: 'Customer',
+    emailVerified: true,
   });
 
   const seller = await User.create({

@@ -2,43 +2,82 @@ import * as returnRepo from '../repositories/Return.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import * as sellerProfileRepo from '../repositories/SellerProfile.repository.js';
 import * as refundRepo from '../repositories/Refund.repository.js';
+import * as productRepo from '../repositories/Product.repository.js'; // Added for product lookup
 import Store from '../models/Store.model.js';
 import { createNotification } from './Notification.service.js';
+import { notifyAdmins } from './Notification.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
-// Helper to resolve the authenticated seller's store
+/**
+ * Helper to resolve the authenticated seller's store.
+ */
 const getSellerStore = async (userId) => {
   const profile = await sellerProfileRepo.findByUser(userId);
-  if (!profile) throw new ApiError(404, 'Seller profile not found');
+  if (!profile) return null;
   const store = await Store.findOne({ sellerProfile: profile._id });
-  if (!store) throw new ApiError(404, 'Store not found');
-  return store;
+  return store || null;
 };
+
+export const getSellerReturns = async (userId) => {
+  const store = await getSellerStore(userId);
+  if (!store) return [];
+
+  return returnRepo.findByStore(store._id);
+};
+
+/**
+ * Verify that a return belongs to the given seller's store.
+ */
+const verifyReturnOwnership = async (returnId, userId) => {
+  const ret = await returnRepo.findById(returnId);
+  if (!ret) {
+    throw new ApiError(404, 'Return request not found');
+  }
+
+  const store = await getSellerStore(userId);
+  const sellerOrder = await orderRepo.findSellerOrderById(ret.sellerOrder);
+  if (!sellerOrder || sellerOrder.store._id.toString() !== store._id.toString()) {
+    throw new ApiError(403, 'This return does not belong to your store');
+  }
+
+  return ret;
+};
+
+// ---------- Customer-facing operations ----------
 
 export const createReturn = async (customerId, data) => {
   const { productId, sellerOrderId, reason, description, images } = data;
 
+  // Validate seller order
   const sellerOrder = await orderRepo.findSellerOrderById(sellerOrderId);
-  if (!sellerOrder) throw new ApiError(404, 'Seller order not found');
+  if (!sellerOrder) {
+    throw new ApiError(404, 'Seller order not found');
+  }
 
+  // Ensure the parent order belongs to this customer
   const parentOrder = await orderRepo.findById(sellerOrder.parentOrder, customerId);
-  if (!parentOrder) throw new ApiError(404, 'Order not found or not yours');
+  if (!parentOrder) {
+    throw new ApiError(404, 'Order not found or not yours');
+  }
 
   if (sellerOrder.status !== 'Delivered') {
     throw new ApiError(400, 'Return is only available for delivered items');
   }
 
+  // Verify product exists in the order
   const itemExists = sellerOrder.items.some(
     (item) => item.product.toString() === productId
   );
-  if (!itemExists) throw new ApiError(400, 'Product not found in this order');
+  if (!itemExists) {
+    throw new ApiError(400, 'Product not found in this order');
+  }
 
+  // Check for duplicate return requests
   const duplicate = await returnRepo.findDuplicateReturn({
     customerId,
     productId,
     sellerOrderId,
   });
-
   if (duplicate) {
     throw new ApiError(409, 'A return request already exists for this item');
   }
@@ -52,7 +91,7 @@ export const createReturn = async (customerId, data) => {
     images,
   });
 
-  // Notify the customer that their return request was created
+  // Notify customer
   await createNotification(
     customerId,
     'return',
@@ -62,35 +101,71 @@ export const createReturn = async (customerId, data) => {
     { returnRequestId: createdReturn._id }
   );
 
+  // Fetch product details to get the name for the admin notification
+  const product = await productRepo.findPublicById(productId);
+  const productName = product ? product.name : 'Unknown Product';
+
+  // Notify admins with the product name
+  await notifyAdmins(
+    'return',
+    'New Return Request',
+    `Customer requested a return for ${productName}.`,
+    '/admin/returns',
+    { returnRequestId: createdReturn._id.toString() }
+  );
+
   return createdReturn;
 };
 
 export const getMyReturns = (customerId) => returnRepo.findByCustomer(customerId);
 
-export const processReturn = async (returnId, status, adminId, rejectionReason) => {
-  const returnRequest = await returnRepo.findById(returnId);
-  if (!returnRequest) throw new ApiError(404, 'Return request not found');
-  if (returnRequest.status !== 'Requested') throw new ApiError(400, 'Return already processed');
-
-  const updated = await returnRepo.updateStatus(returnId, status, adminId, rejectionReason);
-
-  // Notify customer of admin decision
-  if (returnRequest.customer) {
-    const isApproved = status === 'PENDING_SELLER_REVIEW';
-    await createNotification(
-      returnRequest.customer,
-      'return',
-      isApproved ? 'Return Approved' : 'Return Rejected',
-      isApproved
-        ? 'Your return request has been approved and forwarded to the seller.'
-        : 'Your return request has been rejected.',
-      `/returns/${returnRequest._id}`,
-      { returnRequestId: returnRequest._id }
-    );
+export const updateTracking = async (returnId, userId, trackingNumber) => {
+  const ret = await returnRepo.findById(returnId);
+  if (!ret) {
+    throw new ApiError(404, 'Return not found');
   }
+  if (ret.customer.toString() !== userId) {
+    throw new ApiError(403, 'Not your return');
+  }
+  if (ret.status !== 'APPROVED_PENDING_SHIPMENT') {
+    throw new ApiError(400, 'Return not awaiting shipment');
+  }
+
+  const updated = await returnRepo.updateById(returnId, {
+    returnTrackingNumber: trackingNumber,
+    status: 'ITEM_IN_TRANSIT',
+  });
+
+  await createNotification(
+    userId,
+    'return',
+    'Return Shipped',
+    'Your return shipment is now in transit.',
+    `/returns/${ret._id}`,
+    { returnRequestId: ret._id }
+  );
 
   return updated;
 };
+
+export const getMyReturnRefund = async (returnId, userId) => {
+  const ret = await returnRepo.findById(returnId);
+  if (!ret) {
+    throw new ApiError(404, 'Return not found');
+  }
+  if (ret.customer.toString() !== userId) {
+    throw new ApiError(403, 'Not your return');
+  }
+
+  const refund = await refundRepo.findByReturnRequest(returnId);
+  if (!refund) {
+    throw new ApiError(404, 'Refund not found for this return');
+  }
+
+  return refund;
+};
+
+// ---------- Admin operations ----------
 
 export const getAllReturns = (filter = {}) => returnRepo.findAll(filter);
 
@@ -99,15 +174,26 @@ export const getAllReturnsPaginated = (options) =>
 
 export const adminDecision = async (returnId, decision, adminId, notes) => {
   const ret = await returnRepo.findById(returnId);
-  if (!ret) throw new ApiError(404, 'Return not found');
+  if (!ret) {
+    throw new ApiError(404, 'Return not found');
+  }
   if (!['PENDING_ADMIN_REVIEW', 'Requested'].includes(ret.status)) {
-    throw new ApiError(400, 'Invalid state');
+    throw new ApiError(400, 'Invalid state for admin decision');
   }
 
-  const newStatus = decision === 'APPROVE' ? 'PENDING_SELLER_REVIEW' : 'REJECTED_BY_ADMIN';
-  const updated = await returnRepo.updateStatusAndNotes(returnId, newStatus, adminId, notes, 'admin');
+  const newStatus = decision === 'APPROVE'
+    ? 'PENDING_SELLER_REVIEW'
+    : 'REJECTED_BY_ADMIN';
 
-  // Notify customer of admin decision
+  const updated = await returnRepo.updateStatusAndNotes(
+    returnId,
+    newStatus,
+    adminId,
+    notes,
+    'admin'
+  );
+
+  // Notify customer
   if (ret.customer) {
     const isApproved = newStatus === 'PENDING_SELLER_REVIEW';
     await createNotification(
@@ -125,28 +211,47 @@ export const adminDecision = async (returnId, decision, adminId, notes) => {
   return updated;
 };
 
-export const getSellerReturns = async (userId) => {
-  // Resolve seller's store
-  const profile = await sellerProfileRepo.findByUser(userId);
-  if (!profile) throw new ApiError(404, 'Seller profile not found');
+export const processReturn = async (returnId, status, adminId, rejectionReason) => {
+  const returnRequest = await returnRepo.findById(returnId);
+  if (!returnRequest) {
+    throw new ApiError(404, 'Return request not found');
+  }
+  if (returnRequest.status !== 'Requested') {
+    throw new ApiError(400, 'Return already processed');
+  }
 
-  const store = await Store.findOne({ sellerProfile: profile._id });
-  if (!store) throw new ApiError(404, 'Store not found');
+  const updated = await returnRepo.updateStatus(
+    returnId,
+    status,
+    adminId,
+    rejectionReason
+  );
 
-  // Find returns where the product's store matches the seller's store
-  return returnRepo.findByStore(store._id);
+  // Notify customer
+  if (returnRequest.customer) {
+    const isApproved = status === 'PENDING_SELLER_REVIEW';
+    await createNotification(
+      returnRequest.customer,
+      'return',
+      isApproved ? 'Return Approved' : 'Return Rejected',
+      isApproved
+        ? 'Your return request has been approved and forwarded to the seller.'
+        : 'Your return request has been rejected.',
+      `/returns/${returnRequest._id}`,
+      { returnRequestId: returnRequest._id }
+    );
+  }
+
+  return updated;
 };
 
-export const sellerDecision = async (returnId, decision, userId, notes) => {
-  const ret = await returnRepo.findById(returnId);
-  if (!ret) throw new ApiError(404, 'Return not found');
+// ---------- Seller operations ----------
 
-  // Ownership check: verify the return belongs to the requesting seller's store
-  const store = await getSellerStore(userId);
-  const sellerOrder = await orderRepo.findSellerOrderById(ret.sellerOrder);
-  if (!sellerOrder || sellerOrder.store._id.toString() !== store._id.toString()) {
-    throw new ApiError(403, 'This return does not belong to your store');
-  }
+
+
+export const sellerDecision = async (returnId, decision, userId, notes) => {
+  // Ownership and existence check
+  const ret = await verifyReturnOwnership(returnId, userId);
 
   let newStatus;
 
@@ -169,9 +274,15 @@ export const sellerDecision = async (returnId, decision, userId, notes) => {
     throw new ApiError(400, 'Invalid decision');
   }
 
-  const updated = await returnRepo.updateStatusAndNotes(returnId, newStatus, userId, notes, 'seller');
+  const updated = await returnRepo.updateStatusAndNotes(
+    returnId,
+    newStatus,
+    userId,
+    notes,
+    'seller'
+  );
 
-  // Notify customer of seller decision
+  // Notify customer
   if (ret.customer) {
     let title = 'Return Update';
     let message = 'Your return request status has been updated.';
@@ -201,22 +312,22 @@ export const sellerDecision = async (returnId, decision, userId, notes) => {
 };
 
 export const processRefund = async (returnId, userId) => {
-  const ret = await returnRepo.findById(returnId);
-  if (!ret) throw new ApiError(404, 'Return not found');
+  // Ownership and existence check
+  const ret = await verifyReturnOwnership(returnId, userId);
 
-  // Ownership check: verify the return belongs to the requesting seller's store
-  const store = await getSellerStore(userId);
-  const sellerOrder = await orderRepo.findSellerOrderById(ret.sellerOrder);
-  if (!sellerOrder || sellerOrder.store._id.toString() !== store._id.toString()) {
-    throw new ApiError(403, 'This return does not belong to your store');
+  if (!['ITEM_IN_TRANSIT', 'APPROVED_PENDING_SHIPMENT'].includes(ret.status)) {
+    throw new ApiError(400, 'Invalid state for refund processing');
   }
 
-  if (ret.status !== 'ITEM_IN_TRANSIT' && ret.status !== 'APPROVED_PENDING_SHIPMENT')
-    throw new ApiError(400, 'Invalid state');
+  const updated = await returnRepo.updateStatusAndNotes(
+    returnId,
+    'INSPECTED_AND_REFUNDED',
+    userId,
+    null,
+    'seller'
+  );
 
-  const updated = await returnRepo.updateStatusAndNotes(returnId, 'INSPECTED_AND_REFUNDED', userId, null, 'seller');
-
-  // Notify customer that refund has been initiated/processed
+  // Notify customer
   if (ret.customer) {
     await createNotification(
       ret.customer,
@@ -229,39 +340,4 @@ export const processRefund = async (returnId, userId) => {
   }
 
   return updated;
-};
-
-export const updateTracking = async (returnId, userId, trackingNumber) => {
-  const ret = await returnRepo.findById(returnId);
-  if (!ret) throw new ApiError(404, 'Return not found');
-  if (ret.customer.toString() !== userId) throw new ApiError(403, 'Not your return');
-  if (ret.status !== 'APPROVED_PENDING_SHIPMENT') throw new ApiError(400, 'Return not awaiting shipment');
-
-  const updated = await returnRepo.updateById(returnId, {
-    returnTrackingNumber: trackingNumber,
-    status: 'ITEM_IN_TRANSIT',
-  });
-
-  // Notify customer that tracking was updated
-  await createNotification(
-    userId,
-    'return',
-    'Return Shipped',
-    'Your return shipment is now in transit.',
-    `/returns/${ret._id}`,
-    { returnRequestId: ret._id }
-  );
-
-  return updated;
-};
-
-export const getMyReturnRefund = async (returnId, userId) => {
-  const ret = await returnRepo.findById(returnId);
-  if (!ret) throw new ApiError(404, 'Return not found');
-  if (ret.customer.toString() !== userId) throw new ApiError(403, 'Not your return');
-
-  const refund = await refundRepo.findByReturnRequest(returnId);
-  if (!refund) throw new ApiError(404, 'Refund not found for this return');
-
-  return refund;
 };

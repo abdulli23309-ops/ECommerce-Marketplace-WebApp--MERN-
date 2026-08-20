@@ -2,6 +2,11 @@ import { Routes, Route } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect } from "react";
 import { fetchPermissions } from "./store/permissionsSlice";
+import {
+  setActualRole,
+  setActiveDashboard,
+  resetDashboardContext,
+} from "./store/dashboardContextSlice";
 import AuthLayout from "./layouts/AuthLayout";
 import CustomerLayout from "./layouts/CustomerLayout";
 import SellerLayout from "./layouts/SellerLayout";
@@ -10,6 +15,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
+import VerifyEmailPage from "./pages/customer/VerifyEmailPage";
 import HomePage from "./pages/customer/HomePage";
 import AboutPage from "./pages/customer/AboutPage";
 import CartPage from "./pages/customer/CartPage";
@@ -61,8 +67,8 @@ import AdminCouponsPage from "./pages/admin/AdminCouponsPage";
 const App = () => {
   useTheme();
   const dispatch = useDispatch();
-  const { accessToken } = useSelector(state => state.auth);
-  const { codes } = useSelector(state => state.permissions);
+  const { accessToken, user } = useSelector((state) => state.auth);
+  const { codes } = useSelector((state) => state.permissions);
 
   useEffect(() => {
     if (accessToken) {
@@ -70,15 +76,61 @@ const App = () => {
     }
   }, [accessToken, dispatch]);
 
+  useEffect(() => {
+    if (accessToken && user) {
+      const rawRoles = [];
+
+      if (Array.isArray(user.roles)) {
+        user.roles.forEach((role) => {
+          if (typeof role === "string") {
+            rawRoles.push(role);
+          } else if (role && typeof role === "object" && role.name) {
+            rawRoles.push(role.name);
+          }
+        });
+      } else if (typeof user.roles === "string") {
+        rawRoles.push(user.roles);
+      }
+
+      if (user.role) {
+        if (typeof user.role === "string") {
+          rawRoles.push(user.role);
+        } else if (user.role && typeof user.role === "object" && user.role.name) {
+          rawRoles.push(user.role.name);
+        }
+      }
+
+      let actualRole = "Customer";
+
+      if (rawRoles.includes("Admin") || rawRoles.includes("SuperAdmin")) {
+        actualRole = "Admin";
+      } else if (rawRoles.includes("Seller")) {
+        actualRole = "Seller";
+      }
+
+      dispatch(setActualRole(actualRole));
+
+      dispatch(
+        setActiveDashboard(
+          actualRole === "Admin"
+            ? "admin"
+            : actualRole === "Seller"
+              ? "seller"
+              : "customer"
+        )
+      );
+    } else {
+      dispatch(resetDashboardContext());
+    }
+  }, [user, dispatch]); // do not re-run on silent token refresh
+
   return (
     <Routes>
-      {/* Public auth pages – NOT protected */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>
 
-      {/* PUBLIC storefront routes — NOT behind ProtectedRoute */}
       <Route element={<CustomerLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
@@ -87,8 +139,7 @@ const App = () => {
         <Route path="/store/:storeId" element={<StorePage />} />
       </Route>
 
-      {/* Customer routes that legitimately require an account – protected, allowed roles: Customer */}
-     <Route element={<ProtectedRoute />}>
+      <Route element={<ProtectedRoute />}>
         <Route element={<CustomerLayout />}>
           <Route path="/cart" element={<CartPage />} />
           <Route path="/wishlist" element={<WishlistPage />} />
@@ -98,15 +149,15 @@ const App = () => {
           <Route path="/addresses" element={<AddressBookPage />} />
           <Route path="/orders/:orderId" element={<OrderDetailPage />} />
           <Route path="/review/new/:sellerOrderId" element={<ReviewPage />} />
-          <Route path="/returns/new/:sellerOrderId" element={<RequestReturnPage />} /> 
+          <Route path="/returns/new/:sellerOrderId" element={<RequestReturnPage />} />
           <Route path="/returns" element={<CustomerReturnsPage />} />
           <Route path="/reviews/my" element={<MyReviewsPage />} />
           <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
           <Route path="/reviews/:reviewId" element={<ReviewDetailPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
         </Route>
       </Route>
 
-      {/* Authenticated-only routes (any role) */}
       <Route element={<ProtectedRoute />}>
         <Route element={<CustomerLayout />}>
           <Route path="/seller/register" element={<SellerRegisterPage />} />
@@ -114,7 +165,6 @@ const App = () => {
         </Route>
       </Route>
 
-      {/* Seller routes */}
       <Route element={<ProtectedRoute allowedRoles={["Seller"]} />}>
         <Route element={<SellerLayout />}>
           <Route path="/seller/dashboard" element={<SellerDashboardPage />} />
@@ -129,7 +179,6 @@ const App = () => {
         </Route>
       </Route>
 
-      {/* Admin routes – protected, allowed roles: Admin */}
       <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin/sellers" element={<SellerApprovalPage />} />
@@ -145,11 +194,12 @@ const App = () => {
           <Route path="/admin/shipments" element={<AdminShipmentsPage />} />
           <Route path="/admin/payments" element={<AdminPaymentsPage />} />
           <Route path="/admin/brands" element={<AdminBrandsPage />} />
-          {/* Priority 4 admin routes */}
           <Route path="/admin/audit-logs" element={<AdminAuditLogPage />} />
           <Route path="/admin/coupons" element={<AdminCouponsPage />} />
         </Route>
       </Route>
+
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

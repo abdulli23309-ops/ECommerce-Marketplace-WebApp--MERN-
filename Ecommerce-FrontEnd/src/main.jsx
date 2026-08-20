@@ -11,7 +11,7 @@ import './index.css'
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  
     <Provider store={store}>
       <BrowserRouter>
         <Elements stripe={stripePromise}>
@@ -19,5 +19,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </Elements>
       </BrowserRouter>
     </Provider>
-  </React.StrictMode>,
+  
 )

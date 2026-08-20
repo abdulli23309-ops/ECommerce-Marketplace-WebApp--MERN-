@@ -21,7 +21,18 @@ const ProductFormModal = () => {
     watch,
     reset,
     formState: { errors },
-  } = useForm();
+  } = useForm({
+    defaultValues: {
+      name: "",
+      description: "",
+      price: "",
+      stock: "",
+      category: "",
+      subCategory: "",
+      brand: "",
+      freeDelivery: false, // <-- added default
+    },
+  });
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
@@ -67,6 +78,7 @@ const ProductFormModal = () => {
               product.subCategoryId || product.subCategory || ""
             );
             setValue("brand", product.brandId || product.brand || "");
+            setValue("freeDelivery", product.freeDelivery ?? false); // <-- load freeDelivery
 
             if (product.images?.length > 0) {
               setExistingImages(product.images);
@@ -144,6 +156,8 @@ const ProductFormModal = () => {
       formData.append("category", data.category);
       formData.append("subCategory", data.subCategory);
       if (data.brand) formData.append("brand", data.brand);
+      // Append freeDelivery as boolean string
+      formData.append("freeDelivery", data.freeDelivery ? "true" : "false"); // <-- added
 
       if (existingImages.length > 0) {
         existingImages.forEach((img) => formData.append("existingImages", img));
@@ -457,6 +471,25 @@ const ProductFormModal = () => {
                 {imageError}
               </p>
             )}
+          </div>
+
+          {/* ---------- Free Delivery Toggle ---------- */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginBottom: "1.5rem",
+            }}
+          >
+            <input
+              type="checkbox"
+              id="freeDelivery"
+              {...register("freeDelivery")}
+            />
+            <label htmlFor="freeDelivery" className="form-label" style={{ margin: 0 }}>
+              Free Delivery
+            </label>
           </div>
 
           {error && <p className="error-text">{error}</p>}

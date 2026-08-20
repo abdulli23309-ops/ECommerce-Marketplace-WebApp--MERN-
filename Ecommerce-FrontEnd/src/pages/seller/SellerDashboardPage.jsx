@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
+import {
+  SELLER_LOW_RATING_THRESHOLD,
+  LOW_STOCK_THRESHOLD,
+} from "../../utils/warningThresholds";
 
 const Icon = ({ type }) => {
   const iconProps = {
@@ -10,6 +14,7 @@ const Icon = ({ type }) => {
     stroke: "currentColor",
     strokeWidth: 1.8,
   };
+
   switch (type) {
     case "products":
       return (
@@ -115,11 +120,15 @@ const SellerDashboardPage = () => {
     fetchStats();
   }, []);
 
-  if (loading)
+  if (loading) {
     return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Loading dashboard...</div>;
-  if (!stats)
-    return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Could not load stats.</div>;
+  }
 
+  if (!stats) {
+    return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Could not load stats.</div>;
+  }
+
+  // Cards with warning flags based on thresholds
   const productCards = [
     {
       label: "Total Products",
@@ -152,6 +161,7 @@ const SellerDashboardPage = () => {
       color: "var(--danger)",
       bg: "var(--danger-bg)",
       to: "/seller/products",
+      warning: Number(stats.lowStockCount) >= 1,
     },
   ];
 
@@ -231,12 +241,15 @@ const SellerDashboardPage = () => {
     },
     {
       label: "Average Rating",
-      value: stats.averageRating ? `${stats.averageRating.toFixed(1)} ★` : "N/A",
+      value: stats.averageRating ? `${Number(stats.averageRating).toFixed(1)} ★` : "N/A",
       sub: `${stats.totalReviews ?? 0} reviews`,
       icon: "rating",
       color: "var(--warning)",
       bg: "var(--warning-bg)",
       to: "/seller/reviews",
+      warning:
+        stats.averageRating > 0 &&
+        Number(stats.averageRating) < SELLER_LOW_RATING_THRESHOLD,
     },
   ];
 
@@ -263,6 +276,24 @@ const SellerDashboardPage = () => {
     <div style={{ padding: "1.5rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
       <h2 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: "1.5rem" }}>Dashboard</h2>
 
+      {/* Low rating warning banner */}
+      {stats.lowRatingStatus && (
+        <div
+          style={{
+            padding: "1rem",
+            borderRadius: "12px",
+            backgroundColor: "var(--danger-bg)",
+            color: "var(--danger-text)",
+            fontWeight: 600,
+            marginBottom: "1.5rem",
+            border: "1px solid var(--danger)",
+          }}
+        >
+          ⚠️ Low Seller Rating Warning — Your average rating is below {SELLER_LOW_RATING_THRESHOLD}.
+          {stats.warningCount > 0 && ` Warnings: ${stats.warningCount}/3`}
+        </div>
+      )}
+
       <section style={{ marginBottom: "2.5rem" }}>
         <h3 style={sectionHeaderStyle}>Product Overview</h3>
         <div style={gridStyle}>
@@ -270,6 +301,7 @@ const SellerDashboardPage = () => {
             <div
               key={card.label}
               style={cardStyle}
+              className={card.warning ? "stat-card-warning-red" : ""}
               onClick={() => handleCardClick(card.to)}
               onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
               onMouseLeave={(e) => {
@@ -297,13 +329,14 @@ const SellerDashboardPage = () => {
         </div>
       </section>
 
-      <section style={{ marginBottom: "2.5rem" }}>
+      <section>
         <h3 style={sectionHeaderStyle}>Sales & Fulfillment</h3>
         <div style={gridStyle}>
           {salesCards.map((card) => (
             <div
               key={card.label}
               style={cardStyle}
+              className={card.warning ? "stat-card-warning-red" : ""}
               onClick={() => handleCardClick(card.to)}
               onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
               onMouseLeave={(e) => {
@@ -323,11 +356,7 @@ const SellerDashboardPage = () => {
                   <Icon type={card.icon} />
                 </span>
               </div>
-              <span style={{
-                fontSize: "1.75rem",
-                fontWeight: 700,
-                color: "var(--text-primary)"
-              }}>
+              <span style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
                 {card.value}
               </span>
               {card.sub && (
@@ -339,65 +368,6 @@ const SellerDashboardPage = () => {
           ))}
         </div>
       </section>
-
-      {/* Top Selling Products */}
-      {stats.topSellingProducts && stats.topSellingProducts.length > 0 && (
-        <section style={{ marginBottom: "2.5rem" }}>
-          <h3 style={sectionHeaderStyle}>Top Selling Products</h3>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", background: "var(--surface)", border: "1px solid var(--border)" }}>
-              <thead>
-                <tr style={{ background: "var(--bg-secondary)" }}>
-                  <th style={thStyle}>Product</th>
-                  <th style={thStyle}>Quantity Sold</th>
-                  <th style={thStyle}>Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.topSellingProducts.map((p) => (
-                  <tr key={p.productId} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={tdStyle}>{p.name}</td>
-                    <td style={tdStyle}>{p.quantitySold}</td>
-                    <td style={tdStyle}>PKR {Number(p.revenue || 0).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {/* Sales Trend */}
-      {stats.salesTrend && stats.salesTrend.length > 0 && (
-        <section>
-          <h3 style={sectionHeaderStyle}>Sales Trend (Last 7 Days)</h3>
-          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-            {stats.salesTrend.map((day) => (
-              <div
-                key={day.date}
-                style={{
-                  flex: "1 1 120px",
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "12px",
-                  padding: "1rem",
-                  textAlign: "center",
-                }}
-              >
-                <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
-                  {day.date}
-                </p>
-                <p style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-primary)" }}>
-                  {day.orderCount} orders
-                </p>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                  PKR {Number(day.revenue || 0).toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 };
@@ -415,19 +385,6 @@ const gridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
   gap: "1rem",
-};
-
-const thStyle = {
-  textAlign: "left",
-  padding: "12px 16px",
-  fontWeight: 600,
-  borderBottom: "1px solid var(--border)",
-  color: "var(--text-primary)",
-};
-
-const tdStyle = {
-  padding: "12px 16px",
-  color: "var(--text-secondary)",
 };
 
 export default SellerDashboardPage;

@@ -1,5 +1,6 @@
 import axiosInstance from "./axiosInstance";
 
+// ---------- Normalisation helpers ----------
 const normalizeItems = (responseData) => {
   if (Array.isArray(responseData)) return responseData;
 
@@ -30,12 +31,16 @@ const normalizePagination = (responseData, fallbackPage, fallbackPageSize) => {
 };
 
 // ---------- Sellers ----------
-export const getSellers = async () => {
-  const { data } = await axiosInstance.get("/admin/sellers");
-  const sellers = normalizeItems(data.data);
+export const getSellers = async (params = {}) => {
+  const { data } = await axiosInstance.get("/admin/sellers", { params });
+  const pagination = normalizePagination(
+    data.data,
+    params.page || 1,
+    params.pageSize || 10
+  );
 
   return {
-    items: sellers.map((s) => ({
+    items: pagination.items.map((s) => ({
       id: s._id,
       businessName: s.businessName,
       fullName: s.user?.name || "",
@@ -48,10 +53,13 @@ export const getSellers = async () => {
       taxId: s.taxId || "",
       city: s.store?.city || "",
       status: s.status,
+      user: s.user,      // keep full user object for moderation status
+      store: s.store,    // keep full store object
     })),
-    total: sellers.length,
-    page: 1,
-    totalPages: 1,
+    total: pagination.total,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    totalPages: pagination.totalPages,
   };
 };
 
@@ -59,7 +67,7 @@ export const approveSeller = async (sellerId) => {
   const { data } = await axiosInstance.put(
     `/admin/sellers/${sellerId}/approve`
   );
-  return data.data;
+  return data.data || data;
 };
 
 export const rejectSeller = async (sellerId, reason) => {
@@ -67,7 +75,22 @@ export const rejectSeller = async (sellerId, reason) => {
     `/admin/sellers/${sellerId}/reject`,
     { reason }
   );
-  return data.data;
+  return data.data || data;
+};
+
+export const warnSeller = async (sellerId, reason = "") => {
+  const { data } = await axiosInstance.post(
+    `/admin/sellers/${sellerId}/warn`,
+    { reason }
+  );
+  return data.data || data;
+};
+
+export const getSellerModerationStatus = async (sellerId) => {
+  const { data } = await axiosInstance.get(
+    `/admin/sellers/${sellerId}/moderation-status`
+  );
+  return data.data || {};
 };
 
 // ---------- Products (admin) ----------
@@ -84,6 +107,12 @@ export const getProducts = async (params = {}) => {
       basePrice: p.price,
       stockQuantity: p.stock,
       status: p.status,
+      images: p.images,
+      category: p.category,
+      subCategory: p.subCategory,
+      rejectionReason: p.rejectionReason,
+      internalNote: p.internalNote,
+      store: p.store,
     })),
     total: payload.total ?? products.length,
     page: payload.page ?? params.page ?? 1,
@@ -94,18 +123,28 @@ export const getProducts = async (params = {}) => {
   };
 };
 
-export const updateProductStatus = async (productId, status) => {
+export const updateProductStatus = async (productId, status, reason, note) => {
+  const payload = { status };
+  if (reason) payload.reason = reason;
+  if (note) payload.note = note;
+
   const { data } = await axiosInstance.put(
     `/admin/products/${productId}/status`,
-    { status }
+    payload
   );
-  return data.data;
+  return data.data || data;
 };
 
 // ---------- Returns ----------
 export const getReturns = async (params = {}) => {
   const { data } = await axiosInstance.get("/returns/admin", { params });
-  return data.data || data;
+  const pagination = normalizePagination(
+    data.data,
+    params.page || 1,
+    params.pageSize || 10
+  );
+
+  return pagination;
 };
 
 export const approveReturn = async (returnId) => {
@@ -113,7 +152,7 @@ export const approveReturn = async (returnId) => {
     `/returns/${returnId}/admin-decision`,
     { decision: "APPROVE" }
   );
-  return data.data;
+  return data.data || data;
 };
 
 export const rejectReturn = async (returnId) => {
@@ -121,13 +160,13 @@ export const rejectReturn = async (returnId) => {
     `/returns/${returnId}/admin-decision`,
     { decision: "REJECT" }
   );
-  return data.data;
+  return data.data || data;
 };
 
 // ---------- Refunds ----------
 export const createRefund = async (returnRequestId) => {
   const { data } = await axiosInstance.post("/refunds", { returnRequestId });
-  return data.data;
+  return data.data || data;
 };
 
 // ---------- Payments ----------
@@ -203,5 +242,5 @@ export const getAdminUsers = async (params = {}) => {
 // ---------- Admin Stats ----------
 export const getAdminStats = async () => {
   const { data } = await axiosInstance.get("/admin/stats");
-  return data.data;
+  return data.data || {};
 };

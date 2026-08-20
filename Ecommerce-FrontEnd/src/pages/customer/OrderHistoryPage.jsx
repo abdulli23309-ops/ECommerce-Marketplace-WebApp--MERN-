@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { fetchOrders } from "../../services/orderService";
+import { fetchOrders, fetchPaymentByOrder } from "../../services/orderService";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
 
 const StoreIcon = () => (
@@ -17,9 +17,11 @@ const PackageIcon = () => (
 );
 
 const getDisplayStatus = (order) => {
-  if (!order) return "Pending";
+  if (order.paymentStatus === "Failed") return "Payment Failed";
+  if (order.paymentStatus === "Pending") return "Payment Pending";
   if (order.orderStatus === 'Cancelled') return 'Cancelled';
   if (order.orderStatus === 'Delivered') return 'Delivered';
+
   const sellerStatuses = (order.sellerOrders || []).map(so => so.status);
   if (sellerStatuses.includes("Cancelled")) return "Cancelled";
   if (sellerStatuses.includes("Delivered")) return "Delivered";
@@ -28,6 +30,7 @@ const getDisplayStatus = (order) => {
   if (sellerStatuses.includes("Processing")) return "Processing";
   return "Pending";
 };
+
 const filterCategories = ["All Orders", "Processing", "Delivered", "Cancelled"];
 
 const OrderHistoryPage = () => {
@@ -41,8 +44,30 @@ const OrderHistoryPage = () => {
     setLoading(true);
     try {
       const res = await fetchOrders({ page, pageSize: 10 });
-      setOrders(res.items || []);
+      const rawOrders = res.items || [];
       setTotalPages(res.totalPages || 1);
+
+      // Fetch payment details for each order individually.
+      const enrichedOrders = await Promise.all(
+        rawOrders.map(async (order) => {
+          try {
+            const payment = await fetchPaymentByOrder(order._id);
+            return {
+              ...order,
+              paymentMethod: payment?.method || null,
+              paymentStatus: payment?.status || null,
+            };
+          } catch (err) {
+            return {
+              ...order,
+              paymentMethod: null,
+              paymentStatus: null,
+            };
+          }
+        })
+      );
+
+      setOrders(enrichedOrders);
     } catch (err) {
       console.error("Failed to load orders", err);
     } finally {
@@ -50,14 +75,18 @@ const OrderHistoryPage = () => {
     }
   };
 
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => {
+    load();
+  }, [page]);
 
   const filteredOrders = orders.filter(order => {
     if (activeFilter === "All Orders") return true;
     const status = getDisplayStatus(order);
-    if (activeFilter === "Processing") return status === "Pending" || status === "Processing" || status === "Shipped" || status === "OutForDelivery";
+    if (activeFilter === "Processing") {
+      return ["Pending", "Payment Pending", "Processing", "Shipped", "Out for Delivery"].includes(status);
+    }
     if (activeFilter === "Delivered") return status === "Delivered";
-    if (activeFilter === "Cancelled") return status === "Cancelled";
+    if (activeFilter === "Cancelled") return status === "Cancelled" || status === "Payment Failed";
     return true;
   });
 
@@ -66,12 +95,7 @@ const OrderHistoryPage = () => {
   const heading = { fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary)", margin: 0 };
   const filterRow = { display: "flex", gap: "12px", flexWrap: "wrap" };
   const filterBtnBase = { padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", cursor: "pointer", fontSize: "14px", fontWeight: 600, backgroundColor: "var(--surface)", color: "var(--text-secondary)", transition: "all 0.2s" };
-  const filterBtnActive = {
-    ...filterBtnBase,
-    backgroundColor: "var(--primary)",
-    color: "var(--primary-contrast)",
-    border: "1px solid var(--primary)",
-  };
+  const filterBtnActive = { ...filterBtnBase, backgroundColor: "var(--primary)", color: "var(--primary-contrast)", border: "1px solid var(--primary)" };
   const card = { backgroundColor: "var(--surface)", borderRadius: "16px", border: "1px solid var(--border)", boxShadow: "0 1px 3px var(--shadow)", overflow: "hidden", marginBottom: "20px" };
   const cardHeader = { backgroundColor: "var(--bg-secondary)", padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" };
   const orderIdStyle = { fontFamily: "monospace", fontWeight: "bold", color: "var(--text-primary)", fontSize: "0.95rem" };
@@ -83,12 +107,13 @@ const OrderHistoryPage = () => {
   const itemNameStyle = { fontSize: "0.875rem", color: "var(--text-primary)", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
   const qtyBadge = { backgroundColor: "var(--bg-secondary)", color: "var(--text-secondary)", borderRadius: "999px", padding: "2px 8px", fontSize: "0.75rem", fontWeight: 600 };
   const itemSubtotal = { fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)" };
-  const cardFooter = { display: "flex", justifyContent: "flex-end", gap: "12px", padding: "16px 24px", borderTop: "1px solid var(--border)", flexWrap: "wrap" };
+  const cardFooter = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderTop: "1px solid var(--border)", flexWrap: "wrap", gap: "12px" };
   const btnPrimary = { backgroundColor: "var(--primary)", color: "var(--primary-contrast)", padding: "10px 18px", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "14px", display: "inline-flex", alignItems: "center", gap: "6px" };
   const btnSecondary = { backgroundColor: "var(--surface)", color: "var(--text-secondary)", padding: "10px 18px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer", fontWeight: 600, fontSize: "14px", display: "inline-flex", alignItems: "center", gap: "6px" };
   const statusBadgeBase = { padding: "4px 12px", borderRadius: "12px", fontSize: "12px", fontWeight: 600 };
 
   if (loading) return <div style={{ padding: "3rem", color: "var(--text-secondary)", textAlign: "center" }}>Loading orders...</div>;
+
   if (orders.length === 0) {
     return (
       <div style={pageBg}>
@@ -121,22 +146,32 @@ const OrderHistoryPage = () => {
           const displayStatus = getDisplayStatus(order);
           const badgeStyle = getStatusBadgeStyle(displayStatus);
           const firstStore = order.sellerOrders?.[0]?.store?.name || "Unknown";
+
+          const rawPaymentMethod = order.paymentMethod;
+          const paymentMethod =
+            rawPaymentMethod === "CashOnDelivery"
+              ? "COD"
+              : rawPaymentMethod === "Stripe"
+                ? "Card"
+                : rawPaymentMethod || "—";
+
           return (
             <div style={card} key={order._id}>
               <div style={cardHeader}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                  <span style={orderIdStyle}>
-                    Order #{order._id.slice(0, 8).toUpperCase()}
-                  </span>
+                  <span style={orderIdStyle}>Order #{order._id.slice(0, 8).toUpperCase()}</span>
                   <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
                     {new Date(order.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>
+                    {paymentMethod}
+                  </span>
                   <span style={{ ...statusBadgeBase, ...badgeStyle }}>
                     {displayStatus}
                   </span>
-                  <span style={totalStyle}>PKR {order.totalAmount.toLocaleString()}</span>
+                  <span style={totalStyle}>PKR {Number(order.totalAmount || 0).toLocaleString()}</span>
                 </div>
               </div>
 
@@ -154,7 +189,7 @@ const OrderHistoryPage = () => {
                       <span style={itemNameStyle}>{item.productNameSnapshot}</span>
                       <span style={qtyBadge}>x{item.quantity}</span>
                       <span style={itemSubtotal}>
-                        PKR {(item.unitPriceSnapshot * item.quantity).toLocaleString()}
+                        PKR {Number(item.unitPriceSnapshot * item.quantity).toLocaleString()}
                       </span>
                     </div>
                   ))
@@ -162,10 +197,11 @@ const OrderHistoryPage = () => {
               </div>
 
               <div style={cardFooter}>
+                <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                  Payment: {paymentMethod}
+                </span>
                 <Link to={`/orders/${order._id}`} style={{ textDecoration: "none" }}>
-                  <button style={btnPrimary}>
-                    View Details
-                  </button>
+                  <button style={btnPrimary}>View Details</button>
                 </Link>
               </div>
             </div>

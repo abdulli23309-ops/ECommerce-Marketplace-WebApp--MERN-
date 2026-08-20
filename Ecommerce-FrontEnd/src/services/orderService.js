@@ -15,11 +15,12 @@ export const placeOrder = async (addressId) => {
   return data.data;
 };
 
-export const createPaymentIntent = async (addressId, paymentMethod, couponCode = null) => {
+export const createPaymentIntent = async (addressId, paymentMethod, couponCode = null, mobileAccount = null) => {
   const { data } = await axiosInstance.post("/payments/create-intent", {
     addressId,
     paymentMethod,
     couponCode,
+    mobileAccount,
   });
   return data.data || data;
 };
@@ -27,4 +28,9 @@ export const createPaymentIntent = async (addressId, paymentMethod, couponCode =
 export const cancelOrder = async (orderId) => {
   const { data } = await axiosInstance.put(`/orders/${orderId}/cancel`);
   return data.data;
+};
+
+export const fetchPaymentByOrder = async (orderId) => {
+  const { data } = await axiosInstance.get(`/payments/order/${orderId}`);
+  return data.data || data;
 };

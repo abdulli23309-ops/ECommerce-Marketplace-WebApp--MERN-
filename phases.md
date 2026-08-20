@@ -1,6 +1,6 @@
 # VendorVerse Development Phases
 
-> History reconstructed from (a) the actual Git history in the supplied ZIP (`git log`, 13 commits, `1e33a18` → `4460ff0`), (b) direct source inspection, and (c) the historical project context supplied for this documentation task. Where the two disagree, source code wins (see `rules.md` Rule 1). Items not directly evidenced by commit history or source are explicitly marked ⚠️ NEEDS VERIFICATION rather than asserted as fact.
+> History reconstructed from (a) the actual Git history (`git log`, 13 commits, `1e33a18` → `3b07eec`), (b) direct source inspection, and (c) the historical project context supplied for this documentation task. Where the two disagree, source code wins (see `rules.md` Rule 1). Items not directly evidenced by commit history or source are explicitly marked ⚠️ NEEDS VERIFICATION rather than asserted as fact.
 
 ## Legend
 
@@ -26,8 +26,9 @@ The repository contains 13 commits:
 | `77b80cf` | Stripe integration, COD, order cancellation, UI polish, bug fixes |
 | `4fa7581` | Complete marketplace lifecycle and QA refinements |
 | `9d2b67b` → `4460ff0` (4 commits) | Update VendorVerse Phase 1 QA and stabilization |
+| `3b07eec` | **Implement Priority 4 features and backend tests** (current HEAD) |
 
-This confirms: the project was built out in one continuous "Phase 1" push (auth → core marketplace → permissions → pagination → payments/Stripe/COD → returns/reviews/profile polish → repeated QA/stabilization passes). The commit log does **not** contain literal "Phase 14" or "Phase 14A" commit messages — the Phase 14/14A numbering comes from the historical project context supplied for this task, not from Git. The underlying code changes attributed to Phase 14A (below) **are** independently confirmed in the current source.
+This confirms: the project was built out in one continuous "Phase 1" push (auth → core marketplace → permissions → pagination → payments/Stripe/COD → returns/reviews/profile polish → repeated QA/stabilization passes), followed by a Priority 4 commit. The commit log does **not** contain literal "Phase 14" or "Phase 14A" commit messages — the Phase 14/14A numbering comes from the historical project context supplied for this task. The underlying code changes attributed to Phase 14A (below) **are** independently confirmed in the current source.
 
 ## Phase 1–13 — Foundational Build & Theme Migration ⚠️ NEEDS VERIFICATION (numbering) / ✅ COMPLETE (outcome)
 
@@ -71,62 +72,109 @@ All four discrepancies are confirmed resolved in the current source.
 
 ## Current Checkpoint
 
-**Priority 1, Priority 2, and Priority 3 are COMPLETE.**
+**Priority 1, Priority 2, Priority 3, and Priority 4 are COMPLETE (Committed).**
 
 - Priority 1: regression/bug audit, order status timeline, low-stock indicators, related-products fix, reusable Pagination component, automated/API tests.
 - Priority 2: recently viewed products, search autocomplete/suggestions, additional seller performance indicators, minor UI/UX improvements.
 - Priority 3: light/dark theme system.
+- Priority 4: in-app notifications, coupons/discounts, seller analytics (backend-only), admin audit log.
 
-Next major phase: **Priority 4 — Medium-Level E-commerce Features** (not started).
+**Priority 5 is PARTIALLY IMPLEMENTED (Uncommitted).**
 
-## Planned Work (Not Yet Implemented)
+- Rating moderation (backend, partial — no auto-suspend)
+- Delivery charges (backend + checkout; no admin UI)
+- Email OTP verification upgrade
+- Google OAuth
+- JazzCash/EasyPaisa sandbox processors
+- Seller cannot add own product to cart
+- Product variants — 🔴 Not started
+- Advanced recommendations — 🔴 Not started
+- PayPal — 🔴 Not implemented (enum-only)
 
-### Priority 1 — ✅ COMPLETE
-### Priority 2 — ✅ COMPLETE
-### Priority 3 — ✅ COMPLETE
+## Priority 4 — ✅ COMPLETE (Committed)
 
-### Priority 4 — 🔴 NOT STARTED
-- Notifications
-- Coupons/discounts
-- Seller analytics
-- Admin audit log
+Committed in HEAD `3b07eec` ("Implement Priority 4 features and backend tests"):
 
-### Priority 5 — 🔴 NOT STARTED
-- Product variants
-- Advanced recommendations
-- Other optional marketplace features
+- **In-App Notifications** — `Notification.model.js`, `Notification.service.js`, `Notification.controller.js`, `Notification.routes.js`; frontend `NotificationDropdown.jsx` + `notificationService.js`.
+- **Coupons/Discounts** — `Coupon.model.js`, `CouponUsage.model.js`, `Coupon.service.js`, `Coupon.controller.js`, `Coupon.routes.js`; frontend `AdminCouponsPage.jsx` + `adminCouponService.js`.
+- **Admin Audit Log** — `AdminAuditLog.model.js`, `AdminAuditLog.service.js`, `AdminAuditLog.controller.js`, `AdminAuditLog.routes.js`; frontend `AdminAuditLogPage.jsx` + `adminAuditLogService.js`.
+- **Seller Analytics** — `Seller.dashboard.service.js` computes `topSellingProducts` and `salesTrend`; **backend-only, not rendered frontend** (known gap).
 
-### Priority 1 — 🔴 NOT STARTED (all items)
-1. Regression/bug fixing (ongoing, no dedicated tracked backlog found in source)
-2. Order status history/timeline (customer-facing) — no `statusHistory`/timeline UI found on `OrderDetailPage`/`OrderHistoryPage`
-3. Low-stock indicators — no low-stock threshold field or UI badge found on `Product` model or seller/admin product views
-4. Related-products backend refinement — no dedicated "related products" endpoint/service found
-5. Reusable pagination component — pagination controls (`.page-btn`, Previous/Next) are currently implemented per-page, not extracted into a shared component
-6. Automated/API testing — no test framework configured in either `package.json`, no test files found
+## Priority 5 — 🟡 PARTIALLY IMPLEMENTED (Uncommitted)
 
-### Priority 2 — 🔴 NOT STARTED (all items)
-- Recently viewed products
-- Search autocomplete/suggestions
-- Seller performance indicators
-- UI/UX improvements (general, undefined scope)
+All Priority 5 work is **uncommitted** (present in the working tree only). It is not yet committed to Git.
 
-### Priority 3 — ✅ COMPLETE
-- Light/dark theme — fully implemented (`index.css` theme tokens, `useTheme` hook, `themeSlice`, `ThemeToggle`, theme-aware `BrandLogo`). Retained in the roadmap list only for numbering continuity with prior planning documents; it is not outstanding work.
+### Rating Moderation — 🟡 PARTIAL (Uncommitted)
+- `RatingModeration.service.js`, `RatingModeration.repository.js`.
+- Product low threshold 3.0, seller low threshold 2.5, max warnings 3.
+- **Warnings do not auto-suspend** (pending business-rule decision).
+- Known issue: `ratingModeration.test.js` has a warningCount assertion mismatch.
 
-### Priority 4 — 🔴 NOT STARTED (all items)
-- Notifications
-- Coupons/discounts
-- Seller analytics
-- Admin audit log
+### Delivery Charges — 🟡 BACKEND ONLY (Uncommitted)
+- `DeliveryCharge.model.js`, `DeliveryCharge.service.js`, `DeliveryCharge.controller.js`, `DeliveryCharge.routes.js`.
+- Checkout is integrated.
+- **No admin frontend UI** (known gap).
 
-### Priority 5 — 🔴 NOT STARTED (all items)
-- Product variants
-- Advanced recommendations
-- Other optional marketplace features
+### Email OTP Verification Upgrade — 🟡 PARTIAL (Uncommitted)
+- `User.emailVerified` added; normal registration sets `emailVerified: false`.
+- Checkout and seller application require `emailVerified: true`.
+- Google OAuth sets `emailVerified: true`.
+- OTP expiry 3 minutes, resend cooldown 3 minutes, max 5 attempts.
+- OTP bcrypt-hashed; recipient email derived from authenticated user, not request body.
+- `Email.service.js` uses Nodemailer SMTP when `EMAIL_PROVIDER=smtp`; development fallback logs OTP to console.
+- `VerifyEmailPage.jsx` has read-only email, countdown, expiry message.
+- `authSlice` has `setEmailVerified` reducer.
+- **Email OTP tests passed 4/4 in the last actual run.**
 
-## Recommended Order of Attack
+### Google OAuth — 🟡 PARTIAL (Uncommitted)
+- `GoogleAuth.controller.js`, `GoogleAuth.service.js`, `GoogleAuth.routes.js`.
+- `GoogleAuthButton.jsx` (`pages/auth/GoogleAuthButton.jsx`).
+- Sets `emailVerified: true` after successful authentication.
 
-Per the supplied roadmap priority and Rule 17 (regression protection), the next work should begin with **Priority 1, item 1 (regression/bug audit)** before adding new surface area, then proceed through items 2–6 in listed order since later items (e.g., a reusable pagination component) are lower-risk to attempt once earlier stabilization work is confirmed clean. See `memory.md` → "Next Immediate Task" for the current pointer.
+### JazzCash/EasyPaisa Sandbox Processors — 🟡 PARTIAL (Uncommitted)
+- `services/payment/processors/JazzCashProcessor.js`, `EasyPaisaProcessor.js`, `CashOnDeliveryProcessor.js`.
+- `PaymentFactory.js` updated.
+- Known issue: `easypaisaJazzcash.test.js` fails because tests omit `mobileAccount`.
+
+### Seller Cannot Add Own Product to Cart — 🟡 PARTIAL (Uncommitted)
+- `Cart.service.js` rule.
+
+### Not Started
+- Product variants — 🔴 NOT STARTED
+- Advanced recommendations — 🔴 NOT STARTED
+- PayPal — 🔴 NOT IMPLEMENTED (enum-only)
+
+## Known Issues (Priority 5)
+
+1. Avatar upload limit comment mismatch (comment says 10MB, configured limit is 20MB).
+2. `Refund.returnRequest` ref points at `'ReturnRequest'` while the registered model is `Return`.
+3. PayPal unimplemented (enum-only).
+4. Hardcoded colors in older CSS selectors (`.dashboard-footer`, `.stat-card`, `.hero-banner`).
+5. Duplicate status field in `SellerProfile.model.js`.
+6. Rating warnings never auto-suspend (pending business-rule decision).
+7. `CodProcessor.js` orphaned.
+8. Seller analytics backend-only (not rendered frontend).
+9. Delivery charges backend-only, no admin UI.
+10. Email delivery is SMTP-gated; dev fallback logs OTP.
+11. `easypaisaJazzcash.test.js` fails because tests omit `mobileAccount`.
+12. `ratingModeration.test.js` has warningCount assertion mismatch.
+13. Full test pass/fail not fully re-verified.
+
+## Test Status
+
+- Vitest + Supertest + mongodb-memory-server configured in `multi-vendor-mern/` (`npm test` → `vitest run`).
+- Test files exist under `multi-vendor-mern/tests/` (including `priority4/` and `priority5/` subdirectories).
+- Email OTP tests passed 4/4 in the last actual run.
+- `checkout.test.js` and `deliveryCharges.test.js` were fixed with `emailVerified: true` but were **not re-run** in this audit.
+- **Do not claim full tests pass unless actually executed.**
+
+## Recommended Next Steps
+
+1. **Commit/review the uncommitted Priority 5 work** — review the working tree changes and commit them as a coherent unit.
+2. **Decide the rating-moderation suspension rule** — warnings currently never auto-suspend; decide whether to add auto-suspension.
+3. **Run targeted tests** — run the Priority 5 tests (email OTP, delivery charges, rating moderation, easypaisa/jazzcash) and fix the known assertion mismatches.
+4. **Build the delivery-charges admin UI** — delivery charges are backend-only; add an admin frontend.
+5. **Render seller analytics** — `topSellingProducts` and `salesTrend` are computed backend-only; add frontend rendering.
 
 ## Completed Work — Priority 1-3
 

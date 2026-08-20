@@ -1,10 +1,22 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { getImageUrl } from '../../utils/imageHelper';
-import PermissionGate from '../../components/common/PermissionGate';
-import ProductDetailModal from './ProductDetailModal';
-import { fetchSellerProducts, deleteProduct } from '../../services/sellerProductService';
-import { getStatusBadgeStyle } from '../../utils/statusBadge';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { getImageUrl } from "../../utils/imageHelper";
+import PermissionGate from "../../components/common/PermissionGate";
+import ProductDetailModal from "./ProductDetailModal";
+import { fetchSellerProducts, deleteProduct } from "../../services/sellerProductService";
+import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import {
+  PRODUCT_LOW_RATING_THRESHOLD,
+  LOW_STOCK_THRESHOLD,
+} from "../../utils/warningThresholds";
+
+const isWarningState = (product) => {
+  const rating = product.avgRating ?? product.averageRating ?? 0;
+  const lowStock = Number(product.stock) <= LOW_STOCK_THRESHOLD;
+  const lowRating =
+    Number(rating) > 0 && Number(rating) < PRODUCT_LOW_RATING_THRESHOLD;
+  return lowStock || lowRating;
+};
 
 const getBadgeStyle = (status) => {
   const base = {
@@ -33,7 +45,6 @@ const ProductGrid = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
 
@@ -78,8 +89,13 @@ const ProductGrid = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem', color: 'var(--text-secondary)' }}>Loading products...</div>;
-  if (error) return <div style={{ padding: '2rem', color: 'var(--danger-text)' }}>{error}</div>;
+  if (loading) {
+    return <div style={{ padding: '2rem', color: 'var(--text-secondary)' }}>Loading products...</div>;
+  }
+
+  if (error) {
+    return <div style={{ padding: '2rem', color: 'var(--danger-text)' }}>{error}</div>;
+  }
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'Inter, system-ui, sans-serif', color: 'var(--text-primary)' }}>
@@ -94,12 +110,14 @@ const ProductGrid = () => {
         <div className="empty-state">You haven't added any products yet.</div>
       ) : (
         <>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-            gap: '1.5rem',
-          }}>
-            {products.map(product => {
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+              gap: '1.5rem',
+            }}
+          >
+            {products.map((product) => {
               const isPending = product.status === 'PendingApproval';
               const isRejected = product.status === 'Rejected';
               const isSuspended = product.status === 'Suspended';
@@ -107,34 +125,44 @@ const ProductGrid = () => {
 
               const badgeStyle = getBadgeStyle(product.status);
               const badgeText = getBadgeText(product.status);
+              const isWarning = isWarningState(product);
 
               let warningBox = null;
+
               if (isRejected && product.rejectionReason) {
                 warningBox = (
-                  <div style={{
-                    backgroundColor: 'var(--danger-bg)',
-                    border: '1px solid var(--danger)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    marginTop: '12px',
-                    marginBottom: '12px',
-                  }}>
+                  <div
+                    style={{
+                      backgroundColor: 'var(--danger-bg)',
+                      border: '1px solid var(--danger)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      marginTop: '12px',
+                      marginBottom: '12px',
+                    }}
+                  >
                     <p style={{ margin: 0, fontSize: '12px', color: 'var(--danger-text)', lineHeight: '1.4' }}>
                       ⚠️ {product.rejectionReason}
                     </p>
                   </div>
                 );
               } else if (isSuspended) {
-                const reason = product.rejectionReason || product.internalNote || 'This product has been suspended by the admin.';
+                const reason =
+                  product.rejectionReason ||
+                  product.internalNote ||
+                  'This product has been suspended by the admin.';
+
                 warningBox = (
-                  <div style={{
-                    backgroundColor: 'var(--warning-bg)',
-                    border: '1px solid var(--warning)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    marginTop: '12px',
-                    marginBottom: '12px',
-                  }}>
+                  <div
+                    style={{
+                      backgroundColor: 'var(--warning-bg)',
+                      border: '1px solid var(--warning)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      marginTop: '12px',
+                      marginBottom: '12px',
+                    }}
+                  >
                     <p style={{ margin: 0, fontSize: '12px', color: 'var(--warning-text)', lineHeight: '1.4' }}>
                       ⚠️ Suspended: {reason}
                     </p>
@@ -142,14 +170,16 @@ const ProductGrid = () => {
                 );
               } else if (isPending) {
                 warningBox = (
-                  <div style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    marginTop: '12px',
-                    marginBottom: '12px',
-                  }}>
+                  <div
+                    style={{
+                      backgroundColor: 'var(--bg-secondary)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      marginTop: '12px',
+                      marginBottom: '12px',
+                    }}
+                  >
                     <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                       ⏳ Submission pending admin approval.
                     </p>
@@ -162,7 +192,7 @@ const ProductGrid = () => {
                   return (
                     <Link
                       to={`/seller/products/edit/${product._id}`}
-                      onClick={e => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
                       style={{
                         backgroundColor: '#ef4444',
                         color: '#fff',
@@ -179,10 +209,11 @@ const ProductGrid = () => {
                     </Link>
                   );
                 }
+
                 if (isSuspended) {
                   return (
                     <button
-                      onClick={e => {
+                      onClick={(e) => {
                         e.stopPropagation();
                         window.location.href = `/seller/products/edit/${product._id}`;
                       }}
@@ -201,27 +232,31 @@ const ProductGrid = () => {
                     </button>
                   );
                 }
+
                 if (isPending) {
                   return (
-                    <span style={{
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      padding: '6px 16px',
-                      background: 'var(--surface-hover)',
-                      borderRadius: '6px',
-                      border: '1px solid var(--border)',
-                      cursor: 'not-allowed',
-                      display: 'inline-block',
-                    }}>
+                    <span
+                      style={{
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        padding: '6px 16px',
+                        background: 'var(--surface-hover)',
+                        borderRadius: '6px',
+                        border: '1px solid var(--border)',
+                        cursor: 'not-allowed',
+                        display: 'inline-block',
+                      }}
+                    >
                       Awaiting Review
                     </span>
                   );
                 }
+
                 return (
                   <Link
                     to={`/seller/products/edit/${product._id}`}
-                    onClick={e => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                     style={{
                       background: 'var(--surface-hover)',
                       color: 'var(--text-primary)',
@@ -242,6 +277,7 @@ const ProductGrid = () => {
                 <div
                   key={product._id}
                   onClick={() => setSelectedProduct(product)}
+                  className={`product-card ${isWarning ? 'warning-flag-red' : ''}`}
                   style={{
                     background: 'var(--surface)',
                     border: '1px solid var(--border)',
@@ -250,8 +286,8 @@ const ProductGrid = () => {
                     cursor: 'pointer',
                     transition: 'box-shadow 0.2s, transform 0.1s',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+                  onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
                 >
                   <div style={{ position: 'relative', height: '180px', overflow: 'hidden' }}>
                     <img
@@ -261,27 +297,81 @@ const ProductGrid = () => {
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover',
-                        filter: isInactive ? (isPending ? 'grayscale(100%) opacity(60%)' : 'grayscale(100%) opacity(70%)') : 'none',
+                        filter: isInactive
+                          ? isPending
+                            ? 'grayscale(100%) opacity(60%)'
+                            : 'grayscale(100%) opacity(70%)'
+                          : 'none',
                       }}
-                      onError={e => e.target.style.display = 'none'}
+                      onError={(e) => (e.target.style.display = 'none')}
                     />
-                    <div style={badgeStyle}>
-                      {badgeText}
-                    </div>
+
+                    <div style={badgeStyle}>{badgeText}</div>
+
+                    {isWarning && (
+                      <span
+                        className="warning-badge-text"
+                        style={{
+                          position: 'absolute',
+                          bottom: '10px',
+                          left: '10px',
+                          zIndex: 2,
+                          background: 'var(--danger-bg)',
+                          color: 'var(--danger-text)',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {Number(product.stock) <= LOW_STOCK_THRESHOLD ? 'Low Stock' : 'Low Rating'}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ padding: '1rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)' }}>
+                    <h3
+                      style={{
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        margin: '0 0 0.25rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        color: 'var(--text-primary)',
+                      }}
+                    >
                       {product.name}
                     </h3>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>PKR {product.price?.toLocaleString()}</span>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Stock: {product.stockQuantity ?? product.stock ?? 0}</span>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '0.5rem',
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                        PKR {product.price?.toLocaleString()}
+                      </span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        Stock: {product.stockQuantity ?? product.stock ?? 0}
+                      </span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '0.75rem',
+                      }}
+                    >
                       {product.avgRating > 0 ? (
-                        <span style={{ color: 'var(--warning)', fontWeight: 600 }}>{product.avgRating} ★</span>
+                        <span style={{ color: 'var(--warning)', fontWeight: 600 }}>
+                          {product.avgRating} ★
+                        </span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>No rating</span>
                       )}
@@ -296,7 +386,7 @@ const ProductGrid = () => {
 
                       <PermissionGate permission="Seller.Products.Delete">
                         <button
-                          onClick={e => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             openDeleteModal(product);
                           }}
@@ -322,20 +412,35 @@ const ProductGrid = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="pagination" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-              <button className="page-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
-              <span style={{ color: 'var(--text-secondary)' }}>Page {page} of {totalPages}</span>
-              <button className="page-btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</button>
+            <div
+              className="pagination"
+              style={{
+                marginTop: '2rem',
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '1rem',
+              }}
+            >
+              <button className="page-btn" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                Previous
+              </button>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                Page {page} of {totalPages}
+              </span>
+              <button
+                className="page-btn"
+                disabled={page >= totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Next
+              </button>
             </div>
           )}
         </>
       )}
 
       {selectedProduct && (
-        <ProductDetailModal
-          product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-        />
+        <ProductDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
 
       {isDeleteModalOpen && productToDelete && (
@@ -365,10 +470,22 @@ const ProductGrid = () => {
           >
             <div style={{ marginBottom: '1rem' }}>
               <svg width="36" height="36" fill="none" stroke="#dc2626" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+            <h3
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                marginBottom: '0.5rem',
+              }}
+            >
               Delete Product?
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem' }}>

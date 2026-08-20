@@ -28,31 +28,44 @@ export const deleteCoupon = async (id) => {
 
 export const validateCoupon = async (code, cartTotal) => {
   if (!code) throw new ApiError(400, 'Coupon code is required');
+
   const coupon = await couponRepo.findByCode(code);
   if (!coupon) throw new ApiError(404, 'Invalid coupon code');
+
   const now = new Date();
   if (now < coupon.startsAt || now > coupon.expiresAt) {
     throw new ApiError(400, 'Coupon has expired');
   }
+
   if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
     throw new ApiError(400, 'Coupon usage limit reached');
   }
+
   if (cartTotal < coupon.minOrderAmount) {
     throw new ApiError(400, `Minimum order amount is ${coupon.minOrderAmount}`);
   }
+
   return coupon;
 };
 
-export const calculateDiscount = (coupon, cartTotal) => {
+export const calculateDiscount = (coupon, cartTotal, deliveryTotal = 0) => {
   if (cartTotal < coupon.minOrderAmount) return 0;
-  let discount = 0;
+
   if (coupon.discountType === 'percentage') {
-    discount = (cartTotal * coupon.discountValue) / 100;
+    let discount = (cartTotal * coupon.discountValue) / 100;
     if (coupon.maxDiscountAmount !== null) {
       discount = Math.min(discount, coupon.maxDiscountAmount);
     }
-  } else {
-    discount = coupon.discountValue;
+    return Math.min(discount, cartTotal);
   }
-  return Math.min(discount, cartTotal);
+
+  if (coupon.discountType === 'fixed') {
+    return Math.min(coupon.discountValue, cartTotal);
+  }
+
+  if (coupon.discountType === 'free_delivery') {
+    return Math.min(deliveryTotal, coupon.discountValue || deliveryTotal);
+  }
+
+  return 0;
 };

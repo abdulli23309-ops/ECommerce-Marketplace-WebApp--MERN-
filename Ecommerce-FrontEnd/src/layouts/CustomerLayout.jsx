@@ -2,6 +2,7 @@ import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect } from "react";
 import { loadCart } from "../store/cartSlice";
+import { setActiveDashboard } from "../store/dashboardContextSlice";
 import BrandLogo from "../components/common/BrandLogo";
 import Footer from "../components/common/Footer";
 import ThemeToggle from "../components/common/ThemeToggle";
@@ -11,8 +12,12 @@ import { clearPermissions } from "../store/permissionsSlice";
 const CustomerLayout = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
   const { user } = useSelector((state) => state.auth);
   const cartItemCount = useSelector((state) => state.cart?.totalCount || 0);
+  const { actualRole, activeDashboard } = useSelector(
+    (state) => state.dashboardContext
+  );
 
   useEffect(() => {
     if (user) {
@@ -20,72 +25,108 @@ const CustomerLayout = () => {
     }
   }, [user, dispatch]);
 
-  const userRoles = user?.roles || [];
+  const roles = new Set();
 
-  const getDashboardLink = () => {
-    if (!user || userRoles.length === 0) return null;
-
-    if (userRoles.includes("Admin") || userRoles.includes("SuperAdmin")) {
-      return "/admin/dashboard";
+  if (user) {
+    if (Array.isArray(user.roles)) {
+      user.roles.forEach((role) => {
+        if (typeof role === "string") roles.add(role);
+        else if (role && typeof role === "object" && role.name) roles.add(role.name);
+      });
+    } else if (typeof user.roles === "string") {
+      roles.add(user.roles);
     }
 
-    if (userRoles.includes("Seller")) {
-      return "/seller/dashboard";
+    if (user.role) {
+      if (typeof user.role === "string") roles.add(user.role);
+      else if (user.role && typeof user.role === "object" && user.role.name) roles.add(user.role.name);
     }
+  }
 
-    return null;
+  if (actualRole) roles.add(actualRole);
+
+  const isAdmin = roles.has("Admin") || roles.has("SuperAdmin");
+  const isSeller = roles.has("Seller");
+  const isPureCustomer = !!user && !isAdmin && !isSeller;
+  const isCustomerContext = activeDashboard === "customer" || !activeDashboard;
+
+  const returnToDashboard = (targetDashboard) => {
+    dispatch(setActiveDashboard(targetDashboard));
+
+    if (targetDashboard === "admin") navigate("/admin/dashboard");
+    else if (targetDashboard === "seller") navigate("/seller/dashboard");
+    else navigate("/");
   };
-
-  const dashboardLink = getDashboardLink();
-  const isCustomer = userRoles.includes("Customer");
-  const isSeller = userRoles.includes("Seller");
-  const isAdmin = userRoles.includes("Admin") || userRoles.includes("SuperAdmin");
 
   return (
     <div className="customer-layout">
       <header className="navbar">
-        <Link
-          to="/"
-          className="navbar-brand"
-          aria-label="VendorVerse home"
-          style={{ display: "flex", alignItems: "center", gap: "8px" }}
-        >
-          <BrandLogo variant="mark" className="navbar-mark" maxWidth="40px" />
-          <BrandLogo variant="wordmark" className="navbar-wordmark" maxWidth="140px" />
-        </Link>
+        {/* Left: Brand */}
+        <div className="navbar-brand-wrapper">
+          <Link to="/" aria-label="VendorVerse home" className="navbar-brand">
+            <BrandLogo variant="mark" className="navbar-mark" maxWidth="40px" />
+            <BrandLogo
+              variant="wordmark"
+              className="navbar-wordmark"
+              maxWidth="140px"
+            />
+          </Link>
+        </div>
 
-        <ul className="navbar-links">
-          <li><Link to="/">Home</Link></li>
-          <li><Link to="/about">About</Link></li>
-          <li><Link to="/products">Shop</Link></li>
+        {/* Center: Main navigation */}
+        <nav className="navbar-center">
+          <ul className="navbar-links">
+            <li><Link to="/">Home</Link></li>
+            <li><Link to="/about">About</Link></li>
+            <li><Link to="/products">Shop</Link></li>
 
-          {dashboardLink && (
-            <li>
-              <Link to={dashboardLink} className="dashboard-link">
-                Dashboard
-              </Link>
-            </li>
-          )}
+            {/* Become a Seller ONLY for guests or pure customers */}
+            {(isPureCustomer || !user) && (
+              <li>
+                <Link to="/seller/register" className="dashboard-link">
+                  Become a Seller
+                </Link>
+              </li>
+            )}
+          </ul>
+        </nav>
 
-          {/* Become a Seller link only for authenticated non-seller customers */}
-          {user && !dashboardLink && !isSeller && !isAdmin && isCustomer && (
-            <li>
-              <Link to="/seller/register" className="dashboard-link">
-                Become a Seller
-              </Link>
-            </li>
-          )}
-        </ul>
-
+        {/* Right: Utilities, return buttons, account */}
         <div className="navbar-actions">
+          {user && isAdmin && isCustomerContext && (
+            <button
+              className="btn-return-dashboard"
+              onClick={() => returnToDashboard("admin")}
+            >
+              Return to Admin
+            </button>
+          )}
+
+          {user && isSeller && !isAdmin && isCustomerContext && (
+            <button
+              className="btn-return-dashboard"
+              onClick={() => returnToDashboard("seller")}
+            >
+              Return to Seller
+            </button>
+          )}
+
           <ThemeToggle />
+          <NotificationDropdown placement="down" linkEnabled={true} />
 
-          {/* Notification bell */}
-          <NotificationDropdown />
-
-          {/* Cart is always available */}
-          <div className="navbar-cart" onClick={() => navigate("/cart")}>
-            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div
+            className="navbar-cart"
+            onClick={() => navigate("/cart")}
+            role="button"
+            tabIndex={0}
+          >
+            <svg
+              width="22"
+              height="22"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -98,30 +139,19 @@ const CustomerLayout = () => {
             )}
           </div>
 
-          {/* Account links — Customer-only */}
-          {isCustomer && (
-            <div className="navbar-links">
-              <Link to="/orders">Orders</Link>
-              <Link to="/profile">Profile</Link>
-              <Link to="/reviews/my">Reviews</Link>
-              <Link to="/returns">Returns</Link>
-              <Link to="/wishlist">Wishlist</Link>
-            </div>
-          )}
-
-          {/* Non-customer authenticated users get no customer links */}
-          {user && !isCustomer && (
-            <div className="navbar-links">
-              <Link to="/profile">Profile</Link>
-            </div>
-          )}
-
-          {/* Unauthenticated or empty roles */}
-          {(!user || userRoles.length === 0) && (
-            <div className="navbar-links">
-              <Link to="/login">Sign In</Link>
-            </div>
-          )}
+          <div className="navbar-user-menu">
+            {user ? (
+              <div className="user-nav-links">
+                <Link to="/orders">Orders</Link>
+                <Link to="/profile">Profile</Link>
+                <Link to="/wishlist">Wishlist</Link>
+              </div>
+            ) : (
+              <Link className="btn-login" to="/login">
+                Sign In
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 

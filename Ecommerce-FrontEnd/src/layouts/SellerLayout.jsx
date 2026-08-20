@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../store/authSlice";
 import { useState, useEffect, useCallback } from "react";
 import axiosInstance from "../services/axiosInstance";
@@ -8,31 +8,59 @@ import BrandLogo from "../components/common/BrandLogo";
 import Footer from "../components/common/Footer";
 import useIdleLogout from '../hooks/useIdleLogout';
 import { clearPermissions } from '../store/permissionsSlice';
+import { setActiveDashboard } from '../store/dashboardContextSlice';
 import ThemeToggle from "../components/common/ThemeToggle";
 import NotificationDropdown from "../components/common/NotificationDropdown";
+
+const CustomerIcon = () => (
+  <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} style={{ width: 18, height: 18 }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+  </svg>
+);
+
+const AdminIcon = () => (
+  <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} style={{ width: 18, height: 18 }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7m-9 2v10m4-10v10" />
+  </svg>
+);
+
+const LogOutIcon = () => (
+  <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} style={{ width: 18, height: 18 }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+  </svg>
+);
 
 const SellerLayout = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   useIdleLogout();
+
+  const { actualRole } = useSelector((state) => state.dashboardContext);
+
   const [storeId, setStoreId] = useState(null);
 
   useEffect(() => {
     const fetchStore = async () => {
       try {
         const res = await axiosInstance.get("/stores/mine");
-        if (res.data && res.data.data) {
+        if (res.data?.data) {
           setStoreId(res.data.data._id);
+        } else {
+          setStoreId(null);
         }
       } catch (err) {
         console.error("Failed to load store", err);
+        setStoreId(null);
       }
     };
     fetchStore();
   }, []);
 
-  // ---- Unread orders badge ----
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingShipments, setPendingShipments] = useState(0);
+  const [returnsActionCount, setReturnsActionCount] = useState(0);
+  const [dismissedShipments, setDismissedShipments] = useState(false);
+  const [dismissedReturns, setDismissedReturns] = useState(false);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -44,9 +72,6 @@ const SellerLayout = () => {
     }
   }, []);
 
-  // ---- Dashboard stats (pending shipments) ----
-  const [pendingShipments, setPendingShipments] = useState(0);
-
   const fetchDashboardStats = useCallback(async () => {
     try {
       const res = await axiosInstance.get('/seller/dashboard');
@@ -56,9 +81,6 @@ const SellerLayout = () => {
       console.error('Failed to fetch dashboard stats', err);
     }
   }, []);
-
-  // ---- Returns needing seller action ----
-  const [returnsActionCount, setReturnsActionCount] = useState(0);
 
   const fetchReturnsActionCount = useCallback(async () => {
     try {
@@ -71,10 +93,6 @@ const SellerLayout = () => {
       console.error('Failed to fetch returns count', err);
     }
   }, []);
-
-  // ---- Dismissed badge flags (only local UI, not persisted) ----
-  const [dismissedShipments, setDismissedShipments] = useState(false);
-  const [dismissedReturns, setDismissedReturns] = useState(false);
 
   useEffect(() => {
     fetchUnreadCount();
@@ -99,13 +117,8 @@ const SellerLayout = () => {
     }
   };
 
-  const handleShipmentsClick = () => {
-    setDismissedShipments(true);
-  };
-
-  const handleReturnsClick = () => {
-    setDismissedReturns(true);
-  };
+  const handleShipmentsClick = () => setDismissedShipments(true);
+  const handleReturnsClick = () => setDismissedReturns(true);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -119,7 +132,6 @@ const SellerLayout = () => {
     <>
       <div className="dashboard-layout">
         <aside className="dashboard-sidebar">
-          {/* Header – overflow-proof */}
           <div
             style={{
               height: `${headerHeight}px`,
@@ -134,7 +146,6 @@ const SellerLayout = () => {
               minWidth: 0,
             }}
           >
-            {/* Logo link to homepage */}
             <Link
               to="/"
               aria-label="VendorVerse home"
@@ -151,11 +162,7 @@ const SellerLayout = () => {
               <BrandLogo
                 className="dashboard-brand-mark"
                 variant="mark"
-                style={{
-                  maxWidth: "100%",
-                  height: "auto",
-                  flexShrink: 1,
-                }}
+                style={{ maxWidth: "100%", height: "auto", flexShrink: 1 }}
               />
               <BrandLogo
                 className="dashboard-brand-wordmark"
@@ -193,7 +200,6 @@ const SellerLayout = () => {
             </span>
           </div>
 
-          {/* Navigation */}
           <nav className="dashboard-nav">
             <PermissionGate permission="Seller.Dashboard.View">
               <Link className="dashboard-nav-link" to="/seller/dashboard">
@@ -339,18 +345,54 @@ const SellerLayout = () => {
             )}
           </nav>
 
-          <div className="dashboard-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-              <NotificationDropdown />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <div className="dashboard-footer sidebar-footer">
+            <div className="sidebar-utilities">
+              <NotificationDropdown placement="up" linkEnabled={false} />
               <ThemeToggle />
             </div>
-            <button onClick={handleLogout} className="btn-logout">
-              <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Sign Out
+
+            <div className="sidebar-role-switches">
+              {actualRole === 'Admin' ? (
+                <>
+                  <button
+                    className="sidebar-action-btn"
+                    onClick={() => {
+                      dispatch(setActiveDashboard('admin'));
+                      navigate('/admin/dashboard');
+                    }}
+                  >
+                    <AdminIcon />
+                    <span>Return to Admin Dashboard</span>
+                  </button>
+
+                  <button
+                    className="sidebar-action-btn"
+                    onClick={() => {
+                      dispatch(setActiveDashboard('customer'));
+                      navigate('/');
+                    }}
+                  >
+                    <CustomerIcon />
+                    <span>Switch to Customer</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="sidebar-action-btn"
+                  onClick={() => {
+                    dispatch(setActiveDashboard('customer'));
+                    navigate('/');
+                  }}
+                >
+                  <CustomerIcon />
+                  <span>Switch to Customer</span>
+                </button>
+              )}
+            </div>
+
+            <button className="sidebar-action-btn logout-btn" onClick={handleLogout}>
+              <LogOutIcon />
+              <span>Sign Out</span>
             </button>
           </div>
         </aside>

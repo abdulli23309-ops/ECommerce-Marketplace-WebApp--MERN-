@@ -42,6 +42,7 @@ The frontend communicates with the backend exclusively over HTTP via Axios, call
 - cookie-parser
 - ioredis (Redis client — connected at startup alongside MongoDB)
 - stripe (Stripe SDK, used in payment/webhook services)
+- nodemailer (email delivery for OTP verification)
 - dotenv (environment configuration)
 - nodemon (dev-only autoreload)
 
@@ -53,21 +54,21 @@ The frontend communicates with the backend exclusively over HTTP via Axios, call
 ```
 assets/branding/     Theme-aware logo assets (light/dark variants) + index.js export map
 components/
-  common/             BrandLogo, Logo, Footer, ThemeToggle, PermissionGate
+  common/             BrandLogo, Logo, Footer, ThemeToggle, PermissionGate, Pagination, NotificationDropdown, DashboardSwitcher, MetricCard
   admin/ seller/ customer/   (present as folders; role-specific reusable components currently live inline in pages rather than these folders)
 constants/            (present, no populated files inspected beyond folder)
 context/              (present, empty — no React Context providers currently defined)
 hooks/                useTheme, useIdleLogout
 layouts/              AuthLayout, CustomerLayout, SellerLayout, AdminLayout
 pages/
-  auth/               LoginPage, RegisterPage
-  customer/           Home, About, Product listing/detail, Cart, Checkout, Orders, Reviews, Returns, Wishlist, Address book, Profile, Store
+  auth/               LoginPage, RegisterPage, GoogleAuthButton
+  customer/           Home, About, Product listing/detail, Cart, Checkout, Orders, Reviews, Returns, Wishlist, Address book, Profile, Store, VerifyEmailPage
   seller/             Product grid/form/detail modal, Dashboard, Orders, Store settings, Shipments, Reviews, Returns, Pending/Register
-  admin/               Dashboard, Users, Sellers, Categories, Brands, Product moderation + inspection modal, Orders, Payments, Shipments, Returns, Refunds, Permission groups, Role-permission groups
+  admin/               Dashboard, Users, Sellers, Categories, Brands, Product moderation + inspection modal, Orders, Payments, Shipments, Returns, Refunds, Permission groups, Role-permission groups, Coupons, Audit log
 routes/                ProtectedRoute (role-gated route guard)
 services/               One Axios-based service module per domain (see Section 4)
-store/                  Redux slices: store.js (root), authSlice, cartSlice, wishlistSlice, permissionsSlice, themeSlice
-utils/                  imageHelper.js, statusBadge.js (shared status→color mapping)
+store/                  Redux slices: store.js (root), authSlice, cartSlice, wishlistSlice, permissionsSlice, themeSlice, dashboardContextSlice
+utils/                  imageHelper.js, statusBadge.js (shared status→color mapping), warningThresholds.js
 index.css               Single global stylesheet with theme tokens + component styles
 App.jsx                 Route table (React Router v7)
 main.jsx                Entry point
@@ -97,14 +98,18 @@ Only folders actually present are listed. `components/admin`, `components/seller
 
 ## 4. Frontend Architecture
 
-- **Component structure**: Page-level components under `pages/<role>/` contain most UI and data-fetching logic directly (fewer small reusable sub-components than a typical design-system-driven app). Shared cross-role UI (branding, footer, theme toggle, permission gating) lives in `components/common/`.
+- **Component structure**: Page-level components under `pages/<role>/` contain most UI and data-fetching logic directly (fewer small reusable sub-components than a typical design-system-driven app). Shared cross-role UI (branding, footer, theme toggle, permission gating, pagination, notification dropdown) lives in `components/common/`.
 - **Layouts**: Each role has a dedicated layout wrapping its pages via nested `<Route element={<XLayout />}>` in `App.jsx` (`AuthLayout`, `CustomerLayout`, `SellerLayout`, `AdminLayout`).
-- **Redux store** (`store/store.js`): slices for `auth`, `cart`, `wishlist`, `permissions`, `theme`. `authSlice` holds `accessToken`/`user`; `permissionsSlice` is populated via `fetchPermissions()` thunk dispatched whenever `accessToken` is present (see `App.jsx` `useEffect`).
-- **Services**: One Axios-wrapping module per backend domain (`authService`, `productService`, `sellerProductService`, `adminProductService`, `adminService`, `orderService`, `cartService`, `wishlistService`, `reviewService`, `addressService`, `brandService`, `categoryService`, `sellerOrderService`, `sellerReviewService`, `sellerShipmentService`), all built on a shared `axiosInstance.js`.
+- **Redux store** (`store/store.js`): slices for `auth`, `cart`, `wishlist`, `permissions`, `theme`, `dashboardContext`. `authSlice` holds `accessToken`/`user`; `permissionsSlice` is populated via `fetchPermissions()` thunk dispatched whenever `accessToken` is present (see `App.jsx` `useEffect`).
+- **Services**: One Axios-wrapping module per backend domain (`authService`, `productService`, `sellerProductService`, `adminProductService`, `adminService`, `orderService`, `cartService`, `wishlistService`, `reviewService`, `addressService`, `brandService`, `categoryService`, `sellerOrderService`, `sellerReviewService`, `sellerShipmentService`, `emailOtpService`), all built on a shared `axiosInstance.js`.
 - **Routing**: `react-router-dom` v7 `<Routes>`/`<Route>` tree defined entirely in `App.jsx`. Public routes (home, product listing/detail, store page, auth) are outside `ProtectedRoute`; authenticated-only and role-scoped routes are wrapped in `<ProtectedRoute allowedRoles={[...]} />`.
 - **Route guards**: `ProtectedRoute` (`routes/ProtectedRoute.jsx`) checks for `accessToken` + `user` in Redux state and an optional `allowedRoles` array; redirects to `/login` (unauthenticated) or `/` (wrong role).
 - **Permission gating**: `PermissionGate` (`components/common/PermissionGate.jsx`) is available for fine-grained, permission-code-based UI gating beyond role checks.
 - **Theme system**: `useTheme` hook reads `state.theme.mode` and sets `document.documentElement.setAttribute('data-theme', mode)`; `themeSlice` persists the mode to `localStorage` and falls back to the OS `prefers-color-scheme` media query on first load.
+- **Pagination**: `Pagination` component (`components/common/Pagination.jsx`) is the reusable pagination control, consuming `currentPage`, `totalPages`, `onPageChange` props and reusing `.pagination`/`.page-btn` CSS classes.
+- **Notifications**: `NotificationDropdown` (`components/common/NotificationDropdown.jsx`) provides in-app notification display.
+- **Dashboard context**: `dashboardContextSlice` (`store/dashboardContextSlice.js`) holds dashboard context state.
+- **Warning thresholds**: `warningThresholds.js` (`utils/warningThresholds.js`) defines rating-moderation warning thresholds.
 
 ## 5. Backend Architecture
 
@@ -116,7 +121,7 @@ Route → Controller → Service → Repository → Model (Mongoose) → MongoDB
 
 - **Routes** (`routes/*.routes.js`): declare HTTP verbs/paths, attach `authenticate`/`requireRole`/`requirePermission` middleware and `express-validator` validation chains, then delegate to a controller function.
 - **Controllers** (`controllers/*.controller.js`): thin HTTP-layer functions wrapped in `asyncHandler`; extract request data, call the matching service, and send a response via the shared `ApiResponse` utility.
-- **Services** (`services/*.service.js`): business logic — orchestration, cross-repository coordination (e.g., checkout splitting a cart into multiple `SellerOrder`s), and domain rules. `services/payment/` and `services/payment/processors/` isolate payment-processor-specific logic (Stripe, etc.) from the general `Payment.service.js`.
+- **Services** (`services/*.service.js`): business logic — orchestration, cross-repository coordination (e.g., checkout splitting a cart into multiple `SellerOrder`s), and domain rules. `services/payment/` and `services/payment/processors/` isolate payment-processor-specific logic (Stripe, JazzCash, EasyPaisa, CashOnDelivery) from the general `Payment.service.js`.
 - **Repositories** (`repositories/*.repository.js`): the only layer that talks to Mongoose models directly; encapsulates queries, pagination (`skip`/`limit`), filtering, and population logic.
 - **Models** (`models/*.model.js`): Mongoose schemas with validation, indexes, and (for `User`) a `pre('save')` password-hashing hook.
 - **Middleware**: global middleware (Helmet, CORS, JSON body parsing, cookie-parser, morgan, static `/uploads`) wired via `middleware/App.middleware.js` / `middleware/init.js`; auth/authorization middleware in `Auth.middleware.js`; centralized error handling in `ErrorHandler.middleware.js`; request-body validation in `Validation.middleware.js`.
@@ -147,6 +152,21 @@ Responses flow back through the same layers wrapped in a consistent `ApiResponse
 - `authenticate` middleware (`Auth.middleware.js`) expects a `Bearer` token in the `Authorization` header, verifies it, and attaches `{ id, roles, permissions }` to `req.user`.
 - Frontend stores the access token/user in Redux (`authSlice`); `jwt-decode` is available client-side for token inspection. `useIdleLogout` hook exists for idle-session handling.
 
+### Email OTP Verification
+
+- `EmailOtp.model.js` stores OTP records with expiry (3 minutes), resend cooldown (3 minutes), and max attempts (5).
+- OTPs are bcrypt-hashed before storage.
+- The recipient email is derived from the **authenticated user** (from the JWT), not from the request body.
+- `Email.service.js` uses Nodemailer SMTP when `EMAIL_PROVIDER=smtp`; a development fallback logs the OTP to the console.
+- `User.emailVerified` boolean field gates checkout and seller application.
+- Frontend: `VerifyEmailPage.jsx` (read-only email, countdown, expiry message) + `emailOtpService.js` + `authSlice.setEmailVerified` reducer.
+
+### Google OAuth
+
+- `GoogleAuth.controller.js` / `GoogleAuth.service.js` / `GoogleAuth.routes.js` handle Google OAuth login/registration.
+- Google OAuth sets `emailVerified: true` after successful authentication.
+- Frontend: `GoogleAuthButton.jsx` (`pages/auth/GoogleAuthButton.jsx`).
+
 ## 8. Authorization Architecture
 
 Two complementary mechanisms, both enforced server-side and mirrored client-side:
@@ -164,7 +184,7 @@ Confirmed Mongoose models and key relationships (`ref`erences):
 
 | Model | Key references | Notable constraints |
 |---|---|---|
-| `User` | — | unique `email`; `role` enum `Customer/Seller/Admin`; hashed password |
+| `User` | — | unique `email`; `role` enum `Customer/Seller/Admin`; hashed password; `emailVerified` boolean |
 | `RefreshToken` | `user → User` | unique `tokenHash`; TTL index on `expiresAt` |
 | `Role` | `permissions[] → Permission`, `permissionGroups[] → PermissionGroup` | unique `name` |
 | `Permission` | `group → PermissionGroup` | unique `name`, unique `code` |
@@ -186,6 +206,12 @@ Confirmed Mongoose models and key relationships (`ref`erences):
 | `Review` | `customer → User`, `product → Product`, `sellerOrder → SellerOrder`, `orderId → ParentOrder` (optional) | unique `(customer, product, sellerOrder)` |
 | `Return` | `customer → User`, `product → Product`, `sellerOrder → SellerOrder`, `seller → User` | unique `returnNumber`; unique `(customer, product, sellerOrder)`; multi-stage `status` enum |
 | `Refund` | `returnRequest → ReturnRequest` (**note**: `ref: 'ReturnRequest'`, while the actual model is registered as `Return` — see `rules.md`/`memory.md` verification item), `payment → Payment` | unique `returnRequest` |
+| `Notification` | `user → User` | — |
+| `Coupon` | — | — |
+| `CouponUsage` | `coupon → Coupon`, `user → User` | — |
+| `AdminAuditLog` | `admin → User` | — |
+| `DeliveryCharge` | — | — |
+| `EmailOtp` | `user → User` | — |
 
 ## 10. API Architecture
 
@@ -194,6 +220,8 @@ All routes are mounted under `/api/v1/` in `app.js`. Major endpoint domains (not
 | Base path | Domain | Auth |
 |---|---|---|
 | `/api/v1/auth` | Register/login/refresh/logout | Public |
+| `/api/v1/auth/otp` | Email OTP send/verify | Authenticated |
+| `/api/v1/auth/google` | Google OAuth login/registration | Public |
 | `/api/v1/test` | Authorization smoke-test endpoints | Mixed |
 | `/api/v1/products` | Public product listing/detail | Public |
 | `/api/v1/seller/products` | Seller product management | Seller |
@@ -213,6 +241,11 @@ All routes are mounted under `/api/v1/` in `app.js`. Major endpoint domains (not
 | `/api/v1/account` | Avatar, password, profile, own permissions | Authenticated |
 | `/api/v1/stores` | Seller's own store + public store view | Seller (mine) / Public (`:id`) |
 | `/api/v1/seller` | Seller status/apply/profile/dashboard/orders/reviews | Mixed (public-ish status/apply, Seller-gated for the rest) |
+| `/api/v1/notifications` | In-app notifications | Authenticated |
+| `/api/v1/coupons` | Coupon management | Admin |
+| `/api/v1/admin/audit-logs` | Admin audit log | Admin |
+| `/api/v1/delivery-charges` | Delivery charges | Admin (backend only) |
+| `/api/v1/rating-moderation` | Rating moderation warnings | Admin |
 
 `GET /api/health` provides a basic health-check endpoint outside the `/api/v1` namespace.
 
@@ -247,9 +280,12 @@ Decisions future development must preserve unless explicitly and deliberately ch
 4. **Cart-to-multi-seller-order splitting at checkout** — a single `ParentOrder` fans out into per-seller `SellerOrder`s; this is central to how orders, shipments, reviews, and returns are all scoped (they hang off `SellerOrder`, not `ParentOrder`, except where explicitly noted).
 5. **Snapshot fields on order items** (`productNameSnapshot`, `unitPriceSnapshot`) preserve historical order data even if the underlying `Product` is later edited or deleted — do not replace these with live product lookups.
 6. **Soft-deletion for taxonomy** (`Category`, `SubCategory`, `Brand` use `isDeleted` + partial unique indexes) rather than hard deletion — preserve this pattern for any new deletable catalog entities.
-9. **Semantic CSS variable theming** — colors are expressed as CSS custom properties (`var(--success-bg)`, etc.), not hardcoded hex values, so that light/dark theming and future re-theming stay centralized. Phase 14A specifically remediated two pages that had drifted from this pattern.
-10. **Shared status-badge utility** (`utils/statusBadge.js`) is the single source of truth for status→color mapping across seller/admin/customer views; new statuses should be added there, not re-implemented per page.
-11. **Backend-owned pagination metadata shape** (`page`, `pageSize`, `total`, `totalPages`) is consistent across all paginated endpoints — new paginated endpoints should match this shape rather than inventing a new one.
+7. **Semantic CSS variable theming** — colors are expressed as CSS custom properties (`var(--success-bg)`, etc.), not hardcoded hex values, so that light/dark theming and future re-theming stay centralized. Phase 14A specifically remediated two pages that had drifted from this pattern.
+8. **Shared status-badge utility** (`utils/statusBadge.js`) is the single source of truth for status→color mapping across seller/admin/customer views; new statuses should be added there, not re-implemented per page.
+9. **Backend-owned pagination metadata shape** (`page`, `pageSize`, `total`, `totalPages`) is consistent across all paginated endpoints — new paginated endpoints should match this shape rather than inventing a new one.
+10. **Email OTP verification** — OTPs are bcrypt-hashed, recipient email derived from the authenticated user, 3-minute expiry, 3-minute resend cooldown, max 5 attempts. `User.emailVerified` gates checkout and seller activation.
+11. **Google OAuth** — sets `emailVerified: true` after successful authentication.
+12. **Payment processors** — `PaymentFactory` + `services/payment/processors/` isolate payment-processor-specific logic (Stripe, JazzCash, EasyPaisa, CashOnDelivery) from the general `Payment.service.js`.
 
 ## 14. Additions from Priority 1-3
 
@@ -270,3 +306,27 @@ Decisions future development must preserve unless explicitly and deliberately ch
 ### Priority 3 Additions
 
 - **Light/Dark Theme** — already present in Phase 14A; no new architecture changes. Verified across cards, forms, tables, navigation, modals, text, borders.
+
+## 15. Additions from Priority 4 (Committed)
+
+- **In-App Notifications** — `Notification.model.js`, `Notification.service.js`, `Notification.controller.js`, `Notification.routes.js`; frontend `NotificationDropdown.jsx` + `notificationService.js`.
+- **Coupons/Discounts** — `Coupon.model.js`, `CouponUsage.model.js`, `Coupon.service.js`, `Coupon.controller.js`, `Coupon.routes.js`; frontend `AdminCouponsPage.jsx` + `adminCouponService.js`.
+- **Admin Audit Log** — `AdminAuditLog.model.js`, `AdminAuditLog.service.js`, `AdminAuditLog.controller.js`, `AdminAuditLog.routes.js`; frontend `AdminAuditLogPage.jsx` + `adminAuditLogService.js`.
+- **Seller Analytics** — `Seller.dashboard.service.js` computes `topSellingProducts` and `salesTrend`; **backend-only, not rendered frontend** (known gap).
+
+## 16. Additions from Priority 5 (Uncommitted)
+
+- **Rating Moderation** — `RatingModeration.service.js`, `RatingModeration.repository.js`; product low threshold 3.0, seller low threshold 2.5, max warnings 3; warnings do not auto-suspend.
+- **Delivery Charges** — `DeliveryCharge.model.js`, `DeliveryCharge.service.js`, `DeliveryCharge.controller.js`, `DeliveryCharge.routes.js`; checkout integrated; **no admin frontend UI** (known gap).
+- **Email OTP Verification Upgrade** — `EmailOtp.model.js`, `EmailOtp.service.js`, `EmailOtp.controller.js`, `EmailOtp.routes.js`, `Email.service.js`; `User.emailVerified`; `VerifyEmailPage.jsx`; `emailOtpService.js`; `authSlice.setEmailVerified`.
+- **Google OAuth** — `GoogleAuth.controller.js`, `GoogleAuth.service.js`, `GoogleAuth.routes.js`; `GoogleAuthButton.jsx`.
+- **JazzCash/EasyPaisa Sandbox Processors** — `services/payment/processors/JazzCashProcessor.js`, `EasyPaisaProcessor.js`, `CashOnDeliveryProcessor.js`; `PaymentFactory.js` updated.
+- **Seller Cannot Add Own Product to Cart** — `Cart.service.js` rule.
+
+## 17. Known Architectural Gaps
+
+- **Seller analytics** — `topSellingProducts` and `salesTrend` are computed backend-only; not rendered on the frontend.
+- **Delivery charges** — backend + checkout integration exist; no admin frontend UI.
+- **PayPal** — remains enum-only/unimplemented (no processor).
+- **Rating moderation** — warnings do not auto-suspend (pending business-rule decision).
+- **Email delivery** — SMTP-gated; development fallback logs OTP to console.

@@ -39,6 +39,10 @@ const sellerOrderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    deliveryCharge: {
+      type: Number,
+      default: 0,
+    },
     isReadBySeller: {
       type: Boolean,
       default: false,
@@ -63,4 +67,5 @@ const sellerOrderSchema = new mongoose.Schema(
 );
 
 const SellerOrder = mongoose.model('SellerOrder', sellerOrderSchema);
+
 export default SellerOrder;

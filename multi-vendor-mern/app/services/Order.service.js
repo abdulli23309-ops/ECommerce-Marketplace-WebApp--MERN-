@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import stripe from '../stripe.js';
-import CouponUsage from '../models/CouponUsage.model.js';
 import PaymentTransaction from '../models/PaymentTransaction.model.js';
 import Product from '../models/Product.model.js';
 import * as paymentRepo from '../repositories/Payment.repository.js';
@@ -10,12 +9,72 @@ import * as addressRepo from '../repositories/Address.repository.js';
 import * as cartRepo from '../repositories/Cart.repository.js';
 import * as productRepo from '../repositories/Product.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
+import * as userRepo from '../repositories/User.repository.js';
 import * as couponService from './Coupon.service.js';
 import * as couponRepo from '../repositories/Coupon.repository.js';
 import { createNotification } from './Notification.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
+import Store from '../models/Store.model.js';
+import SellerProfile from '../models/SellerProfile.model.js';
+import DeliveryCharge from '../models/DeliveryCharge.model.js';
+import Payment from '../models/Payment.model.js';
 
+// ---------- Email verification guard ----------
+const ensureEmailVerified = async (userId) => {
+  const user = await userRepo.findById(userId, 'emailVerified');
+
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  if (!user.emailVerified) {
+    throw new ApiError(403, 'Please verify your email before placing an order.');
+  }
+};
+
+// ---------- Delivery charge helpers ----------
+const getDeliveryChargeForStore = async (storeId) => {
+  const store = await Store.findById(storeId).select('sellerProfile').lean();
+  if (!store?.sellerProfile) return 0;
+
+  const deliveryConfig = await DeliveryCharge.findOne({
+    sellerProfile: store.sellerProfile,
+    isActive: true,
+  }).lean();
+
+  if (!deliveryConfig) return 0;
+
+  return deliveryConfig.baseCharge || 0;
+};
+
+const calculateSellerDelivery = async (storeId, items, subtotal) => {
+  const deliveryCharge = await getDeliveryChargeForStore(storeId);
+
+  const allFreeDelivery = items.every((item) => item.freeDelivery === true);
+
+  if (allFreeDelivery) {
+    return { deliveryCharge: 0, freeDeliveryApplied: true };
+  }
+
+  const store = await Store.findById(storeId).select('sellerProfile').lean();
+  if (store?.sellerProfile) {
+    const deliveryConfig = await DeliveryCharge.findOne({
+      sellerProfile: store.sellerProfile,
+      isActive: true,
+    }).lean();
+
+    if (deliveryConfig?.freeAbove && subtotal >= deliveryConfig.freeAbove) {
+      return { deliveryCharge: 0, freeDeliveryApplied: true };
+    }
+  }
+
+  return { deliveryCharge, freeDeliveryApplied: false };
+};
+
+// ---------- Checkout & prepare ----------
 export const checkout = async (userId, addressId, couponCode = null) => {
+  await ensureEmailVerified(userId);
+
   const address = await addressRepo.findById(addressId, userId);
   if (!address) throw new ApiError(404, 'Address not found');
 
@@ -41,6 +100,7 @@ export const checkout = async (userId, addressId, couponCode = null) => {
       productNameSnapshot: product.name,
       unitPriceSnapshot: product.price,
       quantity: cartItem.quantity,
+      freeDelivery: product.freeDelivery || false,
     });
   }
 
@@ -60,20 +120,32 @@ export const checkout = async (userId, addressId, couponCode = null) => {
       totalAmount: 0,
       subtotal: 0,
       discountAmount: 0,
+      deliveryCharges: 0,
+      freeDeliveryDiscount: 0,
       couponCode: null,
     }], { session });
 
     const createdParent = parentOrder[0];
     let subtotalAmount = 0;
+    let totalDeliveryCharges = 0;
 
     for (const [storeIdStr, items] of storeItemsMap.entries()) {
       const subTotal = items.reduce((sum, item) => sum + item.unitPriceSnapshot * item.quantity, 0);
       subtotalAmount += subTotal;
 
+      const { deliveryCharge, freeDeliveryApplied } = await calculateSellerDelivery(
+        storeIdStr,
+        items,
+        subTotal
+      );
+
+      totalDeliveryCharges += deliveryCharge;
+
       await SellerOrder.create([{
         parentOrder: createdParent._id,
         store: storeIdStr,
         subTotal,
+        deliveryCharge,
         items,
       }], { session });
 
@@ -84,16 +156,29 @@ export const checkout = async (userId, addressId, couponCode = null) => {
 
     let appliedCoupon = null;
     let discountAmount = 0;
+    let freeDeliveryDiscount = 0;
 
     if (couponCode) {
       appliedCoupon = await couponService.validateCoupon(couponCode, subtotalAmount);
-      discountAmount = couponService.calculateDiscount(appliedCoupon, subtotalAmount);
+
+      if (appliedCoupon.discountType === 'free_delivery') {
+        freeDeliveryDiscount = couponService.calculateDiscount(
+          appliedCoupon,
+          subtotalAmount,
+          totalDeliveryCharges
+        );
+      } else {
+        discountAmount = couponService.calculateDiscount(appliedCoupon, subtotalAmount);
+      }
     }
 
-    const finalTotal = subtotalAmount - discountAmount;
+    const finalTotal =
+      subtotalAmount - discountAmount + totalDeliveryCharges - freeDeliveryDiscount;
 
     createdParent.subtotal = subtotalAmount;
     createdParent.discountAmount = discountAmount;
+    createdParent.deliveryCharges = totalDeliveryCharges;
+    createdParent.freeDeliveryDiscount = freeDeliveryDiscount;
     createdParent.totalAmount = finalTotal;
     if (appliedCoupon) {
       createdParent.couponCode = appliedCoupon.code;
@@ -102,15 +187,8 @@ export const checkout = async (userId, addressId, couponCode = null) => {
     await createdParent.save({ session });
 
     if (appliedCoupon) {
-  await couponRepo.incrementUsage(appliedCoupon._id, session);
-
-  await CouponUsage.create([{
-    coupon: appliedCoupon._id,
-    user: userId,
-    parentOrder: createdParent._id,
-    discountAmount,
-  }], { session });
-}
+      await couponRepo.incrementUsage(appliedCoupon._id, session);
+    }
 
     await cartRepo.clearCart(userId, session);
 
@@ -118,7 +196,7 @@ export const checkout = async (userId, addressId, couponCode = null) => {
     session.endSession();
 
     const populatedOrder = await ParentOrder.findById(createdParent._id)
-      .populate({ path: 'sellerOrders', select: 'store subTotal status items' })
+      .populate({ path: 'sellerOrders', select: 'store subTotal status items deliveryCharge' })
       .lean();
 
     return populatedOrder;
@@ -131,6 +209,8 @@ export const checkout = async (userId, addressId, couponCode = null) => {
 };
 
 export const prepareOrder = async (userId, addressId, session, couponCode = null) => {
+  await ensureEmailVerified(userId);
+
   const address = await addressRepo.findById(addressId, userId);
   if (!address) throw new ApiError(404, 'Address not found');
 
@@ -154,6 +234,7 @@ export const prepareOrder = async (userId, addressId, session, couponCode = null
       productNameSnapshot: product.name,
       unitPriceSnapshot: product.price,
       quantity: cartItem.quantity,
+      freeDelivery: product.freeDelivery || false,
     });
   }
 
@@ -169,36 +250,56 @@ export const prepareOrder = async (userId, addressId, session, couponCode = null
     totalAmount: 0,
     subtotal: 0,
     discountAmount: 0,
+    deliveryCharges: 0,
+    freeDeliveryDiscount: 0,
     couponCode: null,
   }], { session });
 
   const createdParent = parentOrder[0];
   let subtotalAmount = 0;
+  let totalDeliveryCharges = 0;
 
   for (const [storeIdStr, items] of storeItemsMap.entries()) {
     const subTotal = items.reduce((sum, item) => sum + item.unitPriceSnapshot * item.quantity, 0);
     subtotalAmount += subTotal;
 
+    const { deliveryCharge } = await calculateSellerDelivery(storeIdStr, items, subTotal);
+    totalDeliveryCharges += deliveryCharge;
+
     await SellerOrder.create([{
       parentOrder: createdParent._id,
       store: storeIdStr,
       subTotal,
+      deliveryCharge,
       items,
     }], { session });
   }
 
   let appliedCoupon = null;
   let discountAmount = 0;
+  let freeDeliveryDiscount = 0;
 
   if (couponCode) {
     appliedCoupon = await couponService.validateCoupon(couponCode, subtotalAmount);
-    discountAmount = couponService.calculateDiscount(appliedCoupon, subtotalAmount);
+
+    if (appliedCoupon.discountType === 'free_delivery') {
+      freeDeliveryDiscount = couponService.calculateDiscount(
+        appliedCoupon,
+        subtotalAmount,
+        totalDeliveryCharges
+      );
+    } else {
+      discountAmount = couponService.calculateDiscount(appliedCoupon, subtotalAmount);
+    }
   }
 
-  const finalTotal = subtotalAmount - discountAmount;
+  const finalTotal =
+    subtotalAmount - discountAmount + totalDeliveryCharges - freeDeliveryDiscount;
 
   createdParent.subtotal = subtotalAmount;
   createdParent.discountAmount = discountAmount;
+  createdParent.deliveryCharges = totalDeliveryCharges;
+  createdParent.freeDeliveryDiscount = freeDeliveryDiscount;
   createdParent.totalAmount = finalTotal;
   if (appliedCoupon) {
     createdParent.couponCode = appliedCoupon.code;
@@ -206,21 +307,14 @@ export const prepareOrder = async (userId, addressId, session, couponCode = null
 
   await createdParent.save({ session });
 
-  // Important: For `prepareOrder`, we deliberately do NOT increment usage yet.
-  // The actual coupon redemption/increment should happen when payment is confirmed.
-  // If your payment service later calls `checkout()` to finalize, remove this comment
-  // and ensure `couponRepo.incrementUsage` is only called there.
-  // If you want to redeem immediately after creating the pending order, uncomment:
-  // if (appliedCoupon) await couponRepo.incrementUsage(appliedCoupon._id, session);
-
   return { parentOrder: createdParent, cart };
 };
 
+// ---------- Cancel order ----------
 export const cancelOrder = async (orderId, userId) => {
   const parentOrder = await orderRepo.findByIdForMutation(orderId, userId);
   if (!parentOrder) throw new ApiError(404, 'Order not found');
 
-  // ---------- Pending orders ----------
   if (parentOrder.orderStatus === 'Pending') {
     const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
     const payment = await paymentRepo.findByParentOrder(orderId);
@@ -254,7 +348,6 @@ export const cancelOrder = async (orderId, userId) => {
     return parentOrder;
   }
 
-  // ---------- Processing Stripe orders ----------
   if (parentOrder.orderStatus === 'Processing') {
     const payment = await paymentRepo.findByParentOrder(orderId);
 
@@ -316,7 +409,6 @@ export const cancelOrder = async (orderId, userId) => {
       await session.commitTransaction();
       session.endSession();
 
-      // Send notification after transaction commits
       await createNotification(
         userId,
         'order',
@@ -335,4 +427,75 @@ export const cancelOrder = async (orderId, userId) => {
   }
 
   throw new ApiError(400, 'Only pending orders can be cancelled');
+};
+
+// ---------- Order listing with payment info ----------
+export const getOrders = async (userId, { page = 1, pageSize = 10 } = {}) => {
+  const skip = (Number(page) - 1) * Number(pageSize);
+  const limit = Number(pageSize);
+
+  const [parentOrders, total] = await Promise.all([
+    ParentOrder.find({ customer: userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate({
+        path: 'sellerOrders',
+        select: 'store subTotal status items deliveryCharge',
+        populate: {
+          path: 'store',
+          select: 'name',
+        },
+      })
+      .lean(),
+    ParentOrder.countDocuments({ customer: userId }),
+  ]);
+
+  const parentOrderIds = parentOrders.map((order) => order._id);
+
+  const payments = await Payment.find({
+    parentOrder: { $in: parentOrderIds },
+  })
+    .select('parentOrder method status')
+    .lean();
+
+  const paymentMap = new Map();
+  payments.forEach((p) => {
+    paymentMap.set(p.parentOrder.toString(), p);
+  });
+
+  const items = parentOrders.map((order) => {
+    const payment = paymentMap.get(order._id.toString());
+
+    return {
+      ...order,
+      paymentMethod: payment?.method || null,
+      paymentStatus: payment?.status || null,
+    };
+  });
+
+  return {
+    items,
+    total,
+    page: Number(page),
+    pageSize: limit,
+    totalPages: Math.ceil(total / limit),
+  };
+};
+
+// ---------- Order detail with payment info ----------
+export const getOrderById = async (orderId, userId) => {
+  const order = await orderRepo.findById(orderId, userId);
+  if (!order) throw new ApiError(404, 'Order not found');
+
+  const payment = await Payment.findOne({ parentOrder: order._id })
+    .select('method status transactionId')
+    .lean();
+
+  return {
+    ...order.toObject(),
+    paymentMethod: payment?.method || null,
+    paymentStatus: payment?.status || null,
+    paymentTransactionId: payment?.transactionId || null,
+  };
 };

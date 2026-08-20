@@ -53,14 +53,19 @@ const CartPage = () => {
       <h1 className="section-title">Shopping Cart</h1>
 
       <div className="cart-items">
-        {items.map((item) => (
-          <div className="cart-item" key={item.cartItemId}>
+        {items.map((item, index) => (
+          <div
+            className="cart-item"
+            key={item.cartItemId || item.productId || `cart-item-${index}`}
+          >
             <div className="cart-item-details">
               {item.productImage && (
                 <img
-                  src={item.productImage.startsWith("http")
-                    ? item.productImage
-                    : `${import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1.*$/, "")}${item.productImage}`}
+                  src={
+                    item.productImage.startsWith("http")
+                      ? item.productImage
+                      : `${import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/v1.*$/, "") || ""}${item.productImage}`
+                  }
                   alt={item.productName}
                   style={{
                     width: "80px",

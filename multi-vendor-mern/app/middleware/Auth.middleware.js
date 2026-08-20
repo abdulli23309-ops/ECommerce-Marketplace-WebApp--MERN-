@@ -1,47 +1,61 @@
-import { verifyAccessToken } from '../helpers/Jwt.helper.js';
+import jwt from 'jsonwebtoken';
 import { ApiError } from '../utils/ApiError.util.js';
 
-const authenticate = (req, res, next) => {
-  const [scheme, token] = (req.headers.authorization || '').split(' ');
-  if (scheme !== 'Bearer' || !token) return next(new ApiError(401, 'Authentication required'));
-
+export const authenticate = async (req, res, next) => {
   try {
-    const payload = verifyAccessToken(token);
-    req.user = {
-      id: payload.sub,
-      roles: payload.roles || [],
-      permissions: payload.permissions || [],
-    };
-    return next();
-  } catch {
-    return next(new ApiError(401, 'Invalid or expired access token'));
-  }
-};
+    const authHeader = req.headers.authorization;
 
-export const requireRole = (requiredRole) => {
-  return (req, res, next) => {
-    if (!req.user) return next(new ApiError(401, 'Authentication required'));
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new ApiError(401, 'Authentication required');
+    }
 
-    // roles can be plain strings (from JWT) or populated objects (from DB)
-    const hasRole = req.user.roles.some(
-      (r) => (typeof r === 'string' ? r : r.name) === requiredRole
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_ACCESS_SECRET || 'change_me_access'
     );
 
-    if (!hasRole) {
-      return next(
-        new ApiError(403, `You must be a ${requiredRole} to perform this action`)
-      );
-    }
+    req.user = {
+      id: decoded.sub,
+      roles: decoded.roles || [],
+      permissions: decoded.permissions || [],
+    };
+
     next();
-  };
+  } catch (error) {
+    next(new ApiError(401, 'Authentication required'));
+  }
 };
 
-const requirePermission = (...permissions) => (req, res, next) => {
-  if (!req.user) return next(new ApiError(401, 'Authentication required'));
-  if (!permissions.every((permission) => req.user.permissions.includes(permission))) {
+export const requireRole = (...roles) => (req, res, next) => {
+  const userRoles = req.user?.roles || [];
+  const isAdmin =
+    userRoles.includes('Admin') || userRoles.includes('SuperAdmin');
+
+  const hasRequiredRole =
+    roles.some((role) => userRoles.includes(role)) || isAdmin;
+
+  if (!hasRequiredRole) {
+    return next(new ApiError(403, `You must be a ${roles.join(' or ')}`));
+  }
+
+  next();
+};
+
+export const requirePermission = (...permissions) => (req, res, next) => {
+  const userPermissions = req.user?.permissions || [];
+
+  if (userPermissions.includes('*')) {
+    return next();
+  }
+
+  const hasPermission = permissions.every((permission) =>
+    userPermissions.includes(permission)
+  );
+
+  if (!hasPermission) {
     return next(new ApiError(403, 'Insufficient permissions'));
   }
-  return next();
-};
 
-export { authenticate, requirePermission };
+  next();
+};

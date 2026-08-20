@@ -3,9 +3,11 @@ import User from '../models/User.model.js';
 import Store from '../models/Store.model.js';
 import SellerProfile from '../models/SellerProfile.model.js';
 import Product from '../models/Product.model.js';
-import { ApiError } from '../utils/ApiError.util.js';
 import PermissionGroup from '../models/PermissionGroup.model.js';
+import { ApiError } from '../utils/ApiError.util.js';
 import { logAction } from './AdminAuditLog.service.js';
+import { createNotification } from './Notification.service.js';
+import * as ratingModerationService from './RatingModeration.service.js';
 
 // ---------------- Users ----------------
 export const getUsers = (query) => adminRepo.findUsers(query);
@@ -89,13 +91,11 @@ export const approveSeller = async (id, adminId) => {
   );
   if (!profile) throw new ApiError(404, 'Seller profile not found');
 
-  // Reactivate the store
   await Store.findOneAndUpdate(
     { sellerProfile: profile._id },
     { isActive: true }
   );
 
-  // Replace role with Seller
   await User.findByIdAndUpdate(profile.user, { role: 'Seller' });
 
   if (adminId) {
@@ -105,20 +105,49 @@ export const approveSeller = async (id, adminId) => {
     });
   }
 
+  if (profile.user) {
+    await createNotification(
+      profile.user,
+      'seller',
+      'Seller Application Approved',
+      'Congratulations! Your seller application has been approved.',
+      '/seller/dashboard',
+      { sellerProfileId: profile._id.toString() }
+    );
+  }
+
   return profile;
 };
 
 export const rejectSeller = async (id, reason, adminId) => {
+  const profile = await SellerProfile.findById(id);
+  if (!profile) throw new ApiError(404, 'Seller profile not found');
+
   const result = await adminRepo.rejectSeller(id, reason);
 
   if (adminId) {
-    await logAction(adminId, 'seller.reject', 'SellerProfile', id, {
-      reason,
-    });
+    await logAction(adminId, 'seller.reject', 'SellerProfile', id, { reason });
+  }
+
+  if (profile.user) {
+    await createNotification(
+      profile.user,
+      'seller',
+      'Seller Application Rejected',
+      `Your seller application was rejected. Reason: ${reason || 'Not provided'}`,
+      '/seller/status',
+      { sellerProfileId: profile._id.toString() }
+    );
   }
 
   return result;
 };
+
+export const getSellerModerationStatus = (id) =>
+  ratingModerationService.getSellerModerationStatus(id);
+
+export const warnSeller = (id, reason, adminId) =>
+  ratingModerationService.issueSellerWarning(id, adminId, reason);
 
 // ---------------- Orders ----------------
 export const getOrders = (query) => adminRepo.findOrders(query);
@@ -136,10 +165,7 @@ export const processReturn = async (id, status, adminId, reason) => {
   const result = await adminRepo.processReturn(id, status, adminId, reason);
 
   if (adminId) {
-    await logAction(adminId, 'return.process', 'Return', id, {
-      status,
-      reason,
-    });
+    await logAction(adminId, 'return.process', 'Return', id, { status, reason });
   }
 
   return result;
@@ -204,6 +230,8 @@ export const deletePermissionGroup = async (id, adminId) => {
 // ---------------- Roles ----------------
 export const getRoles = (query) => adminRepo.findRoles(query);
 
+export const getRoleById = (id) => adminRepo.findRoleById(id);
+
 export const assignGroupToRole = async (roleId, groupId, adminId) => {
   const result = await adminRepo.assignGroupToRole(roleId, groupId);
 
@@ -236,6 +264,5 @@ export const getGroupPermissions = async (groupId) => {
     .lean();
 
   if (!group) throw new ApiError(404, 'Permission group not found');
-  return group.permissions;   // array of ObjectIds
+  return group.permissions;
 };
-

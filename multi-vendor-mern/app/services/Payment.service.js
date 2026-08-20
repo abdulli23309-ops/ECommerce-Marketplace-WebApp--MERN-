@@ -5,15 +5,18 @@ import Product from '../models/Product.model.js';
 import ParentOrder from '../models/ParentOrder.model.js';
 import Coupon from '../models/Coupon.model.js';
 import CouponUsage from '../models/CouponUsage.model.js';
+import Store from '../models/Store.model.js';
+import SellerProfile from '../models/SellerProfile.model.js';
 import * as paymentRepo from '../repositories/Payment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import * as orderService from './Order.service.js';
 import * as couponService from './Coupon.service.js';
 import { createPaymentProcessor } from './payment/PaymentFactory.js';
+import { createNotification, notifyAdmins } from './Notification.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
 import mongoose from 'mongoose';
 
-// ---------- OLD dummy payment – keep for backward compatibility ----------
+// ---------- OLD dummy payment ----------
 export const createPayment = async (parentOrderId, userId) => {
   const order = await orderRepo.findById(parentOrderId, userId);
   if (!order) throw new ApiError(404, 'Order not found');
@@ -33,7 +36,71 @@ export const createPayment = async (parentOrderId, userId) => {
   return payment;
 };
 
-// Helper to redeem a coupon once an order is confirmed
+// ---------- Stripe webhook signature verification ----------
+export const verifyWebhookSignature = (rawBody, signature) => {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not configured');
+  }
+  return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+};
+
+// ---------- Notification helpers ----------
+const notifyCustomerOrderPlaced = async (customerId, parentOrder) => {
+  await createNotification(
+    customerId,
+    'order',
+    'Order Placed Successfully',
+    `Your order #${parentOrder._id} has been placed successfully.`,
+    `/orders/${parentOrder._id}`,
+    { parentOrderId: parentOrder._id.toString() }
+  );
+};
+
+const notifySellersForNewOrder = async (parentOrderId) => {
+  const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(parentOrderId);
+
+  for (const so of sellerOrders) {
+    if (!so.store) continue;
+    const store = await Store.findById(so.store).select('sellerProfile');
+    if (!store) continue;
+    const profile = await SellerProfile.findById(store.sellerProfile).select('user');
+    if (!profile) continue;
+
+    await createNotification(
+      profile.user,
+      'order',
+      'New Order Received',
+      `You received a new order worth PKR ${so.subTotal}.`,
+      `/seller/orders`,
+      { parentOrderId: parentOrderId.toString(), sellerOrderId: so._id.toString() }
+    );
+  }
+};
+
+const notifyLowStockForItems = async (sellerOrders) => {
+  for (const so of sellerOrders) {
+    for (const item of so.items || []) {
+      const product = await Product.findById(item.product);
+      if (!product || product.stock > 5) continue;
+
+      const store = await Store.findById(so.store).select('sellerProfile');
+      if (!store) continue;
+      const profile = await SellerProfile.findById(store.sellerProfile).select('user');
+      if (!profile) continue;
+
+      await createNotification(
+        profile.user,
+        'inventory',
+        'Low Stock Warning',
+        `${product.name} has only ${product.stock} left in stock.`,
+        `/seller/products`,
+        { productId: product._id.toString(), stock: product.stock }
+      );
+    }
+  }
+};
+
 const redeemCoupon = async (parentOrder, session) => {
   if (!parentOrder?.couponCode) return;
 
@@ -62,10 +129,32 @@ const redeemCoupon = async (parentOrder, session) => {
   await coupon.save({ session });
 };
 
-// ---------- NEW – Stripe/COD payment intent creation ----------
-export const createPaymentIntent = async (userId, addressId, paymentMethod, couponCode = null) => {
-  if (!['Stripe', 'CashOnDelivery'].includes(paymentMethod)) {
+const createPaymentTransaction = async (payment, type, status, amount, metadata = {}) => {
+  await PaymentTransaction.create({
+    payment: payment._id,
+    type,
+    status,
+    amount,
+    stripeEventId: metadata.stripeEventId || `manual-${type}-${payment._id}-${Date.now()}`,
+    ...metadata,
+  });
+};
+
+const isValidMobileNumber = (mobileAccount) => {
+  return /^03\d{9}$/.test(mobileAccount);
+};
+
+// ---------- Payment intent creation ----------
+export const createPaymentIntent = async (userId, addressId, paymentMethod, couponCode = null, mobileAccount = null) => {
+  if (!['Stripe', 'CashOnDelivery', 'EasyPaisa', 'JazzCash'].includes(paymentMethod)) {
     throw new ApiError(400, `Unsupported payment method: ${paymentMethod}`);
+  }
+
+  // Validate mobile number for wallet payments
+  if (paymentMethod === 'EasyPaisa' || paymentMethod === 'JazzCash') {
+    if (!mobileAccount || !isValidMobileNumber(mobileAccount)) {
+      throw new ApiError(400, 'Invalid mobile account number. Use 03XXXXXXXXX.');
+    }
   }
 
   const session = await mongoose.startSession();
@@ -95,7 +184,6 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
     throw error;
   }
 
-  // After commit, handle payment gateway (no DB transaction)
   const processor = createPaymentProcessor(paymentMethod);
   let clientSecret = null;
 
@@ -108,13 +196,14 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
     } catch (stripeError) {
       payment.status = 'Failed';
       await payment.save();
+      await createPaymentTransaction(payment, 'failure', 'failed', payment.amount, { failureReason: stripeError.message });
       throw new ApiError(502, 'Payment processing failed. Please try again.');
     }
   } else if (paymentMethod === 'CashOnDelivery') {
     await processor.process(payment, parentOrder);
 
-    // Deduct stock for COD orders
     const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(parentOrder._id);
+
     for (const so of sellerOrders) {
       for (const item of so.items || []) {
         await Product.updateOne(
@@ -124,13 +213,8 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
       }
     }
 
-    // COD order is confirmed – clear cart immediately
-    await Cart.updateOne(
-      { user: userId },
-      { $set: { items: [] } }
-    );
+    await Cart.updateOne({ user: userId }, { $set: { items: [] } });
 
-    // Redeem coupon since payment is confirmed immediately
     const redemptionSession = await mongoose.startSession();
     redemptionSession.startTransaction();
     try {
@@ -140,9 +224,57 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
     } catch (error) {
       await redemptionSession.abortTransaction();
       redemptionSession.endSession();
-      console.error('Failed to redeem coupon for COD order:', error);
-      // Do not fail the order if coupon redemption fails; log and continue
     }
+
+    await createPaymentTransaction(payment, 'success', 'success', payment.amount, { transactionId: payment.transactionId });
+
+    await notifyCustomerOrderPlaced(userId, parentOrder);
+    await notifySellersForNewOrder(parentOrder._id);
+    await notifyLowStockForItems(sellerOrders);
+  } else if (paymentMethod === 'EasyPaisa' || paymentMethod === 'JazzCash') {
+    await processor.process(payment, parentOrder, mobileAccount);
+
+    if (payment.status === 'Failed') {
+      // Cancel the pending order to avoid orphans
+      await ParentOrder.findByIdAndUpdate(parentOrder._id, { orderStatus: 'Cancelled' });
+
+      // Create failure transaction
+      await createPaymentTransaction(payment, 'failure', 'failed', payment.amount, {
+        failureReason: `${paymentMethod} payment failed. Invalid test account.`,
+      });
+
+      throw new ApiError(400, `${paymentMethod} payment failed. Please use a valid test account.`);
+    }
+
+    const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(parentOrder._id);
+
+    for (const so of sellerOrders) {
+      for (const item of so.items || []) {
+        await Product.updateOne(
+          { _id: item.product, stock: { $gte: item.quantity } },
+          { $inc: { stock: -item.quantity } }
+        );
+      }
+    }
+
+    await Cart.updateOne({ user: userId }, { $set: { items: [] } });
+
+    const redemptionSession = await mongoose.startSession();
+    redemptionSession.startTransaction();
+    try {
+      await redeemCoupon(parentOrder, redemptionSession);
+      await redemptionSession.commitTransaction();
+      redemptionSession.endSession();
+    } catch (error) {
+      await redemptionSession.abortTransaction();
+      redemptionSession.endSession();
+    }
+
+    await createPaymentTransaction(payment, 'success', 'success', payment.amount, { transactionId: payment.transactionId });
+
+    await notifyCustomerOrderPlaced(userId, parentOrder);
+    await notifySellersForNewOrder(parentOrder._id);
+    await notifyLowStockForItems(sellerOrders);
   }
 
   return {
@@ -152,146 +284,14 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
   };
 };
 
-export const getPaymentStatus = async (parentOrderId, userId) => {
-  const order = await orderRepo.findById(parentOrderId, userId);
-  if (!order) throw new ApiError(404, 'Order not found');
-  const payment = await paymentRepo.findByParentOrder(parentOrderId);
-  if (!payment) throw new ApiError(404, 'Payment not found');
-  return payment;
-};
-
 // ---------- Stripe webhook helpers ----------
-export const verifyWebhookSignature = (rawBody, signature) => {
-  return stripe.webhooks.constructEvent(
-    rawBody,
-    signature,
-    process.env.STRIPE_WEBHOOK_SECRET
-  );
-};
-
-// ---------- Process successful payment ----------
 export const handlePaymentSuccess = async (event) => {
   const paymentIntent = event.data.object;
   const stripePaymentIntentId = paymentIntent.id;
   const stripeEventId = event.id;
-  const charge = paymentIntent.charges?.data?.[0];
-  const cardDetails = charge?.payment_method_details?.card;
-  const cardBrand = cardDetails?.brand || null;
-  const cardLast4 = cardDetails?.last4 || null;
-  const cardExpMonth = cardDetails?.exp_month || null;
-  const cardExpYear = cardDetails?.exp_year || null;
-
-  console.log(`[WEBHOOK] Processing payment_intent.succeeded for PI: ${stripePaymentIntentId}`);
 
   const payment = await paymentRepo.findByStripePaymentIntentId(stripePaymentIntentId);
-  if (!payment) {
-    console.error(`[WEBHOOK] Payment not found for PI: ${stripePaymentIntentId}`);
-    return;
-  }
-
-  console.log(`[WEBHOOK] Found payment ${payment._id} with status ${payment.status}`);
-
-  // Idempotency check
-  const existingTx = await PaymentTransaction.findOne({ stripeEventId });
-  if (existingTx) {
-    console.log(`[WEBHOOK] Duplicate event ignored: ${stripeEventId}`);
-    return;
-  }
-
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const currentPayment = await paymentRepo.findByIdQuery(payment._id, session);
-    if (!currentPayment || currentPayment.status !== 'Pending') {
-      console.log(`[WEBHOOK] Payment not in Pending state, skipping: ${currentPayment?.status}`);
-      await session.abortTransaction();
-      session.endSession();
-      return;
-    }
-
-    const parentOrder = await orderRepo.findByIdQuery(currentPayment.parentOrder, session);
-    if (!parentOrder) {
-      throw new Error('ParentOrder not found');
-    }
-
-    console.log(`[WEBHOOK] Deducting stock for order ${parentOrder._id}`);
-
-    const sellerOrders = await orderRepo.findSellerOrdersByParentQuery(parentOrder._id, session);
-    for (const so of sellerOrders) {
-      for (const item of so.items) {
-        const updatedProduct = await Product.findOneAndUpdate(
-          { _id: item.product, stock: { $gte: item.quantity } },
-          { $inc: { stock: -item.quantity } },
-          { new: true, session }
-        );
-        if (!updatedProduct) {
-          throw new Error(`Insufficient stock for product ${item.product}`);
-        }
-      }
-    }
-
-    console.log(`[WEBHOOK] Creating PaymentTransaction with eventId ${stripeEventId}`);
-
-    await PaymentTransaction.create([{
-      payment: currentPayment._id,
-      type: 'success',
-      status: 'success',
-      amount: currentPayment.amount,
-      stripePaymentIntentId,
-      stripeEventId,
-    }], { session });
-
-    currentPayment.status = 'Completed';
-    currentPayment.cardBrand = cardBrand;
-    currentPayment.cardLast4 = cardLast4;
-    currentPayment.cardExpMonth = cardExpMonth;
-    currentPayment.cardExpYear = cardExpYear;
-    currentPayment.paidAt = new Date();
-    await currentPayment.save({ session });
-
-    parentOrder.orderStatus = 'Processing';
-    await parentOrder.save({ session });
-
-    console.log(`[WEBHOOK] Redeeming coupon for order ${parentOrder._id}`);
-
-    await redeemCoupon(parentOrder, session);
-
-    console.log(`[WEBHOOK] Clearing cart for user ${parentOrder.customer}`);
-
-    await Cart.updateOne(
-      { user: parentOrder.customer },
-      { $set: { items: [] } },
-      { session }
-    );
-
-    await session.commitTransaction();
-    session.endSession();
-    console.log(`[WEBHOOK] Successfully processed payment for order ${parentOrder._id}`);
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-
-    console.error(`[WEBHOOK] Error processing payment: ${error.message}`);
-
-    if (error.message.includes('Insufficient stock')) {
-      await ParentOrder.findByIdAndUpdate(parentOrder._id, { orderStatus: 'Cancelled' });
-    }
-    throw error;
-  }
-};
-
-// ---------- Process failed payment ----------
-export const handlePaymentFailure = async (event) => {
-  const paymentIntent = event.data.object;
-  const stripePaymentIntentId = paymentIntent.id;
-  const stripeEventId = event.id;
-
-  const payment = await paymentRepo.findByStripePaymentIntentId(stripePaymentIntentId);
-  if (!payment) {
-    console.error(`Payment not found for PI: ${stripePaymentIntentId}`);
-    return;
-  }
+  if (!payment) return;
 
   const existingTx = await PaymentTransaction.findOne({ stripeEventId });
   if (existingTx) return;
@@ -307,10 +307,80 @@ export const handlePaymentFailure = async (event) => {
       return;
     }
 
-    const failureReason =
-      paymentIntent.last_payment_error?.message ||
-      paymentIntent.last_payment_error?.code ||
-      'Payment failed';
+    const parentOrder = await orderRepo.findByIdQuery(currentPayment.parentOrder, session);
+    if (!parentOrder) throw new Error('ParentOrder not found');
+
+    const sellerOrders = await orderRepo.findSellerOrdersByParentQuery(parentOrder._id, session);
+
+    for (const so of sellerOrders) {
+      for (const item of so.items) {
+        const updatedProduct = await Product.findOneAndUpdate(
+          { _id: item.product, stock: { $gte: item.quantity } },
+          { $inc: { stock: -item.quantity } },
+          { new: true, session }
+        );
+        if (!updatedProduct) throw new Error(`Insufficient stock for product ${item.product}`);
+      }
+    }
+
+    await PaymentTransaction.create([{
+      payment: currentPayment._id,
+      type: 'success',
+      status: 'success',
+      amount: currentPayment.amount,
+      stripePaymentIntentId,
+      stripeEventId,
+    }], { session });
+
+    currentPayment.status = 'Completed';
+    currentPayment.paidAt = new Date();
+    await currentPayment.save({ session });
+
+    parentOrder.orderStatus = 'Processing';
+    await parentOrder.save({ session });
+
+    await redeemCoupon(parentOrder, session);
+    await Cart.updateOne({ user: parentOrder.customer }, { $set: { items: [] } }, { session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    await notifyCustomerOrderPlaced(parentOrder.customer, parentOrder);
+    await notifySellersForNewOrder(parentOrder._id);
+    await notifyLowStockForItems(sellerOrders);
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    if (error.message.includes('Insufficient stock')) {
+      await ParentOrder.findByIdAndUpdate(parentOrder._id, { orderStatus: 'Cancelled' });
+    }
+    throw error;
+  }
+};
+
+export const handlePaymentFailure = async (event) => {
+  const paymentIntent = event.data.object;
+  const stripePaymentIntentId = paymentIntent.id;
+  const stripeEventId = event.id;
+
+  const payment = await paymentRepo.findByStripePaymentIntentId(stripePaymentIntentId);
+  if (!payment) return;
+
+  const existingTx = await PaymentTransaction.findOne({ stripeEventId });
+  if (existingTx) return;
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const currentPayment = await paymentRepo.findByIdQuery(payment._id, session);
+    if (!currentPayment || currentPayment.status !== 'Pending') {
+      await session.abortTransaction();
+      session.endSession();
+      return;
+    }
+
+    const failureReason = paymentIntent.last_payment_error?.message || 'Payment failed';
 
     await PaymentTransaction.create([{
       payment: currentPayment._id,
@@ -332,6 +402,14 @@ export const handlePaymentFailure = async (event) => {
     session.endSession();
     throw error;
   }
+};
+
+export const getPaymentStatus = async (parentOrderId, userId) => {
+  const order = await orderRepo.findById(parentOrderId, userId);
+  if (!order) throw new ApiError(404, 'Order not found');
+  const payment = await paymentRepo.findByParentOrder(parentOrderId);
+  if (!payment) throw new ApiError(404, 'Payment not found');
+  return payment;
 };
 
 export const getPaymentByOrderId = async (orderId, userId) => {

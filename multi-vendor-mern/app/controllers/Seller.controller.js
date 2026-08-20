@@ -1,7 +1,7 @@
 import * as sellerService from '../services/Seller.service.js';
 import { ApiResponse } from '../utils/ApiResponse.util.js';
 import { asyncHandler } from '../utils/AsyncHandler.util.js';
-import { ApiError } from '../utils/ApiError.util.js'; // added to fix uploadStoreLogo
+import { ApiError } from '../utils/ApiError.util.js';
 
 export const getStatus = asyncHandler(async (req, res) => {
   try {
@@ -47,8 +47,14 @@ export const applyAsSeller = asyncHandler(async (req, res) => {
   new ApiResponse(201, result, 'Application submitted').send(res);
 });
 
+// ---------- UPDATED: null‑safe getProfile ----------
 export const getProfile = asyncHandler(async (req, res) => {
   const profile = await sellerService.getSellerProfile(req.user.id);
+
+  if (!profile) {
+    return new ApiResponse(200, null, 'No seller profile found').send(res);
+  }
+
   new ApiResponse(200, profile, 'Seller profile').send(res);
 });
 

@@ -25,7 +25,7 @@ export const findUsers = async ({ page = 1, pageSize = 10, search, role, isActiv
     query.isActive = isActive === 'true';
   }
   if (role) {
-    query.role = role;   // direct string match
+    query.role = role;
   }
 
   const skip = (Number(page) - 1) * Number(pageSize);
@@ -63,7 +63,6 @@ export const findSellers = async ({ page = 1, pageSize = 10, search, status }) =
 
   const [profiles, total] = await Promise.all([pipeline, totalPromise]);
 
-  // Fetch stores for these profiles
   const storeIds = profiles.map(p => p._id);
   const stores = await mongoose.model('Store').find({ sellerProfile: { $in: storeIds } }).lean();
   const storeMap = new Map(stores.map(s => [s.sellerProfile.toString(), s]));
@@ -135,7 +134,7 @@ export const findPayments = async ({ page = 1, pageSize = 10, search, status, me
     ];
   }
 
-  let sortOption = { createdAt: -1 }; // newest by default
+  let sortOption = { createdAt: -1 };
   if (sortBy === 'oldest') sortOption = { createdAt: 1 };
   else if (sortBy === 'amount_asc') sortOption = { amount: 1 };
   else if (sortBy === 'amount_desc') sortOption = { amount: -1 };
@@ -291,19 +290,15 @@ export const getStats = async () => {
     totalSellers,
     totalProducts,
     totalOrders,
-    approvedSellers,
     pendingSellers,
-    approvedProducts,
     pendingProducts,
     pendingReturns,
   ] = await Promise.all([
     User.countDocuments(),
-    User.countDocuments({ role: 'Seller' }),               // actual seller users
+    User.countDocuments({ role: 'Seller' }),
     Product.countDocuments({ isDeleted: false }),
     ParentOrder.countDocuments(),
-    User.countDocuments({ role: 'Seller', isActive: true }),
     SellerProfile.countDocuments({ status: 'Pending' }),
-    Product.countDocuments({ isDeleted: false, status: 'Approved' }),
     Product.countDocuments({ isDeleted: false, status: 'PendingApproval' }),
     ReturnRequest.countDocuments({ status: 'Requested' }),
   ]);
@@ -358,3 +353,50 @@ export const rejectSeller = (sellerId, reason) =>
     { status: 'Rejected', rejectionReason: reason, approvedAt: null, approvedBy: null },
     { new: true }
   );
+
+// ---------- Missing admin operations ----------
+export const processReturn = async (returnId, status, adminId, reason) => {
+  return ReturnRequest.findByIdAndUpdate(
+    returnId,
+    {
+      status,
+      processedBy: adminId,
+      adminNotes: reason || '',
+    },
+    { new: true }
+  ).lean();
+};
+
+export const createRefund = async (returnRequestId, adminId) => {
+  // This is a stub to keep Admin.service.js compatible.
+  // Replace with actual Refund.service.js logic if needed later.
+  return {
+    returnRequest: returnRequestId,
+    processedBy: adminId,
+    status: 'Created',
+    createdAt: new Date(),
+  };
+};
+
+// ---------- Roles & Permission Groups ----------
+export const findRoleById = (id) =>
+  Role.findById(id)
+    .populate('permissions')
+    .populate('permissionGroups')
+    .lean();
+
+export const assignGroupToRole = async (roleId, groupId) => {
+  return Role.findByIdAndUpdate(
+    roleId,
+    { $addToSet: { permissionGroups: groupId } },
+    { new: true }
+  ).populate('permissionGroups');
+};
+
+export const removeGroupFromRole = async (roleId, groupId) => {
+  return Role.findByIdAndUpdate(
+    roleId,
+    { $pull: { permissionGroups: groupId } },
+    { new: true }
+  ).populate('permissionGroups');
+};

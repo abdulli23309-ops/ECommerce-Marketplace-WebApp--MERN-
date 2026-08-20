@@ -2,14 +2,16 @@ import express from 'express';
 import authRoutes from './routes/Auth.routes.js';
 import authorizationTestRoutes from './routes/AuthorizationTest.routes.js';
 import { setupAppMiddleware, errorHandler } from './middleware/init.js';
-import productRoutes from './routes/Product.routes.js';            // seller product routes
+import productRoutes from './routes/Product.routes.js';
 import storeRoutes from './routes/Store.routes.js';
 import categoryRoutes from './routes/Category.routes.js';
 import subCategoryRoutes from './routes/SubCategory.routes.js';
 import brandRoutes from './routes/Brand.routes.js';
-import publicProductRoutes from './routes/Product.public.routes.js'; // public product routes
+import publicProductRoutes from './routes/Product.public.routes.js';
 import cartRoutes from './routes/Cart.routes.js';
 import wishlistRoutes from './routes/Wishlist.routes.js';
+import emailOtpRoutes from './routes/EmailOtp.routes.js';
+import deliveryChargeRoutes from './routes/DeliveryCharge.routes.js';
 import addressRoutes from './routes/Address.routes.js';
 import orderRoutes from './routes/Order.routes.js';
 import paymentRoutes from './routes/Payment.routes.js';
@@ -22,6 +24,7 @@ import accountRoutes from './routes/Account.routes.js';
 import sellerRoutes from './routes/Seller.routes.js';
 import adminProductRoutes from './routes/AdminProduct.routes.js';
 import webhookRouter from './routes/webhook.routes.js';
+import googleAuthRoutes from './routes/GoogleAuth.routes.js';
 
 // Priority 4 new routes
 import notificationRoutes from './routes/Notification.routes.js';
@@ -61,7 +64,10 @@ app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/wishlist', wishlistRoutes);
 app.use('/api/v1/addresses', addressRoutes);
 app.use('/api/v1/orders', orderRoutes);
+
+// Mount payments AFTER webhook
 app.use('/api/v1/payments', paymentRoutes);
+
 app.use('/api/v1/shipments', shipmentRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
 app.use('/api/v1/returns', returnRoutes);
@@ -75,6 +81,10 @@ app.use('/api/v1/seller', sellerRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/coupons', couponRoutes);
 app.use('/api/v1/admin/audit-logs', adminAuditLogRoutes);
+
+app.use('/api/v1/delivery-charges', deliveryChargeRoutes);
+app.use('/api/v1/auth/otp', emailOtpRoutes);
+app.use('/api/v1/auth/google', googleAuthRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });

@@ -180,27 +180,7 @@ const AdminDashboardPage = () => {
           <Link
             key={card.label}
             to={card.to}
-            style={{
-              background: "var(--surface)",
-              border: card.highlight ? "1px solid var(--warning)" : "1px solid var(--border)",
-              borderLeft: card.highlight ? "4px solid var(--warning)" : "1px solid var(--border)",
-              borderRadius: "12px",
-              padding: "18px",
-              textDecoration: "none",
-              color: "inherit",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              transition: "transform 0.15s ease, box-shadow 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 4px 12px var(--shadow)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "none";
-            }}
+            className={`metric-card ${card.highlight ? "metric-card-highlight" : ""}`}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
               <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.02em" }}>

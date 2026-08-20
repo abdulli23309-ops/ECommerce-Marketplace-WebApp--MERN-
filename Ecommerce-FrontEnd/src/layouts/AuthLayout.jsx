@@ -1,25 +1,80 @@
 import { Outlet } from "react-router-dom";
-import BrandLogo from "../components/common/BrandLogo"; // Adjust path if needed
-import Footer from "../components/common/Footer"; // Adjust path if needed
+import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import axiosInstance from "../services/axiosInstance";
+import { setCredentials } from "../store/authSlice";
+import BrandLogo from "../components/common/BrandLogo";
+import Footer from "../components/common/Footer";
+
+const GoogleAuthSection = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      const idToken = credentialResponse.credential;
+
+      const { data } = await axiosInstance.post("/auth/google", {
+        idToken,
+      });
+
+      const { user, tokens } = data.data;
+
+      dispatch(
+        setCredentials({
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken || null,
+          user,
+        })
+      );
+
+      navigate("/");
+    } catch (error) {
+      console.error("Google login failed:", error);
+    }
+  };
+
+  return (
+    <div style={{ width: "100%", marginTop: "1rem" }}>
+      <GoogleLogin
+  onSuccess={handleGoogleSuccess}
+  onError={() => console.error("Google login error")}
+  size="large"
+  text="continue_with"
+  shape="pill"
+/>
+    </div>
+  );
+};
 
 const AuthLayout = () => {
   return (
-    <div className="auth-layout">
-      <div className="auth-frame">
-        <div className="auth-branding">
-          {/* Use the new "combine" variant here */}
-          <BrandLogo 
-            variant="combine" 
-            className="auth-logo" 
-            maxWidth="200px" 
-          />
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <div className="auth-layout">
+        <div className="auth-frame">
+          <div className="auth-branding">
+            <BrandLogo
+              variant="combine"
+              className="auth-logo"
+              maxWidth="200px"
+            />
+          </div>
+
+          <div className="auth-card">
+            <Outlet />
+
+            <div className="auth-divider">
+              <span>or</span>
+            </div>
+
+            <GoogleAuthSection />
+          </div>
         </div>
-        <div className="auth-card">
-          <Outlet />
-        </div>
+
+        <Footer />
       </div>
-      <Footer />
-    </div>
+    </GoogleOAuthProvider>
   );
 };
 

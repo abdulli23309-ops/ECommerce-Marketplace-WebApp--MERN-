@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import express from 'express';          // <-- required for express.raw
+import express from 'express';
 import * as webhookController from '../controllers/Webhook.controller.js';
 
 const router = Router();

@@ -146,7 +146,7 @@ All status pills (order status, return status, seller-profile status, payment st
 
 - Shared visual pattern: `.pagination` container + `.page-btn` buttons (Previous/Next, and page-number variants), styled with `var(--surface)`/`var(--border)`/`var(--text-primary)`, hover state `var(--surface-hover)`, disabled state dimmed.
 - This CSS pattern is reused across every paginated screen (public product listing, seller product listing, admin product listing, brand listing, and — since Phase 14A/D-04 — the product-review pagination inside `ProductInspectionModal`).
-- The pattern is **not yet extracted into a reusable React component** — each page implements its own Previous/Next handlers against the shared CSS classes. Extracting a shared component is a tracked Priority 1 roadmap item (see `phases.md`).
+- **A reusable `Pagination` component exists** (`Ecommerce-FrontEnd/src/components/common/Pagination.jsx`) — it consumes `currentPage`, `totalPages`, `onPageChange` props and reuses the `.pagination`/`.page-btn` CSS classes. This is the preferred way to render pagination controls for new screens.
 
 ## 13. Modals
 
@@ -166,11 +166,10 @@ CSS is organized per functional section (auth, dashboard, navbar, product pages,
 
 1. **Use theme tokens, not literal colors.** Every new color must be one of the existing CSS custom properties, or a newly-added token in both the `:root` and `[data-theme="dark"]` blocks if a genuinely new semantic is needed.
 2. **Preserve the existing visual language**: uppercase/letter-spaced section headings, minimal black/white primary palette, semantic (not decorative) use of success/warning/danger/info colors.
-3. **Reuse existing classes/components** (`.btn-*`, `.page-btn`, `.stat-card`, `getStatusBadgeStyle`, `BrandLogo`) rather than inventing parallel ones for the same purpose.
+3. **Reuse existing classes/components** (`.btn-*`, `.page-btn`, `.stat-card`, `getStatusBadgeStyle`, `BrandLogo`, `Pagination`) rather than inventing parallel ones for the same purpose.
 4. **New status values** go into `STATUS_STYLES` in `utils/statusBadge.js`, not into a new local mapping.
 5. **New paginated screens** should reuse the `.pagination`/`.page-btn` classes and the backend pagination metadata shape (`architecture.md` §11) rather than inventing new pagination UI.
 6. **Do not "fix" the known hardcoded-color exceptions (Section 3)** as a side effect of unrelated work — that is separate, explicitly scoped cleanup (see `rules.md` Rule 20).
-
 
 ## 17. Additions from Priority 1-3
 
@@ -181,3 +180,19 @@ CSS is organized per functional section (auth, dashboard, navbar, product pages,
 - **Search suggestions dropdown** — new class `.suggestions-dropdown`; styled with theme tokens (`var(--surface)`, `var(--border)`, `var(--shadow)`, `var(--text-primary)`, `var(--text-secondary)`, `var(--text-muted)`). Used in both Home hero search and Listing search.
 - **Seller dashboard new cards** — follow existing `cardStyle`/`gridStyle` pattern; icons added as inline SVG cases in the existing `Icon` component; all colors use semantic theme variables.
 - **Dark theme fixes** — `select` elements and `.hero-search input` now explicitly use `var(--input-bg)` and `var(--text-primary)` to prevent white-on-white/invisible text.
+
+## 18. Additions from Priority 4-5 (UI/UX)
+
+### Priority 4 (Committed)
+
+- **Notification dropdown** — `NotificationDropdown` (`components/common/NotificationDropdown.jsx`) provides in-app notification display in the navbar/dashboard header; styled with theme tokens.
+- **Coupons admin page** — `AdminCouponsPage.jsx` follows the existing admin table/form pattern.
+- **Audit log page** — `AdminAuditLogPage.jsx` follows the existing admin table pattern.
+
+### Priority 5 (Uncommitted)
+
+- **VerifyEmailPage** — `VerifyEmailPage.jsx` (`pages/customer/VerifyEmailPage.jsx`) shows the authenticated user's email (read-only), a countdown timer for resend, and an expiry message. Uses the standard `.auth-card`/`.form-group`/`.form-input`/`.btn-primary` pattern.
+- **Checkout / Seller registration verification guard** — `CheckoutPage.jsx` and `SellerRegisterPage.jsx` enforce `emailVerified: true` before proceeding; unverified users are prompted to verify their email (link to `VerifyEmailPage`).
+- **Google OAuth button** — `GoogleAuthButton.jsx` (`pages/auth/GoogleAuthButton.jsx`) renders a Google sign-in button on the auth pages.
+- **Rating moderation warning/modal pattern** — rating-moderation warnings use the existing modal/warning UI pattern; thresholds are defined in `utils/warningThresholds.js`.
+- **Dashboard switcher / metric cards** — `DashboardSwitcher.jsx` and `MetricCard.jsx` (`components/common/`) provide reusable dashboard UI.

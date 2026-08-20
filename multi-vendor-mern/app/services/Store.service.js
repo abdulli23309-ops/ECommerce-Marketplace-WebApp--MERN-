@@ -31,10 +31,20 @@ export const getPublicStore = async (storeId) => {
 };
 
 export const getMyStore = async (userId) => {
-  const profile = await resolveSellerProfile(userId);
+  // For dashboard switching / admin viewing seller layout,
+  // do NOT throw errors when no seller profile or store exists.
+  const profile = await sellerProfileRepo.findByUser(userId);
+
+  if (!profile) {
+    return null;
+  }
+
+  if (profile.status !== 'Approved') {
+    return null;
+  }
+
   const store = await storeRepo.findBySeller(profile._id);
-  if (!store) throw new ApiError(404, 'Store not found');
-  return store;
+  return store || null;
 };
 
 export const updateMyStore = async (userId, data) => {

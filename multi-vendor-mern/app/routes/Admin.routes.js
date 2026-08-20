@@ -15,6 +15,8 @@ router.put('/users/:id/deactivate', adminController.deactivateUser);
 router.get('/sellers', adminController.getSellers);
 router.put('/sellers/:id/approve', adminController.approveSeller);
 router.put('/sellers/:id/reject', adminController.rejectSeller);
+router.get('/sellers/:id/moderation-status', adminController.getSellerModerationStatus);
+router.post('/sellers/:id/warn', adminController.warnSeller);
 
 // Orders
 router.get('/orders', adminController.getOrders);
@@ -42,6 +44,7 @@ router.get('/permission-groups/:id/permissions', adminController.getGroupPermiss
 
 // Roles
 router.get('/roles', adminController.getRoles);
+router.get('/roles/:id', adminController.getRoleById);
 router.put('/roles/:roleId/groups/:groupId', adminController.assignGroupToRole);
 router.delete('/roles/:roleId/groups/:groupId', adminController.removeGroupFromRole);
 

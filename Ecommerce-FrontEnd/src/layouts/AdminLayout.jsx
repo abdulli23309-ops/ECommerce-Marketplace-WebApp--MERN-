@@ -7,8 +7,28 @@ import BrandLogo from "../components/common/BrandLogo";
 import Footer from "../components/common/Footer";
 import useIdleLogout from '../hooks/useIdleLogout';
 import { clearPermissions } from '../store/permissionsSlice';
+import { setActiveDashboard } from '../store/dashboardContextSlice';
 import ThemeToggle from "../components/common/ThemeToggle";
 import NotificationDropdown from "../components/common/NotificationDropdown";
+
+const SellerIcon = () => (
+  <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} style={{ width: 18, height: 18 }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
+
+const CustomerIcon = () => (
+  <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} style={{ width: 18, height: 18 }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+  </svg>
+);
+
+const LogOutIcon = () => (
+  <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} style={{ width: 18, height: 18 }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+  </svg>
+);
 
 const AdminLayout = () => {
   const dispatch = useDispatch();
@@ -70,7 +90,6 @@ const AdminLayout = () => {
     <>
       <div className="dashboard-layout">
         <aside className="dashboard-sidebar">
-          {/* Admin Header */}
           <div
             style={{
               height: `${headerHeight}px`,
@@ -85,7 +104,6 @@ const AdminLayout = () => {
               minWidth: 0,
             }}
           >
-            {/* Logo link to homepage */}
             <Link
               to="/"
               aria-label="VendorVerse home"
@@ -102,11 +120,7 @@ const AdminLayout = () => {
               <BrandLogo
                 className="dashboard-brand-mark"
                 variant="mark"
-                style={{
-                  maxWidth: "100%",
-                  height: "auto",
-                  flexShrink: 1,
-                }}
+                style={{ maxWidth: "100%", height: "auto", flexShrink: 1 }}
               />
               <BrandLogo
                 className="dashboard-brand-wordmark"
@@ -144,7 +158,6 @@ const AdminLayout = () => {
             </span>
           </div>
 
-          {/* Navigation */}
           <nav className="dashboard-nav">
             <Link to="/admin/dashboard" className="dashboard-nav-link">
               <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,7 +300,6 @@ const AdminLayout = () => {
               Payments
             </Link>
 
-            {/* Priority 4 new links */}
             <Link to="/admin/coupons" className="dashboard-nav-link">
               <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5h14a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1zm0 8h14a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3a1 1 0 011-1z" />
@@ -303,18 +315,39 @@ const AdminLayout = () => {
             </Link>
           </nav>
 
-          <div className="dashboard-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-              <NotificationDropdown />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <div className="dashboard-footer sidebar-footer">
+            <div className="sidebar-utilities">
+              <NotificationDropdown placement="up" linkEnabled={false} />
               <ThemeToggle />
             </div>
-            <button onClick={handleLogout} className="btn-logout">
-              <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Sign Out
+
+            <div className="sidebar-role-switches">
+              <button
+                className="sidebar-action-btn"
+                onClick={() => {
+                  dispatch(setActiveDashboard('seller'));
+                  navigate('/seller/dashboard');
+                }}
+              >
+                <SellerIcon />
+                <span>Switch to Seller</span>
+              </button>
+
+              <button
+                className="sidebar-action-btn"
+                onClick={() => {
+                  dispatch(setActiveDashboard('customer'));
+                  navigate('/');
+                }}
+              >
+                <CustomerIcon />
+                <span>Switch to Customer</span>
+              </button>
+            </div>
+
+            <button className="sidebar-action-btn logout-btn" onClick={handleLogout}>
+              <LogOutIcon />
+              <span>Sign Out</span>
             </button>
           </div>
         </aside>

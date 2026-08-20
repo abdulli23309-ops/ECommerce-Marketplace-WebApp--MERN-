@@ -7,6 +7,7 @@ import { fetchProductReviews } from "../../services/reviewService";
 import { getImageUrl } from "../../utils/imageHelper";
 import { addItemToCart } from "../../store/cartSlice";
 import { addItemToWishlist } from "../../store/wishlistSlice";
+import axiosInstance from "../../services/axiosInstance"; // added for own-store fetch
 
 const ProductDetailPage = () => {
   const { productId } = useParams();
@@ -24,6 +25,29 @@ const ProductDetailPage = () => {
   const [addingToCart, setAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState({ text: "", type: "" });
+
+  // --- Seller own‑store check ---
+  const [ownStoreId, setOwnStoreId] = useState(null);
+
+  useEffect(() => {
+    // If the user is a seller, fetch their store ID
+    if (user?.role === "Seller" || user?.roles?.includes("Seller")) {
+      axiosInstance.get("/stores/mine")
+        .then((res) => {
+          if (res.data?.data?._id) {
+            setOwnStoreId(res.data.data._id);
+          }
+        })
+        .catch(() => setOwnStoreId(null));
+    } else {
+      setOwnStoreId(null);
+    }
+  }, [user]);
+
+  const isOwnProduct =
+    ownStoreId && product?.store?._id && ownStoreId === product.store._id;
+
+  // --- End seller own‑store check ---
 
   useEffect(() => {
     const loadProductData = async () => {
@@ -371,24 +395,27 @@ const ProductDetailPage = () => {
                   +
                 </button>
               </div>
+
+              {/* ----- ADD TO CART BUTTON (with own-product restriction) ----- */}
               <button
                 className="btn-add-to-cart"
                 onClick={handleAddToCart}
-                disabled={addingToCart}
+                disabled={addingToCart || isOwnProduct}
                 style={{
                   flex: 1,
                   padding: "0.85rem",
-                  background: "var(--primary)",
+                  background: isOwnProduct ? "var(--text-muted)" : "var(--primary)",
                   color: "var(--primary-contrast)",
                   border: "none",
-                  cursor: addingToCart ? "not-allowed" : "pointer",
+                  cursor: (addingToCart || isOwnProduct) ? "not-allowed" : "pointer",
                   fontWeight: "bold",
                   textTransform: "uppercase",
                   letterSpacing: "1px",
                 }}
               >
-                {addingToCart ? "Adding..." : "Add to Cart"}
+                {isOwnProduct ? "Own Product" : addingToCart ? "Adding..." : "Add to Cart"}
               </button>
+
               <button
                 onClick={handleAddToWishlist}
                 style={{

@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import { getImageUrl } from '../../utils/imageHelper';
 import axiosInstance from '../../services/axiosInstance';
 
+const isWarningState = (product) => {
+  const lowStock = Number(product.stock) <= 5;
+  const lowRating = product.averageRating > 0 && Number(product.averageRating) < 2.0;
+  return lowStock || lowRating;
+};
+
 const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
   const [internalNote, setInternalNote] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -84,6 +90,7 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
 
   const store = product.store || {};
   const status = product.status;
+  const warning = isWarningState(product);
 
   return (
     <>
@@ -97,22 +104,29 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
         }}
       />
 
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          width: '850px',
-          maxWidth: '100vw',
-          height: '100vh',
-          background: 'var(--surface)',
-          color: 'var(--text-primary)',
-          boxShadow: '-4px 0 24px rgba(0,0,0,0.1)',
-          zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
+   <div
+  style={{
+    position: 'fixed',
+    top: 0,
+    right: 0,
+    width: '850px',
+    maxWidth: '100vw',
+    height: '100vh',
+    background: warning
+      ? 'linear-gradient(rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.15)), var(--surface)'
+      : 'var(--surface)',
+    border: warning
+      ? '1px solid rgba(239, 68, 68, 0.45)'
+      : '1px solid var(--border)',
+    boxShadow: warning
+      ? '0 0 24px rgba(239, 68, 68, 0.25)'
+      : '-4px 0 24px rgba(0,0,0,0.1)',
+    color: 'var(--text-primary)',
+    zIndex: 1000,
+    display: 'flex',
+    flexDirection: 'column',
+  }}
+>
         <div
           style={{
             display: 'flex',
@@ -254,6 +268,24 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                 </div>
               )}
             </>
+          )}
+
+          {warning && (
+            <div
+              style={{
+                padding: '0.75rem',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(239,68,68,0.12)',
+                border: '1px solid rgba(239,68,68,0.45)',
+                marginBottom: '1rem',
+                fontWeight: 600,
+              }}
+            >
+              ⚠️ {Number(product.stock) <= 5 ? 'Low Stock' : 'Low Product Rating'} —{' '}
+              {product.averageRating > 0
+                ? `${Number(product.averageRating).toFixed(1)} average rating.`
+                : `Stock: ${product.stock}`}
+            </div>
           )}
 
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--text-primary)' }}>

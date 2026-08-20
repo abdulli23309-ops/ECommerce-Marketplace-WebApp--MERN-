@@ -1,4 +1,5 @@
 import { ApiError } from '../utils/ApiError.util.js';
+import { notifyAdmins } from './Notification.service.js';
 import {
   consumeRefreshToken,
   createRefreshToken,
@@ -35,7 +36,15 @@ const issueSession = async (user) => {
   await createRefreshToken(user._id, hashToken(refreshToken), getRefreshTokenExpiry());
 
   return {
-    user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar,  roles, permissions },
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      emailVerified: user.emailVerified,
+      roles,
+      permissions,
+    },
     accessToken,
     refreshToken,
   };
@@ -51,8 +60,17 @@ const register = async ({ name, email, password }) => {
     password,
     role: 'Customer',
   });
+   await notifyAdmins(
+  'user',
+  'New User Registered',
+  `${user.name} just created an account.`,
+  '/admin/users',
+  { userId: user._id.toString() }
+);
   const authorizedUser = await findUserAuthorization(user._id);
+  
   return issueSession(authorizedUser);
+ 
 };
 
 const login = async ({ email, password }) => {

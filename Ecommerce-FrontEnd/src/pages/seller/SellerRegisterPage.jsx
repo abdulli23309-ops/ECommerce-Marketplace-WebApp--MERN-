@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import axiosInstance from "../../services/axiosInstance";
 
 const SellerRegisterPage = () => {
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
   const [profileStatus, setProfileStatus] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [step, setStep] = useState(1);
@@ -47,6 +49,13 @@ const SellerRegisterPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (user && !user.emailVerified) {
+      setError("Please verify your email before applying to become a seller.");
+      navigate("/verify-email", { state: { from: "/seller/register" } });
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -120,7 +129,14 @@ const SellerRegisterPage = () => {
     <div style={styles.wrapper}>
       <div style={styles.card}>
         <div style={styles.progressBar}>
-          <div style={step === 1 ? styles.progressStepActive : styles.progressStepDone} onClick={() => setStep(1)} style={{ cursor: "pointer" }}>
+          {/* Step 1 – clickable with combined style */}
+          <div
+            style={{
+              ...(step === 1 ? styles.progressStepActive : styles.progressStepDone),
+              cursor: "pointer",
+            }}
+            onClick={() => setStep(1)}
+          >
             <span style={styles.progressNumberActive}>1</span>
             <span style={styles.progressLabelActive}>Business Profile</span>
           </div>
@@ -216,7 +232,7 @@ const styles = {
   progressStepInactive: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 500, fontSize: "0.85rem", color: "var(--text-muted)" },
   progressNumberInactive: { width: "24px", height: "24px", borderRadius: "50%", background: "var(--bg-secondary)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 600 },
   progressLabelInactive: {},
-  progressStepDone: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.85rem", color: "var(--success)", cursor: "pointer" },
+  progressStepDone: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.85rem", color: "var(--success)" },
   progressLine: { flex: 1, height: "2px", background: "var(--border)", maxWidth: "80px", margin: "0 0.25rem" },
   heading: { fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.5rem 0", textAlign: "center", color: "var(--text-primary)" },
   subheading: { color: "var(--text-secondary)", fontSize: "0.95rem", margin: "0 0 2rem 0", textAlign: "center", lineHeight: 1.5 },

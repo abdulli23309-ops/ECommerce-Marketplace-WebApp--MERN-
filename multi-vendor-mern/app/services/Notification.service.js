@@ -1,4 +1,5 @@
 import * as notificationRepo from '../repositories/Notification.repository.js';
+import User from '../models/User.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
 export const getUserNotifications = async (userId, query) => {
@@ -29,4 +30,14 @@ export const createNotification = (recipientId, type, title, message, link = nul
     link,
     metadata,
   });
+};
+
+// Notify all admin users
+export const notifyAdmins = async (type, title, message, link = null, metadata = {}) => {
+  const admins = await User.find({ role: 'Admin' }).select('_id').lean();
+  return Promise.all(
+    admins.map((admin) =>
+      createNotification(admin._id, type, title, message, link, metadata)
+    )
+  );
 };

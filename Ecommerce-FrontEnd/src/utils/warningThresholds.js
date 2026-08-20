@@ -1,0 +1,4 @@
+export const PRODUCT_LOW_RATING_THRESHOLD = 3.0;
+export const SELLER_LOW_RATING_THRESHOLD = 2.5;
+export const LOW_STOCK_THRESHOLD = 5;
+export const MAX_WARNINGS = 3;

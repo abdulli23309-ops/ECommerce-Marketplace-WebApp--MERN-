@@ -1,8 +1,9 @@
 import * as cartRepo from '../repositories/Cart.repository.js';
 import * as productRepo from '../repositories/Product.repository.js';
+import SellerProfile from '../models/SellerProfile.model.js';
+import Store from '../models/Store.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
-// Always return the cart with product details populated
 const getPopulatedCart = (userId) => cartRepo.findByUser(userId);
 
 export const getCart = async (userId) => {
@@ -17,6 +18,23 @@ export const getCart = async (userId) => {
 export const addItem = async (userId, productId, quantity) => {
   const product = await productRepo.findPublicById(productId);
   if (!product) throw new ApiError(404, 'Product not found');
+
+  // Priority 5.11: Seller cannot add their own product to cart
+  const sellerProfile = await SellerProfile.findOne({ user: userId }).lean();
+  if (sellerProfile) {
+    const storeId = product.store?._id || product.store;
+    const store = await Store.findById(storeId).select('sellerProfile').lean();
+
+    if (
+      store?.sellerProfile &&
+      store.sellerProfile.toString() === sellerProfile._id.toString()
+    ) {
+      throw new ApiError(
+        400,
+        'You cannot add your own product to your cart'
+      );
+    }
+  }
 
   let cart = await cartRepo.findByUserForMutation(userId);
 
@@ -53,6 +71,7 @@ export const addItem = async (userId, productId, quantity) => {
   return getPopulatedCart(userId);
 };
 
+// Keep other functions unchanged
 export const updateItemQuantity = async (userId, productId, quantity) => {
   const product = await productRepo.findPublicById(productId);
   if (!product) throw new ApiError(404, 'Product not found');

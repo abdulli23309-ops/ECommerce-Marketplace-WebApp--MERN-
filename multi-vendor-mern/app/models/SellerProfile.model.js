@@ -2,67 +2,86 @@ import mongoose from 'mongoose';
 
 const sellerProfileSchema = new mongoose.Schema(
   {
-    // Reference to the User document
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      unique: true,   // Ensures one profile per user
-      index: true,
+      unique: true,
     },
-
-   status: {
-  type: String,
-  enum: ['Pending', 'Approved', 'Rejected'],
-  default: 'Pending',
-},
-
+    businessName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: '',
+    },
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    address: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    taxId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    status: {
+      type: String,
+      enum: ['Pending', 'Approved', 'Rejected'],
+      default: 'Pending',
+    },
     rejectionReason: {
       type: String,
       default: null,
     },
-
-    // When the seller was approved
     approvedAt: {
       type: Date,
       default: null,
     },
+    status: {
+  type: String,
+  enum: ['Pending', 'Approved', 'Rejected', 'Suspended'],
+  default: 'Pending',
+},
 
-    // Which admin approved this seller
-    approvedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
+    // ---- Priority 5: seller rating moderation state ----
+    averageRating: {
+      type: Number,
+      default: 0,
     },
-
-    // Seller business details
-    businessName: {
-      type: String,
-      trim: true,
-      default: null,
+    lowRatingStatus: {
+      type: Boolean,
+      default: false,
     },
-
-    taxId: {
-      type: String,
-      trim: true,
-      default: null,
+    warningCount: {
+      type: Number,
+      default: 0,
     },
-
-    phone: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-
-    address: {
-      type: String,
-      trim: true,
-      default: null,
-    },
+    warningHistory: [
+      {
+        warnedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        reason: {
+          type: String,
+          default: '',
+        },
+        warnedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
-  {
-    timestamps: true,   // Automatically adds createdAt and updatedAt
-  }
+  { timestamps: true }
 );
 
 const SellerProfile = mongoose.model('SellerProfile', sellerProfileSchema);
