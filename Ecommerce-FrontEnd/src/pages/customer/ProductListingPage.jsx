@@ -7,6 +7,7 @@ import { fetchCategories, fetchSubCategories } from "../../services/categoryServ
 import { fetchBrands } from "../../services/brandService";
 import { addItemToWishlist } from "../../store/wishlistSlice";
 import Pagination from "../../components/common/Pagination";
+import FreeDeliveryBadge from "../../components/common/FreeDeliveryBadge";
 
 const ProductListingPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -302,8 +303,8 @@ const ProductListingPage = () => {
             <>
               <div className="product-grid">
                 {products.map(product => (
-                  <div key={product.id} className="product-card" style={{ position: "relative" }}>
-                    <Link to={`/products/${product.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                  <div key={product._id || product.id} className="product-card" style={{ position: "relative" }}>
+                    <Link to={`/products/${product._id || product.id}`} style={{ textDecoration: "none", color: "inherit" }}>
                       <div className="product-image">
                         {product.images && product.images.length > 0 ? (
                           <img src={getImageUrl(product.images[0])} alt={product.name} />
@@ -313,11 +314,15 @@ const ProductListingPage = () => {
                       </div>
                       <div className="product-details">
                         <p className="product-name">{product.name}</p>
-                        <p className="product-price">PKR {product.basePrice?.toLocaleString()}</p>
+                        <p className="product-price">PKR {product.price?.toLocaleString()}</p>
+
+                        {product.freeDelivery === true && (
+                          <FreeDeliveryBadge style={{ marginTop: "0.5rem" }} />
+                        )}
                       </div>
                     </Link>
                     <button
-                      onClick={() => dispatch(addItemToWishlist(product.id))}
+                      onClick={() => dispatch(addItemToWishlist(product._id || product.id))}
                       style={{
                         position: "absolute",
                         top: "8px",

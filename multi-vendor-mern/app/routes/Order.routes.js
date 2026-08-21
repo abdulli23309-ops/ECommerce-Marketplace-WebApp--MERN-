@@ -10,6 +10,10 @@ router.use(authenticate);
 // Customer checkout
 router.post('/checkout', orderController.checkout);
 
+// Read-only order preview (totals + delivery charge) before placing the order.
+// Must be registered before the '/:id' route so 'preview' is not treated as an id.
+router.get('/preview', orderController.previewOrder);
+
 // Get single seller order (for review page, returns product info)
 router.get('/seller-orders/:id', orderController.getSellerOrderById);
 

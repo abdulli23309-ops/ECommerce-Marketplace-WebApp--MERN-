@@ -1,6 +1,12 @@
 import Payment from '../models/Payment.model.js';
 
-export const create = (data, options = {}) => Payment.create(data, options);
+// Mongoose's Model.create(doc, options) only treats the second argument as
+// options when the first argument is an array. Passing a single object plus an
+// options object makes Mongoose interpret the options as a *second* document to
+// insert, which fails validation. Only forward options for the array form so the
+// single-object callers (e.g. the legacy dummy payment) work as intended.
+export const create = (data, options = {}) =>
+  Array.isArray(data) ? Payment.create(data, options) : Payment.create(data);
 
 export const findByParentOrder = (parentOrderId) =>
   Payment.findOne({ parentOrder: parentOrderId });

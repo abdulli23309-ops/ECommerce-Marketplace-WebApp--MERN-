@@ -19,12 +19,23 @@ export const recalculateProductRating = async (productId) => {
   const lowRatingStatus =
     reviewCount > 0 && avgRating < PRODUCT_LOW_RATING_THRESHOLD;
 
-  // Recovery DOES NOT reset warningCount.
-  // warningHistory remains untouched.
-  const updated = await ratingModerationRepo.updateProductModerationState(productId, {
+  const moderationUpdate = {
     averageRating: roundForDisplay(avgRating),
     lowRatingStatus,
-  });
+  };
+
+  // Rating recovery: once the average returns to (or above) the acceptable
+  // threshold, the active warning cycle is closed and warningCount resets to 0.
+  // warningHistory is preserved permanently for audit — a later dip below the
+  // threshold simply begins a fresh 0..MAX_WARNINGS cycle.
+  if (reviewCount > 0 && avgRating >= PRODUCT_LOW_RATING_THRESHOLD) {
+    moderationUpdate.warningCount = 0;
+  }
+
+  const updated = await ratingModerationRepo.updateProductModerationState(
+    productId,
+    moderationUpdate
+  );
 
   return updated;
 };
@@ -50,12 +61,23 @@ export const recalculateSellerRating = async (sellerProfileId) => {
   const lowRatingStatus =
     reviewCount > 0 && avgRating < SELLER_LOW_RATING_THRESHOLD;
 
-  // Recovery DOES NOT reset warningCount.
-  // warningHistory remains untouched.
-  const updated = await ratingModerationRepo.updateSellerModerationState(sellerProfileId, {
+  const moderationUpdate = {
     averageRating: roundForDisplay(avgRating),
     lowRatingStatus,
-  });
+  };
+
+  // Rating recovery: once the average returns to (or above) the acceptable
+  // threshold, the active warning cycle is closed and warningCount resets to 0.
+  // warningHistory is preserved permanently for audit — a later dip below the
+  // threshold simply begins a fresh 0..MAX_WARNINGS cycle.
+  if (reviewCount > 0 && avgRating >= SELLER_LOW_RATING_THRESHOLD) {
+    moderationUpdate.warningCount = 0;
+  }
+
+  const updated = await ratingModerationRepo.updateSellerModerationState(
+    sellerProfileId,
+    moderationUpdate
+  );
 
   return updated;
 };

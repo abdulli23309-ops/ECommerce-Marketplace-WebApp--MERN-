@@ -253,6 +253,10 @@ const SellerDashboardPage = () => {
     },
   ];
 
+  const topSellingProducts = Array.isArray(stats.topSellingProducts) ? stats.topSellingProducts : [];
+  const salesTrend = Array.isArray(stats.salesTrend) ? stats.salesTrend : [];
+  const maxTrendRevenue = Math.max(0, ...salesTrend.map((d) => Number(d.revenue) || 0));
+
   const cardStyle = {
     background: "var(--surface)",
     border: "1px solid var(--border)",
@@ -368,6 +372,83 @@ const SellerDashboardPage = () => {
           ))}
         </div>
       </section>
+
+      {/* Top Selling Products */}
+      <section style={{ marginTop: "2.5rem" }}>
+        <h3 style={sectionHeaderStyle}>Top Selling Products</h3>
+        {topSellingProducts.length === 0 ? (
+          <div style={emptyStateStyle}>No sales yet — your best sellers will appear here.</div>
+        ) : (
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", overflow: "hidden" }}>
+            {topSellingProducts.map((p, i) => (
+              <div
+                key={p.productId || i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem",
+                  padding: "0.9rem 1.25rem",
+                  borderBottom: i < topSellingProducts.length - 1 ? "1px solid var(--border)" : "none",
+                }}
+              >
+                <span style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 8, background: "var(--info-bg)", color: "var(--info)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.85rem" }}>
+                  {i + 1}
+                </span>
+                <span style={{ flex: 1, minWidth: 0, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p.name}
+                </span>
+                <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
+                  {Number(p.quantitySold || 0).toLocaleString()} sold
+                </span>
+                <span style={{ fontWeight: 600, color: "var(--success)", whiteSpace: "nowrap", minWidth: 90, textAlign: "right" }}>
+                  PKR {Number(p.revenue || 0).toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Sales Trend — Last 7 Days */}
+      <section style={{ marginTop: "2.5rem" }}>
+        <h3 style={sectionHeaderStyle}>Sales Trend — Last 7 Days</h3>
+        {maxTrendRevenue === 0 ? (
+          <div style={emptyStateStyle}>No sales in the last 7 days.</div>
+        ) : (
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", padding: "1.5rem 1.25rem 1rem" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "0.5rem" }}>
+              {salesTrend.map((d, i) => {
+                const rev = Number(d.revenue) || 0;
+                const barHeight = maxTrendRevenue > 0 ? Math.round((rev / maxTrendRevenue) * 120) : 0;
+                const { weekday, label } = formatTrendDay(d.date);
+                return (
+                  <div
+                    key={d.date || i}
+                    title={`${label}: PKR ${rev.toLocaleString()} • ${Number(d.orderCount || 0)} order(s)`}
+                    style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem" }}
+                  >
+                    <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)", fontWeight: 600, minHeight: "1rem" }}>
+                      {rev > 0 ? rev.toLocaleString() : ""}
+                    </span>
+                    <div
+                      style={{
+                        width: "100%",
+                        maxWidth: 40,
+                        height: rev > 0 ? Math.max(barHeight, 4) : 2,
+                        background: rev > 0 ? "var(--primary)" : "var(--border)",
+                        borderRadius: "6px 6px 0 0",
+                        transition: "height 0.3s",
+                      }}
+                    />
+                    <span style={{ fontSize: "0.72rem", color: "var(--text-primary)", fontWeight: 600 }}>{weekday}</span>
+                    <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 };
@@ -385,6 +466,27 @@ const gridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
   gap: "1rem",
+};
+
+const emptyStateStyle = {
+  background: "var(--surface)",
+  border: "1px dashed var(--border)",
+  borderRadius: "16px",
+  padding: "2rem",
+  textAlign: "center",
+  color: "var(--text-secondary)",
+  fontSize: "0.9rem",
+};
+
+// Parse a 'YYYY-MM-DD' string into local-date parts (avoids UTC day-shift).
+const formatTrendDay = (isoDate) => {
+  if (!isoDate) return { weekday: "", label: "" };
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const dt = new Date(y, (m || 1) - 1, d || 1);
+  return {
+    weekday: dt.toLocaleDateString("en-US", { weekday: "short" }),
+    label: `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`,
+  };
 };
 
 export default SellerDashboardPage;

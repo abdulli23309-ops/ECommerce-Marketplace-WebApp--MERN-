@@ -13,6 +13,15 @@ export const checkout = asyncHandler(async (req, res) => {
 
   new ApiResponse(201, result, 'Order placed successfully').send(res);
 });
+
+export const previewOrder = asyncHandler(async (req, res) => {
+  const result = await orderService.previewOrderTotals(
+    req.user.id,
+    req.query.couponCode || null
+  );
+
+  new ApiResponse(200, result, 'Order preview calculated').send(res);
+});
 export const getSellerOrderById = asyncHandler(async (req, res) => {
   const order = await SellerOrder.findById(req.params.id)
     .populate('store', 'name')

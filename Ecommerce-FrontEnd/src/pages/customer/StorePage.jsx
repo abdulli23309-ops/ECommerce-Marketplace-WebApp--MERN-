@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
 import { getImageUrl } from "../../utils/imageHelper";
+import FreeDeliveryBadge from "../../components/common/FreeDeliveryBadge";
 
 const StorePage = () => {
   const { storeId } = useParams();
@@ -110,7 +111,7 @@ const StorePage = () => {
           >
             {products.map((product) => (
               <div
-                key={product._id}
+                key={product._id || product.id}
                 style={{
                   background: "var(--surface)",
                   borderRadius: "12px",
@@ -167,6 +168,10 @@ const StorePage = () => {
                   >
                     PKR {product.price?.toLocaleString()}
                   </div>
+
+                  {product.freeDelivery === true && (
+                    <FreeDeliveryBadge style={{ marginTop: "0.5rem" }} />
+                  )}
                 </div>
               </div>
             ))}

@@ -141,7 +141,7 @@ const VerifyEmailPage = () => {
         <button
           className="btn-primary"
           onClick={handleVerifyOtp}
-          disabled={verifying || !otpSent || remainingSeconds > 0}
+          disabled={verifying || !otpSent || remainingSeconds <= 0}
         >
           {verifying ? "Verifying..." : "Verify OTP"}
         </button>

@@ -7,6 +7,7 @@ import {
   removeFromCart,
   emptyCart,
 } from "../../store/cartSlice";
+import FreeDeliveryBadge from "../../components/common/FreeDeliveryBadge";
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -30,11 +31,20 @@ const CartPage = () => {
     dispatch(emptyCart());
   };
 
-  const calculateTotal = () =>
-    items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  const cartTotal = items.reduce(
+    (sum, item) => sum + item.unitPrice * item.quantity,
+    0
+  );
+
+  const hasFreeDeliveryItems =
+    Array.isArray(items) && items.some((item) => item.freeDelivery === true);
 
   if (status === "loading") {
-    return <div style={{ padding: "3rem", color: "var(--text-secondary)" }}>Loading cart...</div>;
+    return (
+      <div style={{ padding: "3rem", color: "var(--text-secondary)" }}>
+        Loading cart...
+      </div>
+    );
   }
 
   if (items.length === 0) {
@@ -76,11 +86,16 @@ const CartPage = () => {
                   }}
                 />
               )}
+
               <div>
                 <p className="cart-item-name">{item.productName}</p>
                 <p className="cart-item-price">
                   PKR {item.unitPrice.toLocaleString()}
                 </p>
+
+                {item.freeDelivery === true && (
+                  <FreeDeliveryBadge style={{ marginTop: "0.4rem" }} />
+                )}
               </div>
             </div>
 
@@ -105,6 +120,7 @@ const CartPage = () => {
                   +
                 </button>
               </div>
+
               <button
                 className="btn-remove"
                 onClick={() => handleRemove(item.productId)}
@@ -122,9 +138,61 @@ const CartPage = () => {
             Clear Cart
           </button>
         </div>
-        <div className="cart-total">
-          Total: PKR {calculateTotal().toLocaleString()}
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.75rem",
+            marginBottom: "1rem",
+            minWidth: "280px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "1.5rem",
+              color: "var(--text-muted)",
+              fontSize: "0.9rem",
+            }}
+          >
+            <span>Subtotal</span>
+            <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+              PKR {cartTotal.toLocaleString()}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "1.5rem",
+              color: "var(--text-muted)",
+              fontSize: "0.9rem",
+            }}
+          >
+            <span>Estimated Shipping</span>
+            <span
+              style={{
+                fontWeight: hasFreeDeliveryItems ? 600 : 400,
+                fontSize: "0.85rem",
+                color: hasFreeDeliveryItems
+                  ? "#10b981"
+                  : "var(--text-muted)",
+              }}
+            >
+              {hasFreeDeliveryItems ? "FREE" : "Calculated at checkout"}
+            </span>
+          </div>
         </div>
+
+        <div className="cart-total">
+          Total: PKR {cartTotal.toLocaleString()}
+        </div>
+
         <button
           className="btn-checkout"
           onClick={() => navigate("/checkout")}

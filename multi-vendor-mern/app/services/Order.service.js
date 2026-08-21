@@ -310,6 +310,86 @@ export const prepareOrder = async (userId, addressId, session, couponCode = null
   return { parentOrder: createdParent, cart };
 };
 
+// ---------- Order preview (read-only totals, no persistence) ----------
+// Mirrors the totals math in prepareOrder/checkout so the checkout page can
+// display the exact delivery charge and final total that will be charged,
+// without creating an order or deducting stock.
+export const previewOrderTotals = async (userId, couponCode = null) => {
+  const emptyResult = {
+    subtotal: 0,
+    discountAmount: 0,
+    deliveryCharges: 0,
+    freeDeliveryDiscount: 0,
+    total: 0,
+    couponCode: null,
+  };
+
+  const cart = await cartRepo.findByUser(userId);
+  if (!cart || cart.items.length === 0) return emptyResult;
+
+  const storeItemsMap = new Map();
+  for (const cartItem of cart.items) {
+    const product = await productRepo.findPublicById(cartItem.product);
+    if (!product) continue;
+
+    const storeId = (product.store?._id || product.store).toString();
+    if (!storeItemsMap.has(storeId)) storeItemsMap.set(storeId, []);
+    storeItemsMap.get(storeId).push({
+      unitPriceSnapshot: product.price,
+      quantity: cartItem.quantity,
+      freeDelivery: product.freeDelivery || false,
+    });
+  }
+
+  let subtotalAmount = 0;
+  let totalDeliveryCharges = 0;
+
+  for (const [storeIdStr, items] of storeItemsMap.entries()) {
+    const subTotal = items.reduce((sum, item) => sum + item.unitPriceSnapshot * item.quantity, 0);
+    subtotalAmount += subTotal;
+
+    const { deliveryCharge } = await calculateSellerDelivery(storeIdStr, items, subTotal);
+    totalDeliveryCharges += deliveryCharge;
+  }
+
+  let appliedCoupon = null;
+  let discountAmount = 0;
+  let freeDeliveryDiscount = 0;
+
+  if (couponCode) {
+    try {
+      appliedCoupon = await couponService.validateCoupon(couponCode, subtotalAmount);
+
+      if (appliedCoupon.discountType === 'free_delivery') {
+        freeDeliveryDiscount = couponService.calculateDiscount(
+          appliedCoupon,
+          subtotalAmount,
+          totalDeliveryCharges
+        );
+      } else {
+        discountAmount = couponService.calculateDiscount(appliedCoupon, subtotalAmount);
+      }
+    } catch {
+      // Invalid/expired coupon: show totals without a discount rather than failing the preview.
+      appliedCoupon = null;
+      discountAmount = 0;
+      freeDeliveryDiscount = 0;
+    }
+  }
+
+  const total =
+    subtotalAmount - discountAmount + totalDeliveryCharges - freeDeliveryDiscount;
+
+  return {
+    subtotal: subtotalAmount,
+    discountAmount,
+    deliveryCharges: totalDeliveryCharges,
+    freeDeliveryDiscount,
+    total,
+    couponCode: appliedCoupon ? appliedCoupon.code : null,
+  };
+};
+
 // ---------- Cancel order ----------
 export const cancelOrder = async (orderId, userId) => {
   const parentOrder = await orderRepo.findByIdForMutation(orderId, userId);

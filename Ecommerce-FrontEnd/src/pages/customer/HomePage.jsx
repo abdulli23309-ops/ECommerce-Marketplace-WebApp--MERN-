@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { fetchApprovedProducts, fetchSearchSuggestions } from "../../services/productService";
 import { getImageUrl } from "../../utils/imageHelper";
+import FreeDeliveryBadge from "../../components/common/FreeDeliveryBadge";
 
 const HomePage = () => {
   const [products, setProducts] = useState([]);
@@ -31,6 +32,7 @@ const HomePage = () => {
 
   const handleSearchInputChange = (value) => {
     const query = value.trim();
+
     if (query.length < 2) {
       setSuggestions({ products: [], categories: [], brands: [] });
       setShowSuggestions(false);
@@ -40,6 +42,7 @@ const HomePage = () => {
 
     setSuggestionLoading(true);
     clearTimeout(debounceRef.current);
+
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetchSearchSuggestions(query);
@@ -57,11 +60,14 @@ const HomePage = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     const trimmed = searchTerm.trim();
+
     if (trimmed) {
       setShowSuggestions(false);
       navigate(`/products?search=${encodeURIComponent(trimmed)}`);
     }
   };
+
+  const productPath = (product) => `/products/${product._id || product.id}`;
 
   return (
     <div>
@@ -69,6 +75,7 @@ const HomePage = () => {
       <section className="hero-banner">
         <h2 className="hero-title">Elevate Your Essentials.</h2>
         <p className="hero-subtitle">Discover premium products from verified sellers.</p>
+
         <form className="hero-search" onSubmit={handleSearch} style={{ position: "relative" }}>
           <input
             type="text"
@@ -120,8 +127,8 @@ const HomePage = () => {
                 <>
                   {suggestions.products.map((p) => (
                     <Link
-                      key={p._id}
-                      to={`/products/${p._id}`}
+                      key={p._id || p.id}
+                      to={`/products/${p._id || p.id}`}
                       onClick={() => setShowSuggestions(false)}
                       style={{
                         display: "block",
@@ -134,6 +141,7 @@ const HomePage = () => {
                       {p.name}
                     </Link>
                   ))}
+
                   {suggestions.categories.map((c) => (
                     <Link
                       key={`cat-${c._id}`}
@@ -150,6 +158,7 @@ const HomePage = () => {
                       Category: {c.name}
                     </Link>
                   ))}
+
                   {suggestions.brands.map((b) => (
                     <Link
                       key={`brand-${b._id}`}
@@ -166,6 +175,7 @@ const HomePage = () => {
                       Brand: {b.name}
                     </Link>
                   ))}
+
                   {suggestions.products.length === 0 &&
                     suggestions.categories.length === 0 &&
                     suggestions.brands.length === 0 && (
@@ -183,20 +193,28 @@ const HomePage = () => {
       {/* Featured Products */}
       <section className="featured-section">
         <h3 className="section-title">New Arrivals</h3>
-        
+
         {loading ? (
-          <p style={{ color: 'var(--text-secondary)' }}>Loading products...</p>
+          <p style={{ color: "var(--text-secondary)" }}>Loading products...</p>
         ) : products.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>No products available right now.</p>
+          <p style={{ color: "var(--text-secondary)" }}>No products available right now.</p>
         ) : (
           <div className="product-grid">
             {products.map((product) => (
               <Link
-                to={`/products/${product.id}`}
-                key={product.id}
+                to={productPath(product)}
+                key={product._id || product.id}
                 className="product-card"
               >
-                <div style={{ backgroundColor: 'var(--bg-secondary)', height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div
+                  style={{
+                    backgroundColor: "var(--bg-secondary)",
+                    height: "260px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   {product.images && product.images.length > 0 ? (
                     <img
                       src={getImageUrl(product.images[0])}
@@ -204,12 +222,19 @@ const HomePage = () => {
                       className="product-image"
                     />
                   ) : (
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No Image</span>
+                    <span style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
+                      No Image
+                    </span>
                   )}
                 </div>
+
                 <div className="product-details">
                   <p className="product-name">{product.name}</p>
-                  <p className="product-price">PKR {product.basePrice}</p>
+                  <p className="product-price">PKR {product.price?.toLocaleString()}</p>
+
+                  {product.freeDelivery === true && (
+                    <FreeDeliveryBadge style={{ marginTop: "0.5rem" }} />
+                  )}
                 </div>
               </Link>
             ))}
@@ -221,14 +246,23 @@ const HomePage = () => {
       {recentlyViewed.length > 0 && (
         <section className="featured-section">
           <h3 className="section-title">Recently Viewed</h3>
+
           <div className="product-grid">
             {recentlyViewed.map((product) => (
               <Link
-                to={`/products/${product.id}`}
-                key={product.id}
+                to={`/products/${product.id || product._id}`}
+                key={product.id || product._id}
                 className="product-card"
               >
-                <div style={{ backgroundColor: 'var(--bg-secondary)', height: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div
+                  style={{
+                    backgroundColor: "var(--bg-secondary)",
+                    height: "260px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   {product.image ? (
                     <img
                       src={getImageUrl(product.image)}
@@ -236,12 +270,17 @@ const HomePage = () => {
                       className="product-image"
                     />
                   ) : (
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No Image</span>
+                    <span style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
+                      No Image
+                    </span>
                   )}
                 </div>
+
                 <div className="product-details">
                   <p className="product-name">{product.name}</p>
-                  <p className="product-price">PKR {product.price?.toLocaleString()}</p>
+                  <p className="product-price">
+                    PKR {product.price?.toLocaleString()}
+                  </p>
                 </div>
               </Link>
             ))}

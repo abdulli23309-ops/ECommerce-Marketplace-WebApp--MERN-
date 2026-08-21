@@ -17,6 +17,7 @@ const seedSandboxPaymentData = async () => {
     email: `sandbox-customer-${Date.now()}@example.com`,
     password: 'password123',
     role: 'Customer',
+    emailVerified: true,
   });
 
   const seller = await User.create({
@@ -86,7 +87,7 @@ describe('Priority 5 — EasyPaisa and JazzCash Sandbox Payments', () => {
     const res = await request(app)
       .post('/api/v1/payments/create-intent')
       .set('Authorization', `Bearer ${token}`)
-      .send({ addressId, paymentMethod: 'EasyPaisa' })
+      .send({ addressId, paymentMethod: 'EasyPaisa', mobileAccount: '03451234567' })
       .expect(200);
 
     expect(res.body.data.payment.method).toBe('EasyPaisa');
@@ -103,7 +104,7 @@ describe('Priority 5 — EasyPaisa and JazzCash Sandbox Payments', () => {
     const res = await request(app)
       .post('/api/v1/payments/create-intent')
       .set('Authorization', `Bearer ${token}`)
-      .send({ addressId, paymentMethod: 'JazzCash' })
+      .send({ addressId, paymentMethod: 'JazzCash', mobileAccount: '03001234567' })
       .expect(200);
 
     expect(res.body.data.payment.method).toBe('JazzCash');

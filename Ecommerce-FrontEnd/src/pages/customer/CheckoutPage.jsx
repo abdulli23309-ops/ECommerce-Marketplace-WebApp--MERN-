@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { fetchCart } from "../../services/cartService";
 import { fetchAddresses } from "../../services/addressService";
-import { createPaymentIntent } from "../../services/orderService";
+import { createPaymentIntent, fetchOrderPreview } from "../../services/orderService";
 import { validateCoupon } from "../../services/couponService";
 import { getImageUrl } from "../../utils/imageHelper";
 import { emptyCart } from "../../store/cartSlice";
@@ -110,6 +110,8 @@ const CheckoutPage = () => {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState(null);
 
+  const [orderPreview, setOrderPreview] = useState(null);
+
   const cardElementOptions = {
     style: {
       base: { fontSize: "16px", color: mode === "dark" ? "#f3f4f6" : "#424770", "::placeholder": { color: mode === "dark" ? "#71717a" : "#aab7c4" } },
@@ -148,6 +150,26 @@ const CheckoutPage = () => {
     load();
   }, [user, navigate]);
 
+  // Fetch authoritative totals (incl. real delivery charge) from the backend.
+  // Refetches whenever the applied coupon changes so the summary matches what
+  // will actually be charged at checkout.
+  useEffect(() => {
+    if (!user || user.emailVerified !== true) return;
+    let cancelled = false;
+    const loadPreview = async () => {
+      try {
+        const preview = await fetchOrderPreview(appliedCoupon?.code || null);
+        if (!cancelled) setOrderPreview(preview);
+      } catch {
+        if (!cancelled) setOrderPreview(null);
+      }
+    };
+    loadPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, appliedCoupon]);
+
   const cartTotal = () => {
     if (!cart?.items) return 0;
     return cart.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
@@ -178,6 +200,14 @@ const CheckoutPage = () => {
   };
 
   const finalTotal = () => Math.max(0, cartTotal() - discountAmount);
+
+  // Authoritative summary values from the backend preview (fall back to
+  // client-side subtotal/total while the preview is loading).
+  const previewLoaded = orderPreview !== null;
+  const summarySubtotal = previewLoaded ? Number(orderPreview.subtotal || 0) : cartTotal();
+  const summaryDelivery = previewLoaded ? Number(orderPreview.deliveryCharges || 0) : null;
+  const summaryFreeDeliveryDiscount = previewLoaded ? Number(orderPreview.freeDeliveryDiscount || 0) : 0;
+  const summaryTotal = previewLoaded ? Number(orderPreview.total || 0) : finalTotal();
 
   const isMobileValid = /^03\d{9}$/.test(mobileAccount);
   const requiresMobile = paymentMethod === "easypaisa" || paymentMethod === "jazzcash";
@@ -378,14 +408,22 @@ const CheckoutPage = () => {
                   {!appliedCoupon ? <button onClick={applyCoupon} disabled={couponLoading || !couponCode.trim()} style={{ padding: '10px 16px', backgroundColor: couponLoading ? 'var(--disabled-bg)' : 'var(--primary)', color: 'var(--primary-contrast)', border: 'none', borderRadius: '8px', cursor: couponLoading ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>{couponLoading ? "..." : "Apply"}</button> : <button onClick={removeCoupon} style={{ padding: '10px 16px', backgroundColor: 'var(--danger)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>Remove</button>}
                 </div>
                 {couponError && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--danger)' }}>{couponError}</p>}
-                {appliedCoupon && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--success-text)' }}>Coupon <strong>{appliedCoupon.code}</strong> applied: -PKR {discountAmount.toLocaleString()}</p>}
+                {appliedCoupon && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--success-text)' }}>Coupon <strong>{appliedCoupon.code}</strong> applied: {appliedCoupon.discountType === "free_delivery" ? "Free Delivery" : `-PKR ${discountAmount.toLocaleString()}`}</p>}
               </div>
 
               <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}><span>Subtotal</span><span>PKR {cartTotal().toLocaleString()}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}><span>Subtotal</span><span>PKR {summarySubtotal.toLocaleString()}</span></div>
                 {discountAmount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--success-text)' }}><span>Discount</span><span>-PKR {discountAmount.toLocaleString()}</span></div>}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}><span>Shipping</span><span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Calculated at backend</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)', fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}><span>Total</span><span>PKR {finalTotal().toLocaleString()}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  <span>Delivery</span>
+                  {summaryDelivery === null
+                    ? <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Calculating…</span>
+                    : summaryDelivery === 0
+                      ? <span style={{ color: 'var(--success-text)', fontWeight: 500 }}>Free</span>
+                      : <span>PKR {summaryDelivery.toLocaleString()}</span>}
+                </div>
+                {summaryFreeDeliveryDiscount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--success-text)' }}><span>Free Delivery Discount</span><span>-PKR {summaryFreeDeliveryDiscount.toLocaleString()}</span></div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)', fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}><span>Total</span><span>PKR {summaryTotal.toLocaleString()}</span></div>
               </div>
 
               {error && <p style={{ marginTop: '16px', fontSize: '0.875rem', color: 'var(--danger-text)', backgroundColor: 'var(--danger-bg)', padding: '12px', borderRadius: '8px' }}>{error}</p>}

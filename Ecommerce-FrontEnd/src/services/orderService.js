@@ -10,6 +10,13 @@ export const fetchOrderById = async (orderId) => {
   return data.data;
 };
 
+export const fetchOrderPreview = async (couponCode = null) => {
+  const { data } = await axiosInstance.get("/orders/preview", {
+    params: couponCode ? { couponCode } : {},
+  });
+  return data.data || data;
+};
+
 export const placeOrder = async (addressId) => {
   const { data } = await axiosInstance.post("/orders/checkout", { addressId });
   return data.data;
