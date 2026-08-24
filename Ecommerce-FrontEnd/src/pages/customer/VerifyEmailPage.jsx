@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { sendOtp, verifyOtp } from "../../services/emailOtpService";
 import { setEmailVerified } from "../../store/authSlice";
 
@@ -13,6 +13,7 @@ const formatCountdown = (seconds) => {
 const VerifyEmailPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const user = useSelector((state) => state.auth.user);
 
@@ -84,7 +85,7 @@ const VerifyEmailPage = () => {
       setMessage({ type: "success", text: "Email verified successfully." });
 
       setTimeout(() => {
-        navigate("/");
+        navigate(location.state?.from || "/");
       }, 900);
     } catch (err) {
       setMessage({

@@ -1,37 +1,55 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchOrders, fetchPaymentByOrder } from "../../services/orderService";
-import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import { formatPKR } from "../../utils/currency";
+import { getImageUrl } from "../../utils/imageHelper";
+import ProductThumb from "../../components/common/ProductThumb";
+import {
+  ORDER_FILTERS,
+  getChipStyle,
+  getFulfilmentStatus,
+  getFulfilmentTone,
+  getPaymentMethodLabel,
+  getPaymentStatusLabel,
+  getPaymentTone,
+  isPaymentFailed,
+  matchesOrderFilter,
+} from "../../utils/orderStatus";
 
 const StoreIcon = () => (
-  <svg style={{ width: 16, height: 16, marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2m-2 0H7m0 0H5m0 0H3" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h2m4 0h.01" />
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2m-2 0H7m0 0H5m0 0H3" />
+    <path d="M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h2m4 0h.01" />
   </svg>
 );
 
-const PackageIcon = () => (
-  <svg style={{ width: 16, height: 16, marginRight: 6, display: 'inline-block', verticalAlign: 'middle' }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+const AlertIcon = () => (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    style={{ flexShrink: 0 }}
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 8v4M12 16h.01" />
   </svg>
 );
-
-const getDisplayStatus = (order) => {
-  if (order.paymentStatus === "Failed") return "Payment Failed";
-  if (order.paymentStatus === "Pending") return "Payment Pending";
-  if (order.orderStatus === 'Cancelled') return 'Cancelled';
-  if (order.orderStatus === 'Delivered') return 'Delivered';
-
-  const sellerStatuses = (order.sellerOrders || []).map(so => so.status);
-  if (sellerStatuses.includes("Cancelled")) return "Cancelled";
-  if (sellerStatuses.includes("Delivered")) return "Delivered";
-  if (sellerStatuses.includes("OutForDelivery")) return "Out for Delivery";
-  if (sellerStatuses.some(s => ["Shipped", "Dispatched"].includes(s))) return "Shipped";
-  if (sellerStatuses.includes("Processing")) return "Processing";
-  return "Pending";
-};
-
-const filterCategories = ["All Orders", "Processing", "Delivered", "Cancelled"];
 
 const OrderHistoryPage = () => {
   const [orders, setOrders] = useState([]);
@@ -79,62 +97,103 @@ const OrderHistoryPage = () => {
     load();
   }, [page]);
 
-  const filteredOrders = orders.filter(order => {
-    if (activeFilter === "All Orders") return true;
-    const status = getDisplayStatus(order);
-    if (activeFilter === "Processing") {
-      return ["Pending", "Payment Pending", "Processing", "Shipped", "Out for Delivery"].includes(status);
-    }
-    if (activeFilter === "Delivered") return status === "Delivered";
-    if (activeFilter === "Cancelled") return status === "Cancelled" || status === "Payment Failed";
-    return true;
-  });
+  const filteredOrders = orders.filter((order) =>
+    matchesOrderFilter(order, activeFilter)
+  );
 
-  const pageBg = { backgroundColor: "var(--bg-secondary)", minHeight: "100vh", padding: "40px 20px", fontFamily: "Arial, sans-serif" };
-  const container = { maxWidth: "900px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "24px" };
-  const heading = { fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary)", margin: 0 };
-  const filterRow = { display: "flex", gap: "12px", flexWrap: "wrap" };
-  const filterBtnBase = { padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", cursor: "pointer", fontSize: "14px", fontWeight: 600, backgroundColor: "var(--surface)", color: "var(--text-secondary)", transition: "all 0.2s" };
-  const filterBtnActive = { ...filterBtnBase, backgroundColor: "var(--primary)", color: "var(--primary-contrast)", border: "1px solid var(--primary)" };
-  const card = { backgroundColor: "var(--surface)", borderRadius: "16px", border: "1px solid var(--border)", boxShadow: "0 1px 3px var(--shadow)", overflow: "hidden", marginBottom: "20px" };
-  const cardHeader = { backgroundColor: "var(--bg-secondary)", padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" };
-  const orderIdStyle = { fontFamily: "monospace", fontWeight: "bold", color: "var(--text-primary)", fontSize: "0.95rem" };
-  const totalStyle = { fontWeight: 800, fontSize: "16px", color: "var(--text-primary)" };
-  const cardBody = { padding: "20px 24px" };
-  const storeNameStyle = { fontWeight: 600, fontSize: "0.95rem", color: "var(--text-primary)", display: "flex", alignItems: "center", marginBottom: "12px" };
-  const productRow = { display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" };
-  const thumbnailPlaceholder = { width: "52px", height: "52px", backgroundColor: "var(--bg-secondary)", borderRadius: "8px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" };
-  const itemNameStyle = { fontSize: "0.875rem", color: "var(--text-primary)", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-  const qtyBadge = { backgroundColor: "var(--bg-secondary)", color: "var(--text-secondary)", borderRadius: "999px", padding: "2px 8px", fontSize: "0.75rem", fontWeight: 600 };
-  const itemSubtotal = { fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)" };
-  const cardFooter = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderTop: "1px solid var(--border)", flexWrap: "wrap", gap: "12px" };
-  const btnPrimary = { backgroundColor: "var(--primary)", color: "var(--primary-contrast)", padding: "10px 18px", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "14px", display: "inline-flex", alignItems: "center", gap: "6px" };
-  const btnSecondary = { backgroundColor: "var(--surface)", color: "var(--text-secondary)", padding: "10px 18px", borderRadius: "8px", border: "1px solid var(--border)", cursor: "pointer", fontWeight: 600, fontSize: "14px", display: "inline-flex", alignItems: "center", gap: "6px" };
-  const statusBadgeBase = { padding: "4px 12px", borderRadius: "12px", fontSize: "12px", fontWeight: 600 };
+  const pageHeader = (
+    <header>
+      <h1
+        style={{
+          fontSize: "1.75rem",
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          color: "var(--text-primary)",
+          margin: 0,
+        }}
+      >
+        My Orders
+      </h1>
+      <p
+        style={{
+          margin: "6px 0 0",
+          fontSize: "0.925rem",
+          color: "var(--text-secondary)",
+        }}
+      >
+        Track purchases, payments, and deliveries in one place.
+      </p>
+    </header>
+  );
 
-  if (loading) return <div style={{ padding: "3rem", color: "var(--text-secondary)", textAlign: "center" }}>Loading orders...</div>;
+  if (loading) {
+    return (
+      <div className="vv-orders-page">
+        <div className="vv-orders-shell">
+          {pageHeader}
+          <div
+            className="vv-card"
+            style={{
+              padding: "48px 24px",
+              textAlign: "center",
+              color: "var(--text-secondary)",
+            }}
+          >
+            Loading orders...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (orders.length === 0) {
     return (
-      <div style={pageBg}>
-        <div style={{ ...container, textAlign: "center", paddingTop: "80px" }}>
-          <h2 style={heading}>No orders yet</h2>
-          <p style={{ color: "var(--text-secondary)" }}>When you place an order, it will appear here.</p>
+      <div className="vv-orders-page">
+        <div className="vv-orders-shell">
+          {pageHeader}
+          <div
+            className="vv-card"
+            style={{ padding: "56px 24px", textAlign: "center" }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "1.05rem",
+                fontWeight: 600,
+                color: "var(--text-primary)",
+              }}
+            >
+              No orders yet
+            </p>
+            <p
+              style={{
+                margin: "8px 0 20px",
+                fontSize: "0.9rem",
+                color: "var(--text-secondary)",
+              }}
+            >
+              When you place an order, it will appear here.
+            </p>
+            <Link to="/products" className="vv-btn vv-btn--primary">
+              Start shopping
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={pageBg}>
-      <div style={container}>
-        <h2 style={heading}>YOUR ORDERS</h2>
+    <div className="vv-orders-page">
+      <div className="vv-orders-shell">
+        {pageHeader}
 
-        <div style={filterRow}>
-          {filterCategories.map(cat => (
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          {ORDER_FILTERS.map((cat) => (
             <button
               key={cat}
-              style={activeFilter === cat ? filterBtnActive : filterBtnBase}
+              type="button"
+              className={`vv-pill${activeFilter === cat ? " vv-pill--active" : ""}`}
               onClick={() => setActiveFilter(cat)}
             >
               {cat}
@@ -142,88 +201,255 @@ const OrderHistoryPage = () => {
           ))}
         </div>
 
-        {filteredOrders.map(order => {
-          const displayStatus = getDisplayStatus(order);
-          const badgeStyle = getStatusBadgeStyle(displayStatus);
-          const firstStore = order.sellerOrders?.[0]?.store?.name || "Unknown";
+        {filteredOrders.length === 0 && (
+          <div
+            className="vv-card"
+            style={{
+              padding: "40px 24px",
+              textAlign: "center",
+              color: "var(--text-secondary)",
+              fontSize: "0.9rem",
+            }}
+          >
+            No orders in “{activeFilter}”.
+          </div>
+        )}
 
-          const rawPaymentMethod = order.paymentMethod;
-          const paymentMethod =
-            rawPaymentMethod === "CashOnDelivery"
-              ? "COD"
-              : rawPaymentMethod === "Stripe"
-                ? "Card"
-                : rawPaymentMethod || "—";
+        {filteredOrders.map((order) => {
+          // Fulfilment and payment are resolved independently — the card shows
+          // each on its own row and never merges them into one badge.
+          const fulfilment = getFulfilmentStatus(order);
+          const failed = isPaymentFailed(order);
+          const paymentStatusLabel = getPaymentStatusLabel(
+            order.paymentMethod,
+            order.paymentStatus
+          );
+
+          const packages = order.sellerOrders || [];
+          const items = packages.flatMap((so) => so.items || []);
+          const previewItem = items[0];
+          const extraItems = Math.max(0, items.length - 1);
+
+          const storeNames = [
+            ...new Set(packages.map((so) => so.store?.name).filter(Boolean)),
+          ];
+          const extraStores = Math.max(0, storeNames.length - 1);
 
           return (
-            <div style={card} key={order._id}>
-              <div style={cardHeader}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                  <span style={orderIdStyle}>Order #{order._id.slice(0, 8).toUpperCase()}</span>
-                  <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </span>
+            <article
+              className={`vv-card${failed ? " vv-card--failed" : ""}`}
+              key={order._id}
+            >
+              <div
+                className="vv-split vv-split--stack"
+                style={{
+                  padding: "14px 20px",
+                  borderBottom: "1px solid var(--border)",
+                  background: "var(--bg-secondary)",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: "0.9rem",
+                      fontWeight: 700,
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    #{order._id.slice(0, 8).toUpperCase()}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: "2px",
+                      fontSize: "0.8rem",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
+                    {new Date(order.createdAt).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                  <span style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>
-                    {paymentMethod}
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={getChipStyle(getFulfilmentTone(fulfilment))}>
+                    {fulfilment}
                   </span>
-                  <span style={{ ...statusBadgeBase, ...badgeStyle }}>
-                    {displayStatus}
+                  <span
+                    style={{
+                      fontSize: "1rem",
+                      fontWeight: 700,
+                      color: "var(--text-primary)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    PKR {formatPKR(order.totalAmount || 0)}
                   </span>
-                  <span style={totalStyle}>PKR {Number(order.totalAmount || 0).toLocaleString()}</span>
                 </div>
               </div>
 
-              <div style={cardBody}>
-                <div style={storeNameStyle}>
-                  <StoreIcon />
-                  {firstStore}
+              {failed && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 20px",
+                    background: "var(--danger-bg)",
+                    color: "var(--danger-text)",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  <AlertIcon />
+                  <span>
+                    Payment failed — this order was not completed. No delivery is
+                    scheduled.
+                  </span>
                 </div>
-                {(order.sellerOrders || []).flatMap(so =>
-                  (so.items || []).map((item, idx) => (
-                    <div style={productRow} key={`${so._id}-${idx}`}>
-                      <div style={thumbnailPlaceholder}>
-                        <PackageIcon />
+              )}
+
+              <div style={{ padding: "14px 20px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    marginBottom: "6px",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <StoreIcon />
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {storeNames[0] || "Unknown store"}
+                  </span>
+                  {extraStores > 0 && (
+                    <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>
+                      +{extraStores} more{" "}
+                      {extraStores === 1 ? "store" : "stores"}
+                    </span>
+                  )}
+                </div>
+
+                {previewItem && (
+                  <div className="vv-line">
+                    <ProductThumb
+                      src={getImageUrl(
+                        previewItem.productImage ||
+                          previewItem.product?.images?.[0]
+                      )}
+                      alt={previewItem.productNameSnapshot}
+                      size={48}
+                    />
+                    <div className="vv-line__main">
+                      <div className="vv-line__name">
+                        {previewItem.productNameSnapshot}
                       </div>
-                      <span style={itemNameStyle}>{item.productNameSnapshot}</span>
-                      <span style={qtyBadge}>x{item.quantity}</span>
-                      <span style={itemSubtotal}>
-                        PKR {Number(item.unitPriceSnapshot * item.quantity).toLocaleString()}
-                      </span>
+                      <div className="vv-line__sub">
+                        Qty {previewItem.quantity}
+                        {extraItems > 0 && (
+                          <> · +{extraItems} more {extraItems === 1 ? "item" : "items"}</>
+                        )}
+                      </div>
                     </div>
-                  ))
+                    <span className="vv-line__total">
+                      PKR{" "}
+                      {formatPKR(
+                        previewItem.unitPriceSnapshot * previewItem.quantity
+                      )}
+                    </span>
+                  </div>
                 )}
               </div>
 
-              <div style={cardFooter}>
-                <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                  Payment: {paymentMethod}
-                </span>
-                <Link to={`/orders/${order._id}`} style={{ textDecoration: "none" }}>
-                  <button style={btnPrimary}>View Details</button>
-                </Link>
+              <div
+                className="vv-split vv-split--stack"
+                style={{
+                  padding: "12px 20px",
+                  borderTop: "1px solid var(--border)",
+                  background: "var(--bg-secondary)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    flexWrap: "wrap",
+                    fontSize: "0.82rem",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <span>{getPaymentMethodLabel(order.paymentMethod)}</span>
+                  <span
+                    style={getChipStyle(
+                      getPaymentTone(order.paymentMethod, order.paymentStatus)
+                    )}
+                  >
+                    {paymentStatusLabel}
+                  </span>
+                </div>
+
+                <div className="vv-actions">
+                  <Link
+                    to={`/orders/${order._id}`}
+                    className="vv-btn vv-btn--primary"
+                  >
+                    View Order
+                  </Link>
+                </div>
               </div>
-            </div>
+            </article>
           );
         })}
 
         {totalPages > 1 && (
-          <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "16px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "1rem",
+              marginTop: "4px",
+            }}
+          >
             <button
+              type="button"
+              className="vv-btn vv-btn--ghost"
               disabled={page <= 1}
               onClick={() => setPage(page - 1)}
-              style={{ ...btnSecondary, opacity: page <= 1 ? 0.5 : 1, cursor: page <= 1 ? "not-allowed" : "pointer" }}
             >
               Previous
             </button>
-            <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+            <span
+              style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}
+            >
               Page {page} of {totalPages}
             </span>
             <button
+              type="button"
+              className="vv-btn vv-btn--ghost"
               disabled={page >= totalPages}
               onClick={() => setPage(page + 1)}
-              style={{ ...btnSecondary, opacity: page >= totalPages ? 0.5 : 1, cursor: page >= totalPages ? "not-allowed" : "pointer" }}
             >
               Next
             </button>

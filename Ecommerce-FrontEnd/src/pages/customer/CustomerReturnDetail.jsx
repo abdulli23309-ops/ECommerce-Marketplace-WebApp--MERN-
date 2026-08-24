@@ -2,19 +2,6 @@ import { useState, useEffect } from "react";
 import { getImageUrl } from "../../utils/imageHelper";
 import axiosInstance from "../../services/axiosInstance";
 
-const statusLabels = {
-  PENDING_ADMIN_REVIEW: "Request Submitted",
-  REJECTED_BY_ADMIN: "Request Rejected",
-  PENDING_SELLER_REVIEW: "Approved",
-  APPROVED_PENDING_SHIPMENT: "Approved",
-  REJECTED_BY_SELLER: "Declined",
-  ITEM_IN_TRANSIT: "Item Shipped",
-  SELLER_RECEIVED: "Received by Seller",
-  INSPECTED_AND_REFUNDED: "Refund Completed",
-};
-
-const stepOrder = ["Request Submitted", "Approved", "Item Shipped", "Refund Completed"];
-
 const CustomerReturnDetail = ({ returnReq, onClose, onUpdate }) => {
   const [tracking, setTracking] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -35,81 +22,245 @@ const CustomerReturnDetail = ({ returnReq, onClose, onUpdate }) => {
       await axiosInstance.put(`/returns/${returnReq._id}/tracking`, { trackingNumber: tracking });
       onUpdate();
       onClose();
-    } catch (err) { console.error("Failed to update tracking", err); alert("Could not update tracking."); } finally { setSubmitting(false); }
+    } catch (err) {
+      console.error("Failed to update tracking", err);
+      alert("Could not update tracking.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const currentStatusLabel = statusLabels[returnReq.status] || returnReq.status;
-  let activeStepIndex;
-  if (returnReq.status === "INSPECTED_AND_REFUNDED") activeStepIndex = stepOrder.length;
-  else if (returnReq.status === "SELLER_RECEIVED") activeStepIndex = 3;
-  else if (returnReq.status === "REJECTED_BY_ADMIN" || returnReq.status === "REJECTED_BY_SELLER") activeStepIndex = stepOrder.indexOf(currentStatusLabel);
-  else activeStepIndex = stepOrder.indexOf(currentStatusLabel);
+  // Premium Vertical Timeline matching OrderDetailPage architecture
+  const getTimelineEvents = () => {
+    const events = [];
+
+    // Event 1: Request Submitted (always completed)
+    events.push({
+      status: "Request Submitted",
+      timestamp: returnReq.createdAt,
+      note: "Your return request has been received",
+      isCurrent: returnReq.status === "PENDING_ADMIN_REVIEW",
+      isCompleted: true,
+    });
+
+    // Event 2: Admin Decision
+    if (returnReq.status === "REJECTED_BY_ADMIN") {
+      events.push({
+        status: "Request Rejected",
+        timestamp: returnReq.updatedAt,
+        note: returnReq.adminNotes || "Your return was not approved by admin",
+        isCurrent: false,
+        isCompleted: true,
+        isFailed: true,
+      });
+    } else if (["PENDING_SELLER_REVIEW", "APPROVED_PENDING_SHIPMENT", "ITEM_IN_TRANSIT", "SELLER_RECEIVED", "INSPECTED_AND_REFUNDED"].includes(returnReq.status)) {
+      events.push({
+        status: "Admin Approved",
+        timestamp: returnReq.updatedAt,
+        note: returnReq.adminNotes || "Admin has reviewed and approved your request",
+        isCurrent: returnReq.status === "PENDING_SELLER_REVIEW",
+        isCompleted: true,
+      });
+    }
+
+    // Event 3: Seller Decision
+    if (returnReq.status === "REJECTED_BY_SELLER") {
+      events.push({
+        status: "Seller Declined",
+        timestamp: returnReq.updatedAt,
+        note: returnReq.sellerNotes || "Seller has declined the return",
+        isCurrent: false,
+        isCompleted: true,
+        isFailed: true,
+      });
+    } else if (["ITEM_IN_TRANSIT", "SELLER_RECEIVED", "INSPECTED_AND_REFUNDED"].includes(returnReq.status)) {
+      events.push({
+        status: "Seller Approved",
+        timestamp: returnReq.updatedAt,
+        note: returnReq.sellerNotes || "Seller has approved the return",
+        isCurrent: false,
+        isCompleted: true,
+      });
+    }
+
+    // Event 4: Item Shipped
+    if (returnReq.returnTrackingNumber && ["ITEM_IN_TRANSIT", "SELLER_RECEIVED", "INSPECTED_AND_REFUNDED"].includes(returnReq.status)) {
+      events.push({
+        status: "Item Shipped",
+        timestamp: returnReq.updatedAt,
+        note: `Tracking: ${returnReq.returnTrackingNumber}`,
+        isCurrent: returnReq.status === "ITEM_IN_TRANSIT",
+        isCompleted: true,
+      });
+    }
+
+    // Event 5: Seller Received
+    if (["SELLER_RECEIVED", "INSPECTED_AND_REFUNDED"].includes(returnReq.status)) {
+      events.push({
+        status: "Received by Seller",
+        timestamp: returnReq.updatedAt,
+        note: "Seller has received and is inspecting the item",
+        isCurrent: returnReq.status === "SELLER_RECEIVED",
+        isCompleted: true,
+      });
+    }
+
+    // Event 6: Refund Completed
+    if (returnReq.status === "INSPECTED_AND_REFUNDED") {
+      events.push({
+        status: "Refund Completed",
+        timestamp: returnReq.updatedAt,
+        note: refundAmount ? `PKR ${refundAmount.toLocaleString()} refunded to your account` : "Refund has been processed",
+        isCurrent: true,
+        isCompleted: true,
+      });
+    }
+
+    return events;
+  };
+
+  const timelineEvents = getTimelineEvents();
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    return date.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 999 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "var(--surface)", borderRadius: "16px", boxShadow: "0 20px 60px var(--shadow)", zIndex: 1000, width: "90%", maxWidth: "600px", maxHeight: "85vh", overflowY: "auto", padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-          <h3 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>Return #{returnReq.returnNumber || returnReq._id.slice(-8)}</h3>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--text-secondary)", lineHeight: 1 }}>×</button>
+      <div className="returns-modal-overlay" onClick={onClose}>
+        <div
+          className="returns-modal-content"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => e.stopPropagation()}
+        >
+        <div className="returns-modal-header">
+          <h3 className="returns-modal-title">
+            Return #{returnReq.returnNumber || returnReq._id.slice(-8).toUpperCase()}
+          </h3>
+          <button onClick={onClose} className="returns-close-btn">×</button>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2rem", position: "relative" }}>
-          {stepOrder.map((step, idx) => {
-            const isCompleted = idx < activeStepIndex;
-            const isActive = idx === activeStepIndex && !isCompleted;
-            const isFailed = (returnReq.status === "REJECTED_BY_ADMIN" || returnReq.status === "REJECTED_BY_SELLER") && idx === 1;
-
-            return (
-              <div key={step} style={{ flex: 1, textAlign: "center", position: "relative" }}>
-                {idx > 0 && <div style={{ position: "absolute", top: "12px", left: "-50%", right: "50%", height: "2px", background: isCompleted || isActive ? "var(--success)" : "var(--border)", zIndex: 0 }} />}
-                <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: isCompleted ? "var(--success)" : isActive ? "var(--surface)" : "var(--border)", border: isActive ? "3px solid var(--success)" : "none", margin: "0 auto 0.5rem", position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary-contrast)", fontSize: "12px", fontWeight: 700 }}>
-                  {isCompleted && "✓"}{isFailed && "✕"}
-                </div>
-                <div style={{ fontSize: "0.7rem", color: isCompleted ? "var(--success)" : isActive ? "var(--text-primary)" : "var(--text-muted)", fontWeight: isCompleted || isActive ? 600 : 400 }}>{step}</div>
+        {/* Product Preview */}
+        <div className="returns-product-preview">
+          <div className="returns-product-image">
+            {returnReq.product?.images?.[0] ? (
+              <img src={getImageUrl(returnReq.product.images[0])} alt={returnReq.product.name} />
+            ) : (
+              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+                <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
               </div>
-            );
-          })}
-        </div>
-
-        <div style={{ background: "var(--bg-secondary)", borderRadius: "8px", padding: "1rem", marginBottom: "1.5rem" }}>
-          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-            <div style={{ width: "64px", height: "64px", borderRadius: "8px", overflow: "hidden", flexShrink: 0, background: "var(--surface-hover)" }}>
-              {returnReq.product?.images?.[0] ? <img src={getImageUrl(returnReq.product.images[0])} alt={returnReq.product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}><svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>}
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: "1.05rem", marginBottom: "0.5rem", color: "var(--text-primary)" }}>
+              {returnReq.product?.name || "Product"}
             </div>
-            <div>
-              <div style={{ fontWeight: 600 }}>{returnReq.product?.name || "Product"}</div>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: "2px" }}>{returnReq.reason}</div>
-              <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginTop: "4px" }}>{returnReq.description}</div>
-              {returnReq.returnTrackingNumber && <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginTop: "4px" }}><strong>Tracking:</strong> {returnReq.returnTrackingNumber}</div>}
-              {refundAmount && <div style={{ color: "var(--success-text)", fontWeight: 600, fontSize: "0.9rem", marginTop: "8px" }}>Refund Amount: PKR {refundAmount.toLocaleString()}</div>}
+            <div className="returns-info-row" style={{ padding: "0.25rem 0", borderBottom: "none" }}>
+              <span className="returns-info-label">Reason:</span>
+              <span className="returns-info-value" style={{ maxWidth: "70%" }}>{returnReq.reason}</span>
             </div>
+            {returnReq.description && (
+              <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginTop: "0.5rem", lineHeight: 1.5 }}>
+                {returnReq.description}
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Evidence Photos */}
         {returnReq.images?.length > 0 && (
           <div style={{ marginBottom: "1.5rem" }}>
-            <h4 style={{ fontWeight: 600, marginBottom: "0.75rem", fontSize: "0.9rem" }}>Evidence Photos</h4>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              {returnReq.images.map((img, i) => <img key={i} src={getImageUrl(img)} alt={`Evidence ${i+1}`} style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border)", transition: "transform 0.2s", cursor: "zoom-in" }} onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")} onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")} />)}
+            <h4 className="returns-section-title">📷 Evidence Photos</h4>
+            <div className="returns-evidence-gallery">
+              {returnReq.images.map((img, i) => (
+                <img
+                  key={i}
+                  src={getImageUrl(img)}
+                  alt={`Evidence ${i+1}`}
+                  className="returns-evidence-image"
+                />
+              ))}
             </div>
           </div>
         )}
 
-        {returnReq.status === "APPROVED_PENDING_SHIPMENT" && (
-          <div style={{ background: "var(--warning-bg)", border: "1px solid var(--warning)", borderRadius: "8px", padding: "1.25rem", marginBottom: "1.5rem" }}>
-            <h4 style={{ fontWeight: 600, marginBottom: "0.5rem", color: "var(--warning-text)" }}>📦 Action Required: Ship the Item</h4>
-            <p style={{ fontSize: "0.9rem", color: "var(--warning-text)", marginBottom: "1rem" }}>Please pack the item securely and ship it to the seller. Once shipped, enter the tracking number below.</p>
-            <input type="text" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Tracking ID" style={{ width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--text-primary)", fontSize: "0.9rem", marginBottom: "0.75rem", boxSizing: "border-box" }} />
-            <button onClick={handleShip} disabled={submitting || !tracking.trim()} style={{ width: "100%", padding: "0.6rem", background: "var(--primary)", color: "var(--primary-contrast)", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", opacity: submitting || !tracking.trim() ? 0.7 : 1 }}>{submitting ? "Submitting..." : "Submit Tracking Info"}</button>
+        {/* Premium Vertical Timeline */}
+        {timelineEvents.length > 0 && (
+          <div style={{ marginBottom: "1.5rem" }}>
+            <h4 className="returns-section-title">📍 Tracking History</h4>
+            <ol className="vv-timeline">
+              {timelineEvents.map((event, idx) => (
+                <li
+                  key={idx}
+                  className={`vv-timeline__item${event.isCurrent ? " vv-timeline__item--current" : ""}${event.isFailed ? " vv-timeline__item--failed" : ""}`}
+                >
+                  <span className="vv-timeline__dot" />
+                  <div className="vv-timeline__status">{event.status}</div>
+                  {event.timestamp && (
+                    <div className="vv-timeline__time">{formatTimestamp(event.timestamp)}</div>
+                  )}
+                  {event.note && (
+                    <div className="vv-timeline__note" style={{ wordBreak: "break-all" }}>{event.note}</div>
+                  )}
+                </li>
+              ))}
+            </ol>
           </div>
         )}
 
-        {returnReq.status === "INSPECTED_AND_REFUNDED" && (
-          <div style={{ background: "var(--success-bg)", border: "1px solid var(--success)", borderRadius: "8px", padding: "1rem", marginBottom: "1.5rem", textAlign: "center", color: "var(--success-text)", fontWeight: 600 }}>🎉 Refund Completed! The amount has been sent back to your original payment method.</div>
+        {/* Action Required: Ship Item */}
+        {returnReq.status === "APPROVED_PENDING_SHIPMENT" && (
+          <div className="returns-alert returns-alert-warning">
+            <div className="returns-alert-icon">📦</div>
+            <div className="returns-alert-content">
+              <h4>Action Required: Ship the Item</h4>
+              <p>Please pack the item securely and ship it to the seller. Once shipped, enter the tracking number below.</p>
+              <input
+                type="text"
+                value={tracking}
+                onChange={(e) => setTracking(e.target.value)}
+                placeholder="Enter Tracking ID (e.g., TRK123456789)"
+                className="returns-input"
+                style={{ marginTop: "1rem", marginBottom: "0.75rem" }}
+              />
+              <button
+                onClick={handleShip}
+                disabled={submitting || !tracking.trim()}
+                className="returns-btn-primary"
+                style={{ width: "100%" }}
+              >
+                {submitting ? "Submitting..." : "✓ Submit Tracking Info"}
+              </button>
+            </div>
+          </div>
         )}
 
-        <button onClick={onClose} style={{ width: "100%", padding: "0.6rem", background: "transparent", border: "1px solid var(--border)", borderRadius: "6px", color: "var(--text-secondary)", fontWeight: 500, cursor: "pointer" }}>Close</button>
+        {/* Success: Refund Completed */}
+        {returnReq.status === "INSPECTED_AND_REFUNDED" && (
+          <div className="returns-alert returns-alert-success">
+            <div className="returns-alert-icon">🎉</div>
+            <div className="returns-alert-content">
+              <h4>Refund Completed!</h4>
+              <p>The amount has been sent back to your original payment method. Please allow 5-7 business days for the refund to appear.</p>
+            </div>
+          </div>
+        )}
+
+        <button onClick={onClose} className="returns-btn-secondary" style={{ width: "100%" }}>
+          Close
+        </button>
+      </div>
       </div>
     </>
   );

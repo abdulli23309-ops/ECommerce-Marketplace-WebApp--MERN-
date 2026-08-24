@@ -10,9 +10,11 @@ import { getImageUrl } from "../../utils/imageHelper";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
 import Pagination from "../../components/common/Pagination";
 import {
-  PRODUCT_LOW_RATING_THRESHOLD,
   LOW_STOCK_THRESHOLD,
   MAX_WARNINGS,
+  getProductRating,
+  isProductLowRating,
+  isProductLowStock,
 } from "../../utils/warningThresholds";
 
 const WARNING_REASONS = [
@@ -21,14 +23,8 @@ const WARNING_REASONS = [
   "Counterfeit/Fake Item",
 ];
 
-const isWarningState = (product) => {
-  const rating = product.avgRating ?? product.averageRating ?? 0;
-  const lowStock = Number(product.stock) <= LOW_STOCK_THRESHOLD;
-  const lowRating =
-    Number(rating) > 0 && Number(rating) < PRODUCT_LOW_RATING_THRESHOLD;
-
-  return lowStock || lowRating;
-};
+const isWarningState = (product) =>
+  isProductLowStock(product) || isProductLowRating(product);
 
 const ProductModerationPage = () => {
   const [products, setProducts] = useState([]);
@@ -152,7 +148,7 @@ const ProductModerationPage = () => {
   };
 
   const getRiskBadge = (product) => {
-    const rating = product.avgRating ?? product.averageRating ?? 0;
+    const rating = getProductRating(product);
 
     if (product.status === "Suspended" || product.status === "Rejected") {
       return (
@@ -171,7 +167,7 @@ const ProductModerationPage = () => {
       );
     }
 
-    if (Number(rating) > 0 && Number(rating) < PRODUCT_LOW_RATING_THRESHOLD) {
+    if (isProductLowRating(product)) {
       return (
         <span
           style={{
@@ -183,12 +179,12 @@ const ProductModerationPage = () => {
             fontWeight: 600,
           }}
         >
-          Low Rating {Number(rating).toFixed(1)}
+          Low Rating{rating > 0 ? ` ${rating.toFixed(1)}` : ""}
         </span>
       );
     }
 
-    if (Number(product.stock) <= LOW_STOCK_THRESHOLD) {
+    if (isProductLowStock(product)) {
       return (
         <span
           style={{

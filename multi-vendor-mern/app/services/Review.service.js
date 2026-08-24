@@ -43,15 +43,6 @@ export const createReview = async (customerId, data) => {
   if (existing) {
     throw new ApiError(409, 'You have already reviewed this item');
   }
-  await ratingModerationService.recalculateProductRating(productId);
-
-const product = await productRepo.findPublicById(productId);
-if (product?.store) {
-  const storeInfo = await Store.findOne({ _id: product.store._id }).select('sellerProfile').lean();
-  if (storeInfo?.sellerProfile) {
-    await ratingModerationService.recalculateSellerRating(storeInfo.sellerProfile);
-  }
-}
 
   // Create the review
   const review = await reviewRepo.create({
@@ -63,12 +54,27 @@ if (product?.store) {
     images,
   });
 
+  // ---------- Rating moderation recalculation ----------
+  // Both recalculations aggregate the Review collection, so they MUST run after
+  // the review document exists. Running them earlier aggregated a review set
+  // that was missing this review, which left a product's first review persisting
+  // averageRating 0 / lowRatingStatus false.
+  await ratingModerationService.recalculateProductRating(productId);
+
+  const product = await productRepo.findPublicById(productId);
+  if (product?.store) {
+    const storeInfo = await Store.findOne({ _id: product.store._id })
+      .select('sellerProfile')
+      .lean();
+    if (storeInfo?.sellerProfile) {
+      await ratingModerationService.recalculateSellerRating(storeInfo.sellerProfile);
+    }
+  }
+
   // ---------- Low rating warning logic ----------
-  // Compute the product's average rating after this review
+  // Separate, lower notification threshold (2.0) than the moderation threshold.
   const stats = await getRatingStats(productId);
   if (stats.reviewCount >= 1 && stats.avgRating < 2) {
-    // Fetch the product to get its store
-    const product = await productRepo.findPublicById(productId);
     if (product && product.store) {
       const store = await Store.findById(product.store._id).select('sellerProfile');
       if (store) {

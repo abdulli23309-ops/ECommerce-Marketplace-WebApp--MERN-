@@ -1,0 +1,786 @@
+/* ==========================================================================
+   RETURNS MANAGEMENT - LUXURY OVERHAUL
+   Premium UI components for Returns across Customer, Seller, and Admin
+   ========================================================================== */
+
+/* ==========================================================================
+   1. VERTICAL TRACKING TIMELINE (Replaces broken horizontal stepper)
+   ========================================================================== */
+
+.returns-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 2rem 0;
+  position: relative;
+}
+
+.timeline-step {
+  display: flex;
+  gap: 1rem;
+  position: relative;
+  padding-bottom: 2rem;
+}
+
+.timeline-step:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-connector {
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.timeline-step.completed .timeline-connector {
+  background: #10b981;
+}
+
+.timeline-step:last-child .timeline-connector {
+  display: none;
+}
+
+.timeline-dot-wrapper {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.timeline-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justifycontent: center;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+/* Past/Completed state - Green with checkmark */
+.timeline-step.completed .timeline-dot {
+  background: #10b981;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+}
+
+/* Current/Active state - Green ring with white center */
+.timeline-step.active .timeline-dot {
+  background: white;
+  border: 3px solid #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+[data-theme="dark"] .timeline-step.active .timeline-dot {
+  background: var(--surface);
+  border: 3px solid #10b981;
+}
+
+/* Future/Pending state - Muted gray */
+.timeline-step.pending .timeline-dot {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+}
+
+/* Failed/Rejected state - Red with X */
+.timeline-step.failed .timeline-dot {
+  background: var(--danger);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
+}
+
+@keyframes pulse-ring {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.1);
+  }
+}
+
+.timeline-content {
+  flex: 1;
+  padding-top: 2px;
+}
+
+.timeline-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+  line-height: 1.4;
+}
+
+.timeline-step.pending .timeline-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.timeline-step.active .timeline-label {
+  color: #10b981;
+  font-weight: 700;
+}
+
+.timeline-description {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.timeline-tracking {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  word-wrap: break-word;
+  word-break: break-all;
+  font-family: 'Courier New', monospace;
+}
+
+.timeline-timestamp {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ==========================================================================
+   2. DARK THEME INPUT FIXES (Premium Styling)
+   ========================================================================== */
+
+.returns-input,
+.returns-textarea,
+.returns-modal input[type="text"],
+.returns-modal textarea,
+.returns-drawer input[type="text"],
+.returns-drawer textarea {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.returns-input::placeholder,
+.returns-textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.7;
+}
+
+.returns-input:focus,
+.returns-textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="dark"] .returns-input:focus,
+[data-theme="dark"] .returns-textarea:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08) !important;
+}
+
+.returns-textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   3. MODAL & DRAWER ENHANCEMENTS
+   ========================================================================== */
+
+/* --- THE KOENIGSEGG-GRADE MODAL ARCHITECTURE --- */
+
+.returns-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1.5rem !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+.returns-modal-content {
+  position: relative !important;
+  background: var(--surface) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 20px !important;
+  width: 100% !important;
+  max-width: 680px !important;
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+  margin: auto !important;
+  animation: modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.returns-drawer {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 500px;
+  max-width: 90vw;
+  background: var(--surface);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 2rem;
+  animation: slideInFromRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 1px solid var(--border);
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.returns-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+}
+
+/* ==========================================================================
+   4. CARDS & LIST ITEMS
+   ========================================================================== */
+
+.returns-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.returns-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px var(--shadow);
+  border-color: var(--primary);
+}
+
+.returns-product-preview {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
+}
+
+.returns-product-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface-hover);
+  border: 2px solid var(--border);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.returns-product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.returns-evidence-gallery {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.returns-evidence-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  transition: all 0.2s;
+  cursor: zoom-in;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.returns-evidence-image:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px var(--shadow);
+  border-color: var(--primary);
+}
+
+/* ==========================================================================
+   5. ACTION BUTTONS (Semantic Colors)
+   ========================================================================== */
+
+.returns-btn-approve {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--success);
+  color: white;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.returns-btn-approve:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
+}
+
+.returns-btn-approve:active {
+  transform: translateY(0);
+}
+
+.returns-btn-reject {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--danger);
+  color: white;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
+.returns-btn-reject:hover {
+  background: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4);
+}
+
+.returns-btn-reject:active {
+  transform: translateY(0);
+}
+
+.returns-btn-primary {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary);
+  color: var(--primary-contrast);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.returns-btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px var(--shadow);
+}
+
+.returns-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.returns-btn-secondary {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.returns-btn-secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   6. STATUS ALERTS & BANNERS
+   ========================================================================== */
+
+.returns-alert {
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  border: 1px solid;
+}
+
+.returns-alert-warning {
+  background: var(--warning-bg);
+  border-color: var(--warning);
+  color: var(--warning-text);
+}
+
+.returns-alert-success {
+  background: var(--success-bg);
+  border-color: var(--success);
+  color: var(--success-text);
+}
+
+.returns-alert-info {
+  background: var(--info-bg);
+  border-color: var(--info);
+  color: var(--info-text);
+}
+
+.returns-alert-icon {
+  flex-shrink: 0;
+  font-size: 1.5rem;
+}
+
+.returns-alert-content h4 {
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.returns-alert-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   7. HEADER & CLOSE BUTTONS
+   ========================================================================== */
+
+.returns-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.returns-modal-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.returns-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0.25rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.returns-close-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  transform: rotate(90deg);
+}
+
+/* ==========================================================================
+   8. NOTIFICATION BADGES (Universal System)
+   ========================================================================== */
+
+.notification-badge {
+  background: var(--danger);
+  color: white;
+  border-radius: 99px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-block;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.sidebar-item-with-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* ==========================================================================
+   9. RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .returns-drawer {
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  .returns-modal-content {
+    width: 95% !important;
+    padding: 1.5rem !important;
+    max-height: 95vh !important;
+  }
+
+  .returns-product-preview {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .returns-evidence-image {
+    width: 80px;
+    height: 80px;
+  }
+
+  .timeline-description {
+    font-size: 0.8rem;
+  }
+}
+
+/* ==========================================================================
+   10. UTILITY CLASSES & ENHANCEMENTS
+   ========================================================================== */
+
+.returns-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 1.5rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.returns-info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px dashed var(--border);
+  transition: background 0.2s ease;
+}
+
+.returns-info-row:last-child {
+  border-bottom: none;
+}
+
+.returns-info-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.returns-info-value {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  text-align: right;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 60%;
+}
+
+/* Empty state styling */
+.empty-state-modern {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary);
+}
+
+.empty-state-icon {
+  margin: 0 auto 1.5rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.empty-state-modern h3 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem;
+}
+
+.empty-state-modern p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0 0 1.5rem;
+  line-height: 1.6;
+}
+
+/* Skeleton loading states */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--surface-hover) 50%, var(--bg-secondary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+.skeleton-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Premium hover effects for interactive elements */
+.returns-card:active {
+  transform: translateY(-2px);
+}
+
+.returns-evidence-image:active {
+  transform: scale(1.02);
+}
+
+/* Scrollbar styling for modals and drawers */
+.returns-modal-content::-webkit-scrollbar,
+.returns-drawer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.returns-modal-content::-webkit-scrollbar-track,
+.returns-drawer::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+.returns-modal-content::-webkit-scrollbar-thumb,
+.returns-drawer::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.returns-modal-content::-webkit-scrollbar-thumb:hover,
+.returns-drawer::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Focus states for accessibility */
+.returns-input:focus-visible,
+.returns-textarea:focus-visible,
+.returns-btn-primary:focus-visible,
+.returns-btn-secondary:focus-visible,
+.returns-btn-approve:focus-visible,
+.returns-btn-reject:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Loading state for buttons */
+.returns-btn-primary:disabled,
+.returns-btn-approve:disabled,
+.returns-btn-reject:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Enhanced product preview on hover */
+.returns-product-preview:hover {
+  background: var(--surface-hover);
+  transition: background 0.2s ease;
+}

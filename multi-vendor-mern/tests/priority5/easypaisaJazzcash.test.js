@@ -10,6 +10,8 @@ import Product from '../../app/models/Product.model.js';
 import Cart from '../../app/models/Cart.model.js';
 import Address from '../../app/models/Address.model.js';
 import Payment from '../../app/models/Payment.model.js';
+import ParentOrder from '../../app/models/ParentOrder.model.js';
+import SellerOrder from '../../app/models/SellerOrder.model.js';
 
 const seedSandboxPaymentData = async () => {
   const customer = await User.create({
@@ -96,6 +98,15 @@ describe('Priority 5 — EasyPaisa and JazzCash Sandbox Payments', () => {
     const payment = await Payment.findById(res.body.data.payment._id);
     expect(payment.status).toBe('Completed');
     expect(payment.transactionId).toMatch(/^EP-TEST-/);
+
+    // A settled wallet payment must advance the order into fulfilment so the
+    // customer sees "Processing" (not "Pending") and the seller can act on it.
+    const parentOrder = await ParentOrder.findById(res.body.data.order._id).lean();
+    expect(parentOrder.orderStatus).toBe('Processing');
+
+    const sellerOrders = await SellerOrder.find({ parentOrder: res.body.data.order._id }).lean();
+    expect(sellerOrders.length).toBeGreaterThan(0);
+    expect(sellerOrders.every((so) => so.status === 'Processing')).toBe(true);
   });
 
   it('creates a JazzCash sandbox payment and marks it completed', async () => {
@@ -113,6 +124,39 @@ describe('Priority 5 — EasyPaisa and JazzCash Sandbox Payments', () => {
     const payment = await Payment.findById(res.body.data.payment._id);
     expect(payment.status).toBe('Completed');
     expect(payment.transactionId).toMatch(/^JC-TEST-/);
+
+    // Same fulfilment advancement for JazzCash: parent + seller orders Processing.
+    const parentOrder = await ParentOrder.findById(res.body.data.order._id).lean();
+    expect(parentOrder.orderStatus).toBe('Processing');
+
+    const sellerOrders = await SellerOrder.find({ parentOrder: res.body.data.order._id }).lean();
+    expect(sellerOrders.length).toBeGreaterThan(0);
+    expect(sellerOrders.every((so) => so.status === 'Processing')).toBe(true);
+  });
+
+  it('does not advance the order to Processing when a wallet payment fails', async () => {
+    const { addressId, token } = await seedSandboxPaymentData();
+
+    const res = await request(app)
+      .post('/api/v1/payments/create-intent')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ addressId, paymentMethod: 'EasyPaisa', mobileAccount: '03009999999' })
+      .expect(400);
+
+    expect(res.body.message).toContain('payment failed');
+
+    // A failed wallet order must never be advanced to Processing — it is
+    // cancelled, its payment is Failed, and its seller orders stay out of the
+    // Processing pipeline (so they remain hidden from the seller).
+    const parentOrder = await ParentOrder.findOne().sort({ createdAt: -1 }).lean();
+    expect(parentOrder.orderStatus).toBe('Cancelled');
+    expect(parentOrder.orderStatus).not.toBe('Processing');
+
+    const payment = await Payment.findOne({ parentOrder: parentOrder._id }).lean();
+    expect(payment.status).toBe('Failed');
+
+    const sellerOrders = await SellerOrder.find({ parentOrder: parentOrder._id }).lean();
+    expect(sellerOrders.every((so) => so.status !== 'Processing')).toBe(true);
   });
 
   it('rejects unsupported payment method', async () => {

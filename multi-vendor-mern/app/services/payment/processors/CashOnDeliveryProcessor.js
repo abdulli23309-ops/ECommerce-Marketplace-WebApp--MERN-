@@ -8,10 +8,11 @@ export default class CashOnDeliveryProcessor {
   }
 
   async process(payment, order) {
-    // Mark the COD payment as completed immediately in sandbox/test mode.
-    payment.status = 'Completed';
-    payment.transactionId = `COD-${Date.now()}`;
-    payment.paidAt = new Date();
+    // Cash on Delivery is collected when the courier delivers the order, so no
+    // money has moved at checkout. The payment therefore stays 'Pending':
+    // we do NOT mark it Completed, and we do not set paidAt or a transactionId.
+    // It becomes Completed only when the cash is collected on delivery.
+    payment.status = 'Pending';
     await payment.save();
     return payment;
   }

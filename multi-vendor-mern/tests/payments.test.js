@@ -93,7 +93,7 @@ describe('Payments API', () => {
   });
 
   describe('POST /api/v1/payments/create-intent (Cash on Delivery)', () => {
-    it('places a COD order, completes payment, deducts stock, and clears the cart', async () => {
+    it('places a COD order with a Pending payment, deducts stock, and clears the cart', async () => {
       const { customer, token } = await createCustomer();
       const { product } = await seedStoreProduct({ stock: 10 });
       const address = await createAddress(customer._id);
@@ -110,8 +110,9 @@ describe('Payments API', () => {
 
       expect(res.body.message).toBe('Payment intent created');
       expect(res.body.data.payment.method).toBe('CashOnDelivery');
-      expect(res.body.data.payment.status).toBe('Completed');
-      expect(res.body.data.payment.transactionId).toMatch(/^COD-/);
+      // COD is unpaid at checkout — the payment must stay Pending until the
+      // cash is collected on delivery, never Completed.
+      expect(res.body.data.payment.status).toBe('Pending');
       expect(res.body.data.clientSecret).toBeNull();
 
       const dbProduct = await Product.findById(product._id).lean();
@@ -119,6 +120,11 @@ describe('Payments API', () => {
 
       const dbCart = await Cart.findOne({ user: customer._id }).lean();
       expect(dbCart.items).toHaveLength(0);
+
+      // COD stays Pending at the order level — unlike a settled wallet/card
+      // order, it must not auto-advance to Processing until cash is collected.
+      const dbOrder = await ParentOrder.findById(res.body.data.order._id).lean();
+      expect(dbOrder.orderStatus).toBe('Pending');
     });
 
     it('rejects a wallet payment with an invalid mobile number (400)', async () => {

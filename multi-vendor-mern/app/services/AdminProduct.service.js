@@ -5,6 +5,7 @@ import SellerProfile from '../models/SellerProfile.model.js';
 import { logAction } from './AdminAuditLog.service.js';
 import { createNotification } from './Notification.service.js';
 import * as ratingModerationService from './RatingModeration.service.js';
+import * as ratingModerationRepo from '../repositories/RatingModeration.repository.js';
 
 const notifySellerProductStatus = async (productId, status, reason) => {
   const product = await Product.findById(productId).select('name store').lean();
@@ -34,7 +35,45 @@ const notifySellerProductStatus = async (productId, status, reason) => {
   );
 };
 
-export const getAllProducts = (filters) => productRepo.findAllAdmin(filters);
+/**
+ * Refresh moderation state for multiple products efficiently.
+ * Recalculates averageRating and lowRatingStatus from current reviews.
+ * Preserves warningCount and warningHistory intact.
+ */
+const refreshProductsModerationState = async (products) => {
+  const PRODUCT_LOW_RATING_THRESHOLD = 3.0;
+  const roundForDisplay = (value) => Math.round(value * 10) / 10;
+
+  const refreshed = await Promise.all(
+    products.map(async (product) => {
+      const { avgRating, reviewCount } = await ratingModerationRepo.aggregateProductRating(
+        product._id
+      );
+
+      const lowRatingStatus = reviewCount > 0 && avgRating < PRODUCT_LOW_RATING_THRESHOLD;
+
+      return {
+        ...product,
+        averageRating: roundForDisplay(avgRating),
+        lowRatingStatus,
+      };
+    })
+  );
+
+  return refreshed;
+};
+
+export const getAllProducts = async (filters) => {
+  const result = await productRepo.findAllAdmin(filters);
+
+  // Refresh moderation state for all fetched products to ensure admin sees current data
+  const refreshedProducts = await refreshProductsModerationState(result.products);
+
+  return {
+    ...result,
+    products: refreshedProducts,
+  };
+};
 
 export const getProductById = (productId) =>
   productRepo.findByIdAdmin(productId);

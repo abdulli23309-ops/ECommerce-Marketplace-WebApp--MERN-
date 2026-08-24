@@ -179,7 +179,7 @@ const AdminLayout = () => {
                 Sellers
               </span>
               {!dismissedSellers && pendingSellers > 0 && (
-                <span style={{ backgroundColor: 'var(--danger)', color: '#ffffff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+                <span className="notification-badge">
                   {pendingSellers}
                 </span>
               )}
@@ -198,7 +198,7 @@ const AdminLayout = () => {
                 Products
               </span>
               {!dismissedProducts && pendingProducts > 0 && (
-                <span style={{ backgroundColor: 'var(--danger)', color: '#ffffff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+                <span className="notification-badge">
                   {pendingProducts}
                 </span>
               )}
@@ -217,7 +217,7 @@ const AdminLayout = () => {
                 Returns
               </span>
               {!dismissedReturns && pendingReturns > 0 && (
-                <span style={{ backgroundColor: 'var(--danger)', color: '#ffffff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+                <span className="notification-badge">
                   {pendingReturns}
                 </span>
               )}
@@ -236,7 +236,7 @@ const AdminLayout = () => {
                 Refunds
               </span>
               {!dismissedRefunds && pendingRefunds > 0 && (
-                <span style={{ backgroundColor: 'var(--danger)', color: '#ffffff', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+                <span className="notification-badge">
                   {pendingRefunds}
                 </span>
               )}

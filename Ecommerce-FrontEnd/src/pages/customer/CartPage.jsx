@@ -132,7 +132,9 @@ const CartPage = () => {
         ))}
       </div>
 
-      <div className="cart-summary">
+      {/* flexWrap + gap keep the four summary blocks from colliding on narrow
+          screens (.cart-summary is a space-between row with no breakpoint). */}
+      <div className="cart-summary" style={{ flexWrap: "wrap", gap: "1.25rem" }}>
         <div>
           <button className="btn-remove" onClick={handleClearCart}>
             Clear Cart
@@ -145,7 +147,8 @@ const CartPage = () => {
             flexDirection: "column",
             gap: "0.75rem",
             marginBottom: "1rem",
-            minWidth: "280px",
+            flex: "1 1 240px",
+            minWidth: 0,
           }}
         >
           <div
@@ -153,13 +156,20 @@ const CartPage = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              gap: "1.5rem",
+              gap: "0.5rem",
               color: "var(--text-muted)",
               fontSize: "0.9rem",
             }}
           >
-            <span>Subtotal</span>
-            <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+            <span style={{ flexShrink: 0 }}>Subtotal</span>
+            <span
+              style={{
+                fontWeight: 600,
+                color: "var(--text-primary)",
+                textAlign: "right",
+                minWidth: 0,
+              }}
+            >
               PKR {cartTotal.toLocaleString()}
             </span>
           </div>
@@ -169,22 +179,26 @@ const CartPage = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              gap: "1.5rem",
+              gap: "0.5rem",
               color: "var(--text-muted)",
               fontSize: "0.9rem",
             }}
           >
-            <span>Estimated Shipping</span>
+            <span style={{ flexShrink: 0 }}>Estimated Shipping</span>
             <span
               style={{
+                textAlign: "right",
+                minWidth: 0,
                 fontWeight: hasFreeDeliveryItems ? 600 : 400,
                 fontSize: "0.85rem",
+                // Green is reserved for an actual free-delivery win; the
+                // "calculated later" placeholder stays muted.
                 color: hasFreeDeliveryItems
-                  ? "#10b981"
+                  ? "var(--success-text)"
                   : "var(--text-muted)",
               }}
             >
-              {hasFreeDeliveryItems ? "FREE" : "Calculated at checkout"}
+              {hasFreeDeliveryItems ? "FREE" : "Calculated at Checkout"}
             </span>
           </div>
         </div>

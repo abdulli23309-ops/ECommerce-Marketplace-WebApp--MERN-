@@ -1,12 +1,17 @@
 const baseStyle = {
   display: "inline-flex",
   alignItems: "center",
-  gap: "0.4rem",
-  padding: "0.25rem 0.6rem",
+  gap: "0.35rem",
+  padding: "0.25rem 0.65rem",
   borderRadius: "6px",
-  background: "rgba(16, 185, 129, 0.1)",
-  border: "1px solid rgba(16, 185, 129, 0.25)",
-  color: "#10b981",
+  background: "var(--success-bg)",
+  color: "var(--success-text)",
+  // Low-opacity tint of the token so the outline reads in both themes. Kept as
+  // longhand: if color-mix() is unsupported the declaration is dropped and the
+  // border falls back to currentColor (--success-text), still theme-correct.
+  borderWidth: "1px",
+  borderStyle: "solid",
+  borderColor: "color-mix(in srgb, var(--success-text) 25%, transparent)",
   fontSize: "0.75rem",
   fontWeight: 600,
   letterSpacing: "0.02em",

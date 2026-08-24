@@ -88,8 +88,13 @@ export const getSellerOrders = async (userId) => {
     const pid = so.parentOrder._id.toString();
     const payment = paymentMap.get(pid);
 
-    // Hide orders where payment is not completed or refunded
-    if (!payment || !['Completed', 'Refunded'].includes(payment.status)) {
+    // Show orders whose payment is settled (Completed/Refunded) OR that are
+    // Cash-on-Delivery still Pending collection. Failed/pending prepaid orders
+    // (Stripe/EasyPaisa/JazzCash) stay hidden from the seller.
+    const isSettled = payment && ['Completed', 'Refunded'].includes(payment.status);
+    const isCodPending =
+      payment && payment.method === 'CashOnDelivery' && payment.status === 'Pending';
+    if (!isSettled && !isCodPending) {
       continue;
     }
 

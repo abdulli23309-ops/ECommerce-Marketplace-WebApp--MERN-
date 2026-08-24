@@ -12,6 +12,16 @@ import { ApiError } from '../utils/ApiError.util.js';
 
 const LOW_STOCK_THRESHOLD = 5;
 
+// Payments a seller is allowed to see: settled orders (Completed/Refunded)
+// plus Cash-on-Delivery orders still Pending collection. Failed or pending
+// prepaid orders (Stripe/EasyPaisa/JazzCash) remain hidden from the seller.
+const SELLER_VISIBLE_PAYMENT_MATCH = {
+  $or: [
+    { status: { $in: ['Completed', 'Refunded'] } },
+    { method: 'CashOnDelivery', status: 'Pending' },
+  ],
+};
+
 // ---------- Helper ----------
 const getStoreId = async (userId) => {
   const profile = await sellerProfileRepo.findByUser(userId);
@@ -245,10 +255,10 @@ export const getSellerOrders = async (userId, { page = 1, pageSize = 10 } = {}) 
   // Collect parent order IDs
   const parentOrderIds = [...new Set(allSellerOrders.map(so => so.parentOrder?._id))].filter(Boolean);
 
-  // Fetch only payments with status Completed or Refunded
+  // Fetch payments the seller is allowed to see (settled or COD-pending)
   const payments = await Payment.find({
     parentOrder: { $in: parentOrderIds },
-    status: { $in: ['Completed', 'Refunded'] },
+    ...SELLER_VISIBLE_PAYMENT_MATCH,
   })
     .select('parentOrder method status')
     .lean();
@@ -363,7 +373,7 @@ export const getUnreadCount = async (userId) => {
 
   const paidPayments = await Payment.find({
     parentOrder: { $in: parentOrderIds },
-    status: { $in: ['Completed', 'Refunded'] },
+    ...SELLER_VISIBLE_PAYMENT_MATCH,
   }).select('parentOrder');
 
   const paidParentOrderIds = new Set(
@@ -389,7 +399,7 @@ export const markAllAsRead = async (userId) => {
 
   const paidPayments = await Payment.find({
     parentOrder: { $in: parentOrderIds },
-    status: { $in: ['Completed', 'Refunded'] },
+    ...SELLER_VISIBLE_PAYMENT_MATCH,
   }).select('parentOrder');
 
   const paidParentOrderIds = paidPayments.map((p) => p.parentOrder.toString());

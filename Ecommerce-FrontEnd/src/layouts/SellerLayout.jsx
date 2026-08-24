@@ -233,16 +233,7 @@ const SellerLayout = () => {
                   Orders
                 </span>
                 {unreadCount > 0 && (
-                  <span style={{
-                    backgroundColor: 'var(--danger)',
-                    color: '#ffffff',
-                    borderRadius: '50%',
-                    padding: '2px 6px',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    minWidth: '20px',
-                    textAlign: 'center',
-                  }}>
+                  <span className="notification-badge">
                     {unreadCount}
                   </span>
                 )}
@@ -264,16 +255,7 @@ const SellerLayout = () => {
                   Shipments
                 </span>
                 {!dismissedShipments && pendingShipments > 0 && (
-                  <span style={{
-                    backgroundColor: 'var(--danger)',
-                    color: '#ffffff',
-                    borderRadius: '50%',
-                    padding: '2px 6px',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    minWidth: '20px',
-                    textAlign: 'center',
-                  }}>
+                  <span className="notification-badge">
                     {pendingShipments}
                   </span>
                 )}
@@ -294,16 +276,7 @@ const SellerLayout = () => {
                   Returns
                 </span>
                 {!dismissedReturns && returnsActionCount > 0 && (
-                  <span style={{
-                    backgroundColor: 'var(--danger)',
-                    color: '#ffffff',
-                    borderRadius: '50%',
-                    padding: '2px 6px',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    minWidth: '20px',
-                    textAlign: 'center',
-                  }}>
+                  <span className="notification-badge">
                     {returnsActionCount}
                   </span>
                 )}

@@ -3,6 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
 import { getImageUrl } from "../../utils/imageHelper";
 
+const RATING_LABELS = {
+  1: "😞 Poor - Not what I expected",
+  2: "😕 Could be better",
+  3: "😐 It's okay",
+  4: "😊 Good - I like it!",
+  5: "🤩 Excellent - Love it!",
+};
+
 const ReviewPage = () => {
   const { sellerOrderId } = useParams();
   const navigate = useNavigate();
@@ -16,9 +24,9 @@ const ReviewPage = () => {
   const [error, setError] = useState(null);
   const maxCommentLength = 500;
 
-  // Image upload state – now an array of objects { file, preview }
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const MAX_FILES = 5;
 
@@ -38,7 +46,6 @@ const ReviewPage = () => {
     fetchSellerOrder();
   }, [sellerOrderId]);
 
-  // Add files to the existing selection (max 5 total)
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
@@ -47,8 +54,33 @@ const ReviewPage = () => {
       const combined = [...prev, ...files].slice(0, MAX_FILES);
       return combined;
     });
-    // Reset the file input so the same file can be re-selected if needed
     e.target.value = '';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files).filter(file =>
+      file.type.startsWith('image/')
+    );
+
+    if (files.length > 0) {
+      setSelectedFiles((prev) => {
+        const combined = [...prev, ...files].slice(0, MAX_FILES);
+        return combined;
+      });
+    }
   };
 
   const removeFile = (index) => {
@@ -59,7 +91,6 @@ const ReviewPage = () => {
     });
   };
 
-  // Upload all selected images one by one and return URLs
   const uploadImages = async () => {
     if (selectedFiles.length === 0) return [];
     setUploadingImages(true);
@@ -119,148 +150,214 @@ const ReviewPage = () => {
     }
   };
 
-  if (loadingOrder) return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Loading...</div>;
-  if (!sellerOrder) return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Order details not found.</div>;
+  if (loadingOrder) return (
+    <div className="animate-fade-in" style={{ maxWidth: "700px", margin: "2rem auto", padding: "2rem" }}>
+      <div className="skeleton" style={{ height: "40px", width: "100px", marginBottom: "2rem" }}></div>
+      <div className="modern-card" style={{ padding: "2rem" }}>
+        <div className="skeleton" style={{ height: "80px", marginBottom: "2rem" }}></div>
+        <div className="skeleton" style={{ height: "60px", marginBottom: "1.5rem" }}></div>
+        <div className="skeleton" style={{ height: "120px", marginBottom: "1.5rem" }}></div>
+      </div>
+    </div>
+  );
+
+  if (!sellerOrder) return (
+    <div className="empty-state-modern animate-fade-in" style={{ maxWidth: "500px", margin: "4rem auto" }}>
+      <div className="empty-state-icon">
+        <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h3>Order not found</h3>
+      <p>We couldn't find the order details. Please try again.</p>
+      <button onClick={() => navigate("/orders")} className="btn-primary" style={{ padding: "0.75rem 2rem", borderRadius: "99px" }}>
+        Back to Orders
+      </button>
+    </div>
+  );
 
   const product = sellerOrder.items?.[0];
   const productName = product?.productNameSnapshot || "Product";
   const productImage = product?.product?.images?.[0];
   const storeName = sellerOrder.store?.name || "Unknown Store";
 
+  const displayRating = hoveredRating || rating;
+
   return (
-    <div style={{
-      maxWidth: "600px", margin: "2rem auto", padding: "2rem",
-      background: "var(--surface)", borderRadius: "12px", boxShadow: "0 4px 12px var(--shadow)",
-      fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)",
+    <div className="animate-fade-in" style={{
+      maxWidth: "700px", margin: "2rem auto", padding: "2rem",
+      background: "var(--surface)", borderRadius: "16px", boxShadow: "0 4px 12px var(--shadow)",
+      fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)", border: "1px solid var(--border)",
     }}>
       <button
         onClick={() => navigate(-1)}
-        style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: "0.9rem", cursor: "pointer", marginBottom: "1.5rem", padding: 0 }}
+        style={{
+          background: "none",
+          border: "none",
+          color: "var(--text-secondary)",
+          fontSize: "0.9rem",
+          cursor: "pointer",
+          marginBottom: "1.5rem",
+          padding: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          transition: "color 0.2s",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
       >
-        ← Back
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        Back
       </button>
 
       <div style={{
         display: "flex", gap: "1rem", alignItems: "center",
-        paddingBottom: "1.5rem", marginBottom: "1.5rem",
-        borderBottom: "1px solid #f3f4f6",
+        paddingBottom: "1.5rem", marginBottom: "2rem",
+        borderBottom: "2px solid var(--border)",
       }}>
-        <div style={{ width: "64px", height: "64px", borderRadius: "8px", overflow: "hidden", background: "var(--bg-secondary)" }}>
+        <div style={{ width: "80px", height: "80px", borderRadius: "12px", overflow: "hidden", background: "var(--bg-secondary)", border: "2px solid var(--border)", flexShrink: 0 }}>
           {productImage ? (
             <img src={getImageUrl(productImage)} alt={productName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="32" height="32" fill="none" stroke="#9ca3af" viewBox="0 0 24 24">
+              <svg width="36" height="36" fill="none" stroke="var(--text-muted)" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
           )}
         </div>
-        <div>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 600, margin: "0 0 0.25rem" }}>{productName}</h2>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: 0 }}>Sold by {storeName}</p>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: "0 0 0.5rem" }}>{productName}</h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", margin: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: "inline", verticalAlign: "middle", marginRight: "0.25rem" }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Sold by <strong>{storeName}</strong>
+          </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Star Rating */}
-        <div className="form-group" style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.5rem" }}>Your Rating</label>
-          <div style={{ display: "flex", gap: "0.25rem", fontSize: "2rem", cursor: "pointer" }}>
+        {/* Interactive Star Rating */}
+        <div className="form-group" style={{ marginBottom: "2rem" }}>
+          <label style={{ display: "block", fontWeight: 700, marginBottom: "1rem", fontSize: "1.05rem" }}>
+            How would you rate this product?
+          </label>
+          <div className="star-rating-interactive">
             {[1, 2, 3, 4, 5].map((star) => (
               <span
                 key={star}
+                className={`star ${(hoveredRating ? star <= hoveredRating : star <= rating) ? 'filled' : 'empty'}`}
                 onClick={() => setRating(star)}
                 onMouseEnter={() => setHoveredRating(star)}
                 onMouseLeave={() => setHoveredRating(0)}
-                style={{ color: (hoveredRating ? star <= hoveredRating : star <= rating) ? "#f59e0b" : "#e5e7eb", transition: "color 0.1s" }}
-              >★</span>
+              >
+                ★
+              </span>
             ))}
+          </div>
+          <div className={`rating-label ${displayRating > 0 ? 'visible' : 'hidden'}`}>
+            {RATING_LABELS[displayRating] || ''}
           </div>
         </div>
 
         {/* Comment */}
-        <div className="form-group" style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.5rem" }}>Your Review (optional)</label>
+        <div className="form-group" style={{ marginBottom: "2rem" }}>
+          <label style={{ display: "block", fontWeight: 700, marginBottom: "0.75rem", fontSize: "1.05rem" }}>
+            Share your experience (optional)
+          </label>
           <textarea
             className="form-input"
             rows={5}
             maxLength={maxCommentLength}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="What did you love about this product? Share your experience..."
-            style={{ width: "100%", boxSizing: "border-box", borderRadius: "6px", padding: "0.75rem", border: "1px solid var(--border)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "0.9rem", background: "var(--bg-secondary)", outline: "none" }}
+            placeholder="Tell us what you loved (or didn't) about this product. Your feedback helps other shoppers!"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              borderRadius: "8px",
+              padding: "1rem",
+              border: "2px solid var(--border)",
+              fontFamily: "Inter, system-ui, sans-serif",
+              fontSize: "0.95rem",
+              background: "var(--input-bg)",
+              outline: "none",
+              transition: "border-color 0.2s",
+              lineHeight: 1.6,
+            }}
+            onFocus={(e) => (e.target.style.borderColor = "var(--primary)")}
+            onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
           />
-          <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>{comment.length} / {maxCommentLength}</div>
-        </div>
-
-        {/* Image Upload – supports multiple files up to 5 */}
-        <div className="form-group" style={{ marginBottom: "1.5rem" }}>
-          <label style={{ display: "block", fontWeight: 600, marginBottom: "0.5rem" }}>
-            Add Photos (optional, up to {MAX_FILES})
-          </label>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={selectedFiles.length >= MAX_FILES}
-              style={{
-                padding: "0.5rem 1.25rem",
-                borderRadius: "6px",
-                border: "2px dashed var(--border)",
-                background: "var(--bg-secondary)",
-                cursor: selectedFiles.length >= MAX_FILES ? "not-allowed" : "pointer",
-                fontWeight: 500,
-                fontSize: "0.9rem",
-                color: selectedFiles.length >= MAX_FILES ? "#9ca3af" : "#374151",
-                opacity: selectedFiles.length >= MAX_FILES ? 0.7 : 1,
-              }}
-            >
-              {selectedFiles.length >= MAX_FILES ? "Max files reached" : "Choose Files"}
-            </button>
-            <input
-              type="file"
-              accept=".jpg,.jpeg,.png,.webp"
-              multiple
-              onChange={handleFileChange}
-              ref={fileInputRef}
-              style={{ display: "none" }}
-            />
-            <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-              {selectedFiles.length} / {MAX_FILES} selected
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: "0.5rem",
+          }}>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+              {comment.length > 0 ? `${comment.length} characters` : 'No characters yet'}
+            </span>
+            <span style={{ fontSize: "0.8rem", color: comment.length >= maxCommentLength ? "var(--danger)" : "var(--text-muted)" }}>
+              {maxCommentLength - comment.length} remaining
             </span>
           </div>
+        </div>
 
-          {/* Preview of selected images with remove button */}
+        {/* Drag & Drop Image Upload */}
+        <div className="form-group" style={{ marginBottom: "2rem" }}>
+          <label style={{ display: "block", fontWeight: 700, marginBottom: "0.75rem", fontSize: "1.05rem" }}>
+            Add Photos (optional, up to {MAX_FILES})
+          </label>
+
+          <div
+            className={`drag-drop-zone ${isDragging ? 'drag-over' : ''}`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            style={{
+              pointerEvents: selectedFiles.length >= MAX_FILES ? 'none' : 'auto',
+              opacity: selectedFiles.length >= MAX_FILES ? 0.6 : 1,
+            }}
+          >
+            <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <p style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)", margin: "0 0 0.25rem" }}>
+              {selectedFiles.length >= MAX_FILES ? 'Maximum files reached' : 'Drop your photos here'}
+            </p>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: 0 }}>
+              or click to browse • JPG, PNG, WEBP
+            </p>
+          </div>
+
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp"
+            multiple
+            onChange={handleFileChange}
+            ref={fileInputRef}
+            style={{ display: "none" }}
+          />
+
+          {/* Image Preview Grid */}
           {selectedFiles.length > 0 && (
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+            <div className="image-preview-grid" style={{ marginTop: "1.5rem" }}>
               {selectedFiles.map((file, idx) => (
-                <div key={idx} style={{ position: "relative", width: "80px", height: "80px" }}>
+                <div key={idx} className="image-preview-item">
                   <img
                     src={URL.createObjectURL(file)}
-                    alt={`Preview ${idx}`}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "4px", border: "1px solid var(--border)" }}
+                    alt={`Preview ${idx + 1}`}
                   />
                   <button
                     type="button"
                     onClick={() => removeFile(idx)}
-                    style={{
-                      position: "absolute",
-                      top: "-6px",
-                      right: "-6px",
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "50%",
-                      width: "20px",
-                      height: "20px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      color: "var(--danger)",
-                    }}
+                    className="image-remove-btn"
+                    title="Remove image"
                   >
                     ×
                   </button>
@@ -270,22 +367,69 @@ const ReviewPage = () => {
           )}
         </div>
 
-        {error && <p style={{ color: "var(--danger)", fontSize: "0.9rem", marginBottom: "1rem" }}>{error}</p>}
+        {error && (
+          <div style={{
+            background: "var(--danger-bg)",
+            border: "1px solid var(--danger)",
+            color: "var(--danger-text)",
+            padding: "1rem",
+            borderRadius: "8px",
+            marginBottom: "1.5rem",
+            fontSize: "0.9rem",
+          }}>
+            {error}
+          </div>
+        )}
 
         <button
           type="submit"
           className="btn-primary"
           disabled={submitting || uploadingImages || !rating}
           style={{
-            width: "100%", padding: "0.75rem", fontSize: "1rem", fontWeight: 600,
-            borderRadius: "8px", border: "none", background: rating ? "#111827" : "#e5e7eb",
-            color: rating ? "#fff" : "#9ca3af", cursor: rating ? "pointer" : "not-allowed",
-            transition: "background 0.2s, transform 0.1s",
+            width: "100%",
+            padding: "1rem",
+            fontSize: "1.05rem",
+            fontWeight: 700,
+            borderRadius: "12px",
+            border: "none",
+            background: rating ? "var(--primary)" : "var(--disabled-bg)",
+            color: rating ? "var(--primary-contrast)" : "var(--disabled-text)",
+            cursor: rating ? "pointer" : "not-allowed",
+            transition: "all 0.2s",
+            boxShadow: rating ? "0 4px 12px var(--shadow)" : "none",
+          }}
+          onMouseEnter={(e) => {
+            if (rating && !submitting && !uploadingImages) {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 6px 16px var(--shadow)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = rating ? "0 4px 12px var(--shadow)" : "none";
           }}
         >
-          {submitting || uploadingImages ? "Submitting..." : "Submit Review"}
+          {submitting || uploadingImages ? (
+            <>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: "inline", verticalAlign: "middle", marginRight: "0.5rem", animation: "spin 1s linear infinite" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {uploadingImages ? 'Uploading photos...' : 'Submitting...'}
+            </>
+          ) : (
+            '✨ Submit Review'
+          )}
         </button>
       </form>
+
+      <style>
+        {`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </div>
   );
 };

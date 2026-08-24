@@ -15,7 +15,10 @@ export const findByCustomer = async (customerId, { page = 1, pageSize = 10 } = {
       .limit(limit)
       .populate({
         path: 'sellerOrders',
-        populate: { path: 'store', select: 'name city' },
+        populate: [
+          { path: 'store', select: 'name city' },
+          { path: 'items.product', select: 'name images' },
+        ],
       })
       .lean(),
     ParentOrder.countDocuments({ customer: customerId }),
@@ -37,7 +40,10 @@ export const findById = async (id, customerId) => {
   })
     .populate({
       path: 'sellerOrders',
-      populate: { path: 'store', select: 'name city' },
+      populate: [
+        { path: 'store', select: 'name city' },
+        { path: 'items.product', select: 'name images' },
+      ],
     })
     .lean();
 

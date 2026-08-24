@@ -3,6 +3,7 @@ import PaymentTransaction from '../models/PaymentTransaction.model.js';
 import Cart from '../models/Cart.model.js';
 import Product from '../models/Product.model.js';
 import ParentOrder from '../models/ParentOrder.model.js';
+import SellerOrder from '../models/SellerOrder.model.js';
 import Coupon from '../models/Coupon.model.js';
 import CouponUsage from '../models/CouponUsage.model.js';
 import Store from '../models/Store.model.js';
@@ -226,7 +227,11 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
       redemptionSession.endSession();
     }
 
-    await createPaymentTransaction(payment, 'success', 'success', payment.amount, { transactionId: payment.transactionId });
+    // COD is unpaid at checkout, so we do NOT record a 'success' payment
+    // transaction here — that would misrepresent an uncollected order as paid.
+    // A settlement transaction should be created when the cash is collected on
+    // delivery. Stock deduction, cart clearing, coupon redemption and the
+    // notifications above are unaffected.
 
     await notifyCustomerOrderPlaced(userId, parentOrder);
     await notifySellersForNewOrder(parentOrder._id);
@@ -269,6 +274,18 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
       await redemptionSession.abortTransaction();
       redemptionSession.endSession();
     }
+
+    // Wallet payment settled successfully — advance the order into fulfilment.
+    // The parent order and every seller order move to 'Processing' so the
+    // customer's order history shows "Processing" (not "Pending") and sellers
+    // are signalled that the paid order is ready to fulfil. Failed wallet
+    // payments are handled above (order Cancelled) and never reach this point.
+    parentOrder.orderStatus = 'Processing';
+    await ParentOrder.findByIdAndUpdate(parentOrder._id, { orderStatus: 'Processing' });
+    await SellerOrder.updateMany(
+      { parentOrder: parentOrder._id },
+      { $set: { status: 'Processing' } }
+    );
 
     await createPaymentTransaction(payment, 'success', 'success', payment.amount, { transactionId: payment.transactionId });
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
+import { formatPKR } from "../../utils/currency";
 
 const OrderConfirmationPage = () => {
   const { orderId } = useParams();
@@ -53,21 +54,34 @@ const OrderConfirmationPage = () => {
     );
   }
 
-  const paid = payment?.status === "Completed";
-  const failed = payment?.status === "Failed";
-  const pending = !paid && !failed;
+  // Cash on Delivery is unpaid until the courier collects cash on delivery, so
+  // it must never render as "Payment Successful". Show a neutral "Order Placed"
+  // state with pending/warning styling regardless of the stored payment status.
+  const isCOD = payment?.method === "CashOnDelivery";
+  const paid = !isCOD && payment?.status === "Completed";
+  const failed = !isCOD && payment?.status === "Failed";
 
-  const statusText = failed
-    ? "Payment Failed"
-    : paid
-      ? "Payment Successful!"
-      : "Payment Pending";
+  let statusText;
+  let statusStyle;
+  let statusIcon;
 
-  const statusStyle = failed
-    ? { backgroundColor: "var(--danger-bg)", color: "var(--danger-text)" }
-    : paid
-      ? { backgroundColor: "var(--success-bg)", color: "var(--success-text)" }
-      : { backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" };
+  if (isCOD) {
+    statusText = "Order Placed - Payment on Delivery";
+    statusStyle = { backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" };
+    statusIcon = "📦";
+  } else if (paid) {
+    statusText = "Payment Successful!";
+    statusStyle = { backgroundColor: "var(--success-bg)", color: "var(--success-text)" };
+    statusIcon = "✅";
+  } else if (failed) {
+    statusText = "Payment Failed";
+    statusStyle = { backgroundColor: "var(--danger-bg)", color: "var(--danger-text)" };
+    statusIcon = "❌";
+  } else {
+    statusText = "Payment Pending";
+    statusStyle = { backgroundColor: "var(--warning-bg)", color: "var(--warning-text)" };
+    statusIcon = "⏳";
+  }
 
   // ----- Safe order values -----
   const subtotal = Number(order.subtotal ?? 0);
@@ -89,7 +103,7 @@ const OrderConfirmationPage = () => {
           fontSize: "1.25rem",
         }}
       >
-        {paid ? "✅" : failed ? "❌" : "⏳"} {statusText}
+        {statusIcon} {statusText}
       </div>
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", padding: "2rem", boxShadow: "0 1px 3px var(--shadow)" }}>
@@ -112,25 +126,25 @@ const OrderConfirmationPage = () => {
           {/* ----- BREAKDOWN ROWS ----- */}
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--text-secondary)" }}>Subtotal</span>
-            <span>PKR {subtotal.toLocaleString()}</span>
+            <span>PKR {formatPKR(subtotal)}</span>
           </div>
 
           {discountAmount > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "var(--text-secondary)" }}>Discount</span>
-              <span>-PKR {discountAmount.toLocaleString()}</span>
+              <span>-PKR {formatPKR(discountAmount)}</span>
             </div>
           )}
 
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--text-secondary)" }}>Delivery Charges</span>
-            <span>PKR {deliveryCharges.toLocaleString()}</span>
+            <span>PKR {formatPKR(deliveryCharges)}</span>
           </div>
 
           {freeDeliveryDiscount > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "var(--text-secondary)" }}>Free Delivery Discount</span>
-              <span>-PKR {freeDeliveryDiscount.toLocaleString()}</span>
+              <span>-PKR {formatPKR(freeDeliveryDiscount)}</span>
             </div>
           )}
 
@@ -144,7 +158,7 @@ const OrderConfirmationPage = () => {
             }}
           >
             <strong>Final Total</strong>
-            <strong>PKR {totalAmount.toLocaleString()}</strong>
+            <strong>PKR {formatPKR(totalAmount)}</strong>
           </div>
 
           {/* Payment details */}

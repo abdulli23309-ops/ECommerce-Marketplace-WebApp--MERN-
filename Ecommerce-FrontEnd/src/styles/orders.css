@@ -1,0 +1,273 @@
+/* ==========================================================================
+   Customer order experience — My Orders + Order Detail
+   Loaded after index.css. Prefixed `vv-` to stay clear of the legacy .order-*
+   rules in index.css. Every colour resolves through a theme token, so light and
+   dark themes both work with no hardcoded values.
+   ========================================================================== */
+
+.vv-orders-page {
+  background: var(--bg-secondary);
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+.vv-orders-shell {
+  max-width: 940px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.vv-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px var(--shadow);
+  overflow: hidden;
+}
+
+/* A prepaid order whose payment failed: outlined, not shouted. */
+.vv-card--failed {
+  border-color: var(--danger);
+}
+
+.vv-split {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.vv-split > * {
+  min-width: 0;
+}
+
+.vv-pill {
+  padding: 7px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.vv-pill:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.vv-pill--active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-contrast);
+}
+
+.vv-pill--active:hover {
+  background: var(--primary-hover);
+  color: var(--primary-contrast);
+}
+
+.vv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.vv-btn--primary {
+  background: var(--primary);
+  color: var(--primary-contrast);
+}
+
+.vv-btn--primary:hover {
+  background: var(--primary-hover);
+}
+
+.vv-btn--ghost {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.vv-btn--ghost:hover {
+  background: var(--surface-hover);
+}
+
+.vv-btn--danger {
+  background: var(--surface);
+  border-color: var(--danger);
+  color: var(--danger-text);
+}
+
+.vv-btn--danger:hover {
+  background: var(--danger-bg);
+}
+
+.vv-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.vv-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px 24px;
+}
+
+.vv-meta-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.vv-meta-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* Order line: [thumb] name / qty x unit price .......... line total */
+.vv-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.vv-line:last-child {
+  border-bottom: none;
+}
+
+.vv-line__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.vv-line__name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vv-line__sub {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.vv-line__total {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Vertical shipment timeline — renders only events present in the data. */
+.vv-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 2px 20px;
+  border-left: 2px solid var(--border);
+}
+
+.vv-timeline__item {
+  position: relative;
+  padding-bottom: 14px;
+}
+
+.vv-timeline__item:last-child {
+  padding-bottom: 0;
+}
+
+.vv-timeline__dot {
+  position: absolute;
+  left: -27px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border);
+  border: 2px solid var(--surface);
+}
+
+.vv-timeline__item--current .vv-timeline__dot {
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-bg);
+}
+
+.vv-timeline__status {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.vv-timeline__item--current .vv-timeline__status {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.vv-timeline__time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.vv-timeline__note {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .vv-orders-page {
+    padding: 24px 12px;
+  }
+
+  .vv-split {
+    align-items: flex-start;
+  }
+
+  /* Stack the two halves of a split row rather than squeezing them. */
+  .vv-split--stack > * {
+    flex: 1 1 100%;
+  }
+
+  /* Actions span the row so they stay comfortably tappable. */
+  .vv-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .vv-actions .vv-btn {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .vv-meta-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}

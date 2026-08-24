@@ -7,6 +7,7 @@ import { fetchAddresses } from "../../services/addressService";
 import { createPaymentIntent, fetchOrderPreview } from "../../services/orderService";
 import { validateCoupon } from "../../services/couponService";
 import { getImageUrl } from "../../utils/imageHelper";
+import { formatPKR } from "../../utils/currency";
 import { emptyCart } from "../../store/cartSlice";
 
 const CreditCard = () => (
@@ -271,7 +272,7 @@ const CheckoutPage = () => {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
             Please verify your email before placing an order.
           </p>
-          <button style={btnPrimary} onClick={() => navigate('/verify-email')}>
+          <button style={btnPrimary} onClick={() => navigate('/verify-email', { state: { from: '/checkout' } })}>
             Verify Email
           </button>
         </div>
@@ -396,7 +397,7 @@ const CheckoutPage = () => {
                         <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</p>
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Qty: {item.quantity}</p>
                       </div>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>PKR {(item.unitPrice * item.quantity).toLocaleString()}</p>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>PKR {formatPKR(item.unitPrice * item.quantity)}</p>
                     </div>
                   );
                 })}
@@ -408,22 +409,22 @@ const CheckoutPage = () => {
                   {!appliedCoupon ? <button onClick={applyCoupon} disabled={couponLoading || !couponCode.trim()} style={{ padding: '10px 16px', backgroundColor: couponLoading ? 'var(--disabled-bg)' : 'var(--primary)', color: 'var(--primary-contrast)', border: 'none', borderRadius: '8px', cursor: couponLoading ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>{couponLoading ? "..." : "Apply"}</button> : <button onClick={removeCoupon} style={{ padding: '10px 16px', backgroundColor: 'var(--danger)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>Remove</button>}
                 </div>
                 {couponError && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--danger)' }}>{couponError}</p>}
-                {appliedCoupon && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--success-text)' }}>Coupon <strong>{appliedCoupon.code}</strong> applied: {appliedCoupon.discountType === "free_delivery" ? "Free Delivery" : `-PKR ${discountAmount.toLocaleString()}`}</p>}
+                {appliedCoupon && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--success-text)' }}>Coupon <strong>{appliedCoupon.code}</strong> applied: {appliedCoupon.discountType === "free_delivery" ? "Free Delivery" : `-PKR ${formatPKR(discountAmount)}`}</p>}
               </div>
 
               <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}><span>Subtotal</span><span>PKR {summarySubtotal.toLocaleString()}</span></div>
-                {discountAmount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--success-text)' }}><span>Discount</span><span>-PKR {discountAmount.toLocaleString()}</span></div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}><span>Subtotal</span><span>PKR {formatPKR(summarySubtotal)}</span></div>
+                {discountAmount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--success-text)' }}><span>Discount</span><span>-PKR {formatPKR(discountAmount)}</span></div>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                   <span>Delivery</span>
                   {summaryDelivery === null
                     ? <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Calculating…</span>
                     : summaryDelivery === 0
                       ? <span style={{ color: 'var(--success-text)', fontWeight: 500 }}>Free</span>
-                      : <span>PKR {summaryDelivery.toLocaleString()}</span>}
+                      : <span>PKR {formatPKR(summaryDelivery)}</span>}
                 </div>
-                {summaryFreeDeliveryDiscount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--success-text)' }}><span>Free Delivery Discount</span><span>-PKR {summaryFreeDeliveryDiscount.toLocaleString()}</span></div>}
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)', fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}><span>Total</span><span>PKR {summaryTotal.toLocaleString()}</span></div>
+                {summaryFreeDeliveryDiscount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.875rem', color: 'var(--success-text)' }}><span>Free Delivery Discount</span><span>-PKR {formatPKR(summaryFreeDeliveryDiscount)}</span></div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)', fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}><span>Total</span><span>PKR {formatPKR(summaryTotal)}</span></div>
               </div>
 
               {error && <p style={{ marginTop: '16px', fontSize: '0.875rem', color: 'var(--danger-text)', backgroundColor: 'var(--danger-bg)', padding: '12px', borderRadius: '8px' }}>{error}</p>}

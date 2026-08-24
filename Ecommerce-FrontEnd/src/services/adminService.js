@@ -40,22 +40,26 @@ export const getSellers = async (params = {}) => {
   );
 
   return {
-    items: pagination.items.map((s) => ({
-      id: s._id,
-      businessName: s.businessName,
-      fullName: s.user?.name || "",
-      email: s.user?.email || "",
-      storeName: s.store?.name || "",
-      storeLogoUrl: s.store?.logo || "",
-      storeDescription: s.store?.description || "",
-      phone: s.phone || "",
-      address: s.address || "",
-      taxId: s.taxId || "",
-      city: s.store?.city || "",
-      status: s.status,
-      user: s.user,      // keep full user object for moderation status
-      store: s.store,    // keep full store object
-    })),
+  items: pagination.items.map((s) => ({
+    id: s._id,
+    businessName: s.businessName,
+    fullName: s.user?.name || "",
+    email: s.user?.email || "",
+    storeName: s.store?.name || "",
+    storeLogoUrl: s.store?.logo || "",
+    storeDescription: s.store?.description || "",
+    phone: s.phone || "",
+    address: s.address || "",
+    taxId: s.taxId || "",
+    city: s.store?.city || "",
+    status: s.status,
+    averageRating: s.averageRating ?? s.avgRating ?? 0,
+    lowRatingStatus: s.lowRatingStatus === true,
+    warningCount: s.warningCount || 0,
+    warningHistory: s.warningHistory || [],
+    user: s.user,
+    store: s.store,
+  })),
     total: pagination.total,
     page: pagination.page,
     pageSize: pagination.pageSize,

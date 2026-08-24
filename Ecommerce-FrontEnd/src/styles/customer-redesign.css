@@ -1,0 +1,690 @@
+/* ==========================================================================
+   CUSTOMER REDESIGN - Modern UI/UX for Product Listing & Reviews
+   ========================================================================== */
+
+/* ==========================================================================
+   1. ANIMATIONS & TRANSITIONS
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* ==========================================================================
+   2. SKELETON LOADERS
+   ========================================================================== */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary) 0%,
+    var(--surface-hover) 50%,
+    var(--bg-secondary) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+  border-radius: 8px;
+}
+
+.skeleton-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+/* ==========================================================================
+   3. PRODUCT LISTING PAGE
+   ========================================================================== */
+
+.listing-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.listing-toolbar {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.listing-search {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.listing-search input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: 99px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.listing-search input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .listing-search input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+}
+
+.suggestions-dropdown {
+  max-height: 320px;
+  overflow-y: auto;
+  border-radius: 12px !important;
+}
+
+.suggestions-dropdown a {
+  transition: background 0.2s;
+}
+
+.suggestions-dropdown a:hover {
+  background: var(--surface-hover);
+}
+
+.listing-content {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem;
+}
+
+.listing-filters {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  height: fit-content;
+  position: sticky;
+  top: 1rem;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.filter-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.listing-products {
+  min-height: 400px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.product-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.product-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px var(--shadow);
+  border-color: var(--primary);
+}
+
+.product-image {
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  position: relative;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-card:hover .product-image img {
+  transform: scale(1.1);
+}
+
+.no-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.product-details {
+  padding: 1rem;
+}
+
+.product-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-price {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Mobile filter drawer */
+@media (max-width: 768px) {
+  .listing-content {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-filters {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    height: 100vh;
+    width: 85%;
+    max-width: 320px;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+  }
+
+  .listing-filters.open {
+    left: 0;
+  }
+}
+
+/* ==========================================================================
+   4. REVIEW PAGES - SHARED COMPONENTS
+   ========================================================================== */
+
+.review-list-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: block;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.review-list-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px var(--shadow);
+  border-color: var(--primary);
+}
+
+.review-header-compact {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.review-header-compact img {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.review-quote {
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.6;
+  padding-left: 1rem;
+  border-left: 3px solid var(--border);
+  margin: 1rem 0;
+}
+
+.seller-response-block {
+  background: var(--success-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.seller-response-block strong {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--success-text);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.seller-response-block p {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.empty-state-modern {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  max-width: 480px;
+  margin: 2rem auto;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.empty-state-modern h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.empty-state-modern p {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   5. WRITE REVIEW PAGE - INTERACTIVE STAR RATING
+   ========================================================================== */
+
+.star-rating-interactive {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.star-rating-interactive .star {
+  font-size: 2.5rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.star-rating-interactive .star:hover {
+  transform: scale(1.15);
+}
+
+.star-rating-interactive .star.filled {
+  color: #f59e0b;
+  filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.4));
+}
+
+.star-rating-interactive .star.empty {
+  color: var(--border);
+}
+
+.rating-label {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-height: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.rating-label.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.rating-label.hidden {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+/* Drag & Drop Zone */
+.drag-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  background: var(--bg-secondary);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.drag-drop-zone:hover,
+.drag-drop-zone.drag-over {
+  border-color: var(--primary);
+  background: var(--surface-hover);
+}
+
+.drag-drop-zone svg {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  color: var(--text-muted);
+}
+
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.image-preview-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  transition: transform 0.2s;
+}
+
+.image-preview-item:hover {
+  transform: scale(1.05);
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: white;
+  border: 2px solid var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: transform 0.2s;
+  z-index: 10;
+}
+
+.image-remove-btn:hover {
+  transform: scale(1.15);
+}
+
+/* ==========================================================================
+   6. REVIEW DETAIL PAGE - IMAGE GALLERY
+   ========================================================================== */
+
+.review-detail-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.review-detail-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.review-image-gallery {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+/* Dynamic grid based on image count */
+.review-image-gallery.count-1 {
+  grid-template-columns: 1fr;
+}
+
+.review-image-gallery.count-1 img {
+  max-height: 400px;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.review-image-gallery.count-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.review-image-gallery.count-3 {
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.review-image-gallery.count-3 img:first-child {
+  grid-row: span 2;
+}
+
+.review-image-gallery.count-4,
+.review-image-gallery.count-5-plus {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 200px);
+}
+
+.review-image-gallery img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.review-image-gallery img:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px var(--shadow);
+}
+
+.image-overlay-count {
+  position: relative;
+  cursor: pointer;
+}
+
+.image-overlay-count::after {
+  content: attr(data-count);
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  border-radius: 12px;
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--success-bg);
+  color: var(--success-text);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--success);
+}
+
+/* ==========================================================================
+   7. RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .listing-toolbar {
+    flex-direction: column;
+  }
+
+  .listing-search {
+    width: 100%;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1rem;
+  }
+
+  .product-card {
+    border-radius: 8px;
+  }
+
+  .product-image {
+    height: 180px;
+  }
+
+  .review-image-gallery.count-3,
+  .review-image-gallery.count-4,
+  .review-image-gallery.count-5-plus {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .review-image-gallery.count-3 img:first-child {
+    grid-row: span 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .star-rating-interactive .star {
+    font-size: 2rem;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .product-image {
+    height: 160px;
+  }
+}
+
+/* ==========================================================================
+   8. UTILITY CLASSES
+   ========================================================================== */
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.text-heading {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+}
+
+.text-subtext {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.modern-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px var(--shadow);
+  transition: all 0.3s ease;
+}
+
+.modern-card:hover {
+  box-shadow: 0 4px 12px var(--shadow);
+}

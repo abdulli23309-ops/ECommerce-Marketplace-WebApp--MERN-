@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
 import { getImageUrl } from '../../utils/imageHelper';
 import axiosInstance from '../../services/axiosInstance';
+import {
+  getProductRating,
+  isProductLowRating,
+  isProductLowStock,
+} from '../../utils/warningThresholds';
 
-const isWarningState = (product) => {
-  const lowStock = Number(product.stock) <= 5;
-  const lowRating = product.averageRating > 0 && Number(product.averageRating) < 2.0;
-  return lowStock || lowRating;
-};
+// Mirrors ProductModerationPage: low stock, or the backend's lowRatingStatus
+// flag. Previously this used a local 2.0 cut-off, so a 2.5-star product read as
+// "Low Rating" in the moderation table and clean inside this panel.
+const isWarningState = (product) =>
+  isProductLowStock(product) || isProductLowRating(product);
 
 const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
   const [internalNote, setInternalNote] = useState('');
@@ -99,7 +104,8 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
         style={{
           position: 'fixed',
           inset: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(6px)',
           zIndex: 999,
         }}
       />
@@ -281,9 +287,9 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
                 fontWeight: 600,
               }}
             >
-              ⚠️ {Number(product.stock) <= 5 ? 'Low Stock' : 'Low Product Rating'} —{' '}
-              {product.averageRating > 0
-                ? `${Number(product.averageRating).toFixed(1)} average rating.`
+              ⚠️ {isProductLowRating(product) ? 'Low Product Rating' : 'Low Stock'} —{' '}
+              {isProductLowRating(product)
+                ? `${getProductRating(product).toFixed(1)} average rating.`
                 : `Stock: ${product.stock}`}
             </div>
           )}

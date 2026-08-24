@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate } from "react-router-dom";
+import { Outlet, Link, NavLink, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect } from "react";
 import { loadCart } from "../store/cartSlice";
@@ -57,6 +57,12 @@ const CustomerLayout = () => {
     else if (targetDashboard === "seller") navigate("/seller/dashboard");
     else navigate("/");
   };
+
+  // Active state styling using existing theme tokens
+  const navLinkStyle = ({ isActive }) => ({
+    color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+    fontWeight: isActive ? 600 : undefined,
+  });
 
   return (
     <div className="customer-layout">
@@ -142,9 +148,11 @@ const CustomerLayout = () => {
           <div className="navbar-user-menu">
             {user ? (
               <div className="user-nav-links">
-                <Link to="/orders">Orders</Link>
-                <Link to="/profile">Profile</Link>
-                <Link to="/wishlist">Wishlist</Link>
+                <NavLink to="/orders" style={navLinkStyle} end>Orders</NavLink>
+                <NavLink to="/profile" style={navLinkStyle}>Profile</NavLink>
+                <NavLink to="/wishlist" style={navLinkStyle}>Wishlist</NavLink>
+                <NavLink to="/reviews/my" style={navLinkStyle}>My Reviews</NavLink>
+                <NavLink to="/returns" style={navLinkStyle}>Returns</NavLink>
               </div>
             ) : (
               <Link className="btn-login" to="/login">

@@ -121,6 +121,61 @@ const addReviews = async (product, sellerOrder, rating, count) => {
   }
 };
 
+const customerToken = (customer) =>
+  generateTestToken({ sub: customer._id.toString(), roles: ['Customer'] });
+
+// A fresh customer plus their own delivered order for `product`. Each API review
+// needs its own (customer, sellerOrder) pair: createReview requires the parent
+// order to belong to the requesting customer.
+const createDeliveredOrder = async (store, product) => {
+  const customer = await createCustomer();
+
+  const parentOrder = await ParentOrder.create({
+    customer: customer._id,
+    orderStatus: 'Delivered',
+    shippingFullName: customer.name,
+    shippingPhone: '03451234567',
+    shippingAddressLine1: 'Main Street',
+    shippingCity: 'Lahore',
+    shippingState: 'Punjab',
+    shippingPostalCode: '54000',
+    totalAmount: product.price,
+  });
+
+  const sellerOrder = await SellerOrder.create({
+    parentOrder: parentOrder._id,
+    store: store._id,
+    subTotal: product.price,
+    status: 'Delivered',
+    items: [
+      {
+        product: product._id,
+        productNameSnapshot: product.name,
+        unitPriceSnapshot: product.price,
+        quantity: 1,
+      },
+    ],
+  });
+
+  return { customer, token: customerToken(customer), sellerOrder };
+};
+
+// Posts a review through POST /api/v1/reviews — the path a real customer takes,
+// and the only path that triggers rating recalculation.
+const postReview = async (store, product, rating, comment = 'QA review') => {
+  const { token, sellerOrder } = await createDeliveredOrder(store, product);
+
+  return request(app)
+    .post('/api/v1/reviews')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      productId: product._id.toString(),
+      sellerOrderId: sellerOrder._id.toString(),
+      rating,
+      comment,
+    });
+};
+
 const warnSeller = (token, profileId) =>
   request(app)
     .post(`/api/v1/admin/sellers/${profileId}/warn`)
@@ -272,6 +327,120 @@ describe('Priority 5 — Rating Moderation', () => {
       expect(recovered.body.data.canWarn).toBe(false);
       expect(Array.isArray(recovered.body.data.warningHistory)).toBe(true);
       expect(recovered.body.data.warningHistory).toHaveLength(2);
+    });
+
+    it('rejects a 4th warning attempt, holding warningCount at MAX_WARNINGS without auto-suspending', async () => {
+      const token = await createAdminToken();
+      const { product, sellerOrder } = await setupSeller();
+
+      await addReviews(product, sellerOrder, 1, 2);
+
+      for (let i = 0; i < MAX_WARNINGS; i += 1) {
+        await warnProduct(token, product._id).expect(200);
+      }
+
+      const fourth = await warnProduct(token, product._id).expect(400);
+      expect(fourth.body.message).toMatch(/limit/i);
+
+      const persisted = await Product.findById(product._id).lean();
+      expect(persisted.warningCount).toBe(MAX_WARNINGS);
+      expect(persisted.warningHistory).toHaveLength(MAX_WARNINGS);
+      // Warnings never auto-suspend a product.
+      expect(persisted.status).toBe('Approved');
+    });
+  });
+
+  // Regression coverage for the recalculation-ordering bug: recalculation used to
+  // run before reviewRepo.create, so it aggregated a review set that was missing
+  // the review being created. These tests read the Product document directly —
+  // no moderation-status call — because that endpoint recalculates on read and
+  // would hide the defect. The admin product list renders from these same
+  // persisted fields.
+  describe('Product rating recalculation on review creation', () => {
+    it('persists averageRating 1.0 and lowRatingStatus true after a single 1-star review, leaving warningCount at 0', async () => {
+      const { store, product } = await setupSeller();
+
+      const res = await postReview(store, product, 1);
+      expect(res.status).toBe(201);
+
+      const persisted = await Product.findById(product._id).lean();
+      expect(persisted.averageRating).toBe(1);
+      expect(persisted.lowRatingStatus).toBe(true);
+      // warningCount only moves when an admin issues a warning.
+      expect(persisted.warningCount).toBe(0);
+      expect(persisted.warningHistory).toHaveLength(0);
+    });
+
+    it('averages every review on the product, not only the newest one', async () => {
+      const { store, product } = await setupSeller();
+
+      for (const rating of [1, 2, 3]) {
+        const res = await postReview(store, product, rating);
+        expect(res.status).toBe(201);
+      }
+
+      const persisted = await Product.findById(product._id).lean();
+      expect(persisted.averageRating).toBe(2); // (1 + 2 + 3) / 3
+      expect(persisted.lowRatingStatus).toBe(true);
+    });
+
+    it('leaves lowRatingStatus false when the first review is at or above the threshold', async () => {
+      const { store, product } = await setupSeller();
+
+      const res = await postReview(store, product, 3);
+      expect(res.status).toBe(201);
+
+      const persisted = await Product.findById(product._id).lean();
+      expect(persisted.averageRating).toBe(3);
+      expect(persisted.lowRatingStatus).toBe(false);
+    });
+
+    it('lets an admin warn straight after the low review, with no moderation-status refresh first', async () => {
+      const token = await createAdminToken();
+      const { store, product } = await setupSeller();
+
+      const res = await postReview(store, product, 1);
+      expect(res.status).toBe(201);
+
+      const warned = await warnProduct(token, product._id).expect(200);
+      expect(warned.body.data.warningCount).toBe(1);
+      expect(warned.body.data.lowRatingStatus).toBe(true);
+    });
+
+    it('clears lowRatingStatus and resets warningCount when a later review lifts the average, keeping history', async () => {
+      const adminToken = await createAdminToken();
+      const { store, product, sellerOrder } = await setupSeller();
+
+      const low = await postReview(store, product, 1);
+      expect(low.status).toBe(201);
+
+      await warnProduct(adminToken, product._id).expect(200);
+      const second = await warnProduct(adminToken, product._id).expect(200);
+      expect(second.body.data.warningCount).toBe(2);
+
+      // Bulk 5-star reviews, then one more through the API so the create path is
+      // what triggers the recalculation.
+      await addReviews(product, sellerOrder, 5, 5);
+      const recovery = await postReview(store, product, 5);
+      expect(recovery.status).toBe(201);
+
+      const persisted = await Product.findById(product._id).lean();
+      expect(persisted.averageRating).toBeCloseTo(4.4, 5); // (1 + 25 + 5) / 7
+      expect(persisted.lowRatingStatus).toBe(false);
+      expect(persisted.warningCount).toBe(0);
+      // History is a permanent audit trail and survives the reset.
+      expect(persisted.warningHistory).toHaveLength(2);
+    });
+
+    it('still recalculates the seller profile, now including the new review', async () => {
+      const { profile, store, product } = await setupSeller();
+
+      const res = await postReview(store, product, 1);
+      expect(res.status).toBe(201);
+
+      const persisted = await SellerProfile.findById(profile._id).lean();
+      expect(persisted.averageRating).toBe(1);
+      expect(persisted.lowRatingStatus).toBe(true);
     });
   });
 });
