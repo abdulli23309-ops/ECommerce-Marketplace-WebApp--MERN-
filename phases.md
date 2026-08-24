@@ -1,198 +1,94 @@
 # VendorVerse Development Phases
 
-> History reconstructed from (a) the actual Git history (`git log`, 13 commits, `1e33a18` → `3b07eec`), (b) direct source inspection, and (c) the historical project context supplied for this documentation task. Where the two disagree, source code wins (see `rules.md` Rule 1). Items not directly evidenced by commit history or source are explicitly marked ⚠️ NEEDS VERIFICATION rather than asserted as fact.
+> History reconstructed from the root Git history (17 commits, `1e33a18` → `5847f7f`), direct source inspection, and the approved Phase 2 scope. Where a prior checkpoint conflicted with the current source, the current source won (see `rules.md` Rule 1). This document represents the **final verified Phase 2 state**. No dates or commit hashes beyond those verifiable in the repo are asserted.
 
 ## Legend
-
 | Symbol | Meaning |
 |---|---|
-| ✅ COMPLETE | Confirmed present and working in current source |
-| 🟡 PARTIAL | Present but incomplete, or present with a known gap |
-| 🔴 NOT STARTED | No evidence in current source |
-| ⚠️ NEEDS VERIFICATION | Referenced in historical context but not independently confirmed line-by-line |
+| ✅ IMPLEMENTED | Present and verified in current source |
+| 🔴 DEFERRED | Not implemented; explicitly deferred |
+| ⚠️ KNOWN LIMITATION | Implemented with a documented gap |
 
-## Verified Git History
+## Verified Git History (17 commits)
 
-The repository contains 13 commits:
+Recent → oldest:
+- **`5847f7f`** (HEAD) — Complete VendorVerse Phase 2 regression and UI refinements
+- **`f97f85a`** — Complete Phase 2 verification and frontend delivery/coupon polish
+- **`0260220`** — feat: add Priority 5 features and email verification
+- **`3b07eec`** — Implement Priority 4 features and backend tests
+- `4460ff0` / `e5c6960` / `d87ada5` / `9e7e266` / `9d2b67b` — Update VendorVerse Phase 1 QA and stabilization
+- `4fa7581` — Complete marketplace lifecycle and QA refinements
+- `77b80cf` — Stripe integration, COD, order cancellation, UI polish, bug fixes
+- `90ecead` — fix: missing mongoose import + seller store-details fix
+- `8fdfc05` — feat: UI polish, avatar upload, return flow, review redesign, order stepper, profile overhaul
+- `1ca5b2f` — feat: full pagination, shipment modal, settings overhaul, product image mgmt, password change, store page fixes
+- `245700b` — Complete Phase 1 MERN marketplace — backend and frontend with permissions
+- `d81d4e9` — Complete MERN Phase 1 frontend — all modules implemented and tested
+- `1e33a18` — Initial project setup
 
-| Commit (short) | Message |
-|---|---|
-| `1e33a18` | Initial project setup |
-| `d81d4e9` | Complete MERN Phase 1 backend – all modules implemented and tested |
-| `245700b` | Complete Phase 1 MERN marketplace – backend and frontend with permissions |
-| `1ca5b2f` | feat: full pagination on admin/seller/customer endpoints, shipment modal, settings overhaul, product image management, password change, store page fixes |
-| `8fdfc05` | feat: UI polish, avatar upload, return flow, review redesign, order stepper, profile overhaul, bug fixes |
-| `90ecead` | fix: add missing mongoose import in Admin.repository.js, fix findSellers to populate store data, and update seller modal with store details |
-| `77b80cf` | Stripe integration, COD, order cancellation, UI polish, bug fixes |
-| `4fa7581` | Complete marketplace lifecycle and QA refinements |
-| `9d2b67b` → `4460ff0` (4 commits) | Update VendorVerse Phase 1 QA and stabilization |
-| `3b07eec` | **Implement Priority 4 features and backend tests** (current HEAD) |
+**All Phase 2 work is committed.** Priority 4 entered at `3b07eec`, Priority 5 at `0260220`, and Phase 2 verification/final regression at `f97f85a`/`5847f7f`. The working tree is clean.
 
-This confirms: the project was built out in one continuous "Phase 1" push (auth → core marketplace → permissions → pagination → payments/Stripe/COD → returns/reviews/profile polish → repeated QA/stabilization passes), followed by a Priority 4 commit. The commit log does **not** contain literal "Phase 14" or "Phase 14A" commit messages — the Phase 14/14A numbering comes from the historical project context supplied for this task. The underlying code changes attributed to Phase 14A (below) **are** independently confirmed in the current source.
+## Phase 1 — Foundational MERN Marketplace (✅ IMPLEMENTED)
+Cumulative outcome confirmed in source: full auth + role/permission authz; Customer/Seller/Admin marketplace (products, cart, wishlist, checkout, multi-seller order splitting, orders, shipments, reviews, returns, refunds, payments); seller/permission management; initial pagination; store pages.
 
-## Phase 1–13 — Foundational Build & Theme Migration ⚠️ NEEDS VERIFICATION (numbering) / ✅ COMPLETE (outcome)
+## Phase 14A — Stabilization / Discrepancy Resolution (✅ IMPLEMENTED)
+Resolved: admin product-moderation global stats endpoint + inspection; `SellerProductsPage` and `SellerDashboardPage` moved onto the shared `getStatusBadgeStyle()`/theme-token pattern; paginated product-review inspection inside the admin modal. Layer/contract invariants preserved.
 
-The numbered "Phase 1–13" breakdown itself is historical context and is not reconstructable commit-by-commit from the Git log above. What **is** confirmed by source inspection is the cumulative outcome attributed to this range:
+## Phase 2 — Priority 1 (✅ IMPLEMENTED)
+- Regression / bug fixing (ongoing through final regression).
+- Order status history / timeline (customer order detail step tracker).
+- Low-stock indicators (seller dashboard).
+- Related-products backend refinement.
+- Reusable Pagination component (`components/common/Pagination.jsx`).
+- Backend automated/API testing (Vitest + Supertest + mongodb-memory-server).
 
-- ✅ Full auth (register/login/refresh/logout), role/permission authorization
-- ✅ Customer, Seller, Admin functionality across products, cart, wishlist, checkout, orders, shipments, reviews, returns, refunds, payments
-- ✅ Seller/permission management (`PermissionGroup`, `Role`, `Permission` models + admin UI)
-- ✅ Light/dark theme system with CSS custom properties and theme-aware branding (`BrandLogo`)
-- ✅ Route guarding (`ProtectedRoute`, `PermissionGate`)
-- ✅ Backend pagination (products, brands) and frontend pagination controls
-- ✅ Product review pagination
-- ✅ Admin returns/refunds pagination
+## Phase 2 — Priority 2 (✅ IMPLEMENTED)
+- Recently viewed products.
+- Search autocomplete / suggestions.
+- Seller performance indicators.
+- Customer / Seller / Admin UI/UX improvements.
 
-Treat "Phase 1–13" as a label for this cumulative pre-14A state, not as 13 individually verifiable checkpoints.
+## Phase 2 — Priority 3 (✅ IMPLEMENTED)
+- Full light/dark theme system (cards, forms, tables, navigation, modals, text, borders, components).
+- Theme-aware branding.
 
-## Phase 14 — Readiness Analysis / Discrepancy Identification ⚠️ NEEDS VERIFICATION
+## Phase 2 — Priority 4 (✅ IMPLEMENTED)
+- Notifications (+ dropdowns; customer/seller/admin; order/shipment/return/refund and seller-application flows, low-stock/low-rating where implemented).
+- Coupons (percentage / fixed / free-delivery; admin CRUD; checkout validation; usage tracking; min-order; usage limits).
+- Seller analytics (top-selling products + sales trend, **rendered on the seller dashboard**).
+- Admin audit log (paginated, moderation/product/seller/catalog/refund/permission events).
 
-Historical context states this phase identified the four discrepancies (D-01 through D-04) later resolved in Phase 14A. No dedicated commit or artifact for "Phase 14" analysis itself was found in the current source tree; its existence is inferred from the fact that D-01–D-04 are precisely defined and were subsequently and verifiably fixed (see below).
+## Phase 2 — Priority 5 (✅ IMPLEMENTED)
+- Seller rating moderation: average rating, low-rating threshold, warning progression/history, recovery, warning cap. **No automatic suspension.**
+- Product rating moderation: same warning model with a cap.
+- EasyPaisa & JazzCash sandbox payment flows.
+- Email OTP: generation, hashing, expiration, attempt limits, verification flow, dev email fallback.
+- Google OAuth: registration/login, account linking, role safety.
+- Delivery charges: per-seller config, calculations, threshold-based free delivery, checkout display.
+- Seller free delivery (product-level) and coupon free delivery.
+- Dashboard-context switching (Seller→Customer, Admin→Seller, Admin→Customer; backend role unchanged; seller cannot add own product to cart; seller can buy other sellers' products).
 
-## Phase 14A — Stabilization / Discrepancy Resolution — ✅ COMPLETE
+## Final Phase 2 Regression (✅ PASS)
+- **Backend automated tests:** 33 test files / 33 passed; 248 tests / 248 passed; 0 failures (full suite together).
+- **Frontend build:** PASS (194 modules transformed, built successfully; non-blocking Vite chunk-size advisory only).
+- **Manual regression:** PASS across Auth, Authorization, Customer/Seller/Admin workflows, Cart, Checkout, Multi-seller splitting, COD, EasyPaisa, JazzCash, Coupons, Orders, Shipments, Reviews, Rating moderation, Returns, Refunds, Notifications, Permissions, Theme/UI.
+- Defects found during regression were fixed and re-verified, including: COD payment messaging/status; successful wallet order processing; currency formatting; missing product images; product rating recalculation timing; seller-warning data visibility; product-moderation low-rating state; customer order-tracking redesign; product inspection modal overlay; email OTP redirect; customer return-detail rendering/build.
 
-All four discrepancies are confirmed resolved in the current source.
+## Deferred (🔴) — not part of completed Phase 2 work, or explicitly future
+- **PayPal payment processor** — enum/UI value only; no processor. Deferred.
+- **Product variants** (size/color/SKU/variant-level inventory) — deferred.
+- **Advanced / ML recommendations** — deferred (basic related-products + recently-viewed are separate and Complete).
 
-### D-01 — ProductModerationPage Metrics — ✅ COMPLETE
-- Confirmed: `GET /stats` route registered in `multi-vendor-mern/app/routes/AdminProduct.routes.js`.
-- Confirmed: `getProductStats` exported from `Ecommerce-FrontEnd/src/services/adminProductService.js`.
-- Confirmed: `ProductInspectionModal`/`ProductModerationPage` consume this separately from the paginated product list.
+## Known Limitations (⚠️) carried into current state
+- **Seller/Product auto-suspension** — rating warnings cap at the defined maximum and **do not** suspend; auto-suspension is a future business decision.
+- **Delivery-charge Admin UI** — backend + checkout implemented; no admin management screen.
+- **Production email delivery** — SMTP-gated; development fallback logs OTP (not production mail).
+- **Stripe webhook** — signature verification implemented and locally unit-tested; end-to-end Stripe→local forwarding was not manually verified in this environment.
+- **Flagged source items (unchanged)** — `Refund.returnRequest` `ref: 'ReturnRequest'` vs registered `Return` model; avatar comment (10MB) vs 20MB Multer limit; orphaned `CodProcessor.js`; duplicate `SellerProfile.status`; hardcoded `.hero-banner`/`.hero-subtitle` colors.
 
-### D-02 — SellerProductsPage — ✅ COMPLETE
-- Confirmed: `Ecommerce-FrontEnd/src/pages/seller/SellerProductsPage.jsx` exists and uses the shared `utils/statusBadge.js` helper rather than a local `statusBadgeStyle` function.
-
-### D-03 — SellerDashboardPage — ✅ COMPLETE
-- Confirmed: `Ecommerce-FrontEnd/src/pages/seller/SellerDashboardPage.jsx` exists; semantic theme variables (`--info-bg`, `--success-bg`, `--warning-bg`, `--danger-bg`, `--text-primary`, `--border`) are defined in `index.css` and are the confirmed pattern this page was retrofitted onto.
-
-### D-04 — ProductInspectionModal — ✅ COMPLETE
-- Confirmed: `Ecommerce-FrontEnd/src/pages/admin/ProductInspectionModal.jsx` sends `page`/`pageSize` params (`reviewsPage`, `reviewPageSize`) and renders `Previous`/`Next` controls using the `.page-btn` CSS class, driven by response `totalPages`.
-
-**Files confirmed present** (frontend): `SellerProductsPage.jsx`, `SellerDashboardPage.jsx`, `ProductInspectionModal.jsx`, `ProductModerationPage.jsx`, `adminProductService.js`.
-**Files confirmed present** (backend): `Product.repository.js`, `AdminProduct.service.js`, `AdminProduct.controller.js`, `AdminProduct.routes.js`.
-
-## Current Checkpoint
-
-**Priority 1, Priority 2, Priority 3, and Priority 4 are COMPLETE (Committed).**
-
-- Priority 1: regression/bug audit, order status timeline, low-stock indicators, related-products fix, reusable Pagination component, automated/API tests.
-- Priority 2: recently viewed products, search autocomplete/suggestions, additional seller performance indicators, minor UI/UX improvements.
-- Priority 3: light/dark theme system.
-- Priority 4: in-app notifications, coupons/discounts, seller analytics (backend-only), admin audit log.
-
-**Priority 5 is PARTIALLY IMPLEMENTED (Uncommitted).**
-
-- Rating moderation (backend, partial — no auto-suspend)
-- Delivery charges (backend + checkout; no admin UI)
-- Email OTP verification upgrade
-- Google OAuth
-- JazzCash/EasyPaisa sandbox processors
-- Seller cannot add own product to cart
-- Product variants — 🔴 Not started
-- Advanced recommendations — 🔴 Not started
-- PayPal — 🔴 Not implemented (enum-only)
-
-## Priority 4 — ✅ COMPLETE (Committed)
-
-Committed in HEAD `3b07eec` ("Implement Priority 4 features and backend tests"):
-
-- **In-App Notifications** — `Notification.model.js`, `Notification.service.js`, `Notification.controller.js`, `Notification.routes.js`; frontend `NotificationDropdown.jsx` + `notificationService.js`.
-- **Coupons/Discounts** — `Coupon.model.js`, `CouponUsage.model.js`, `Coupon.service.js`, `Coupon.controller.js`, `Coupon.routes.js`; frontend `AdminCouponsPage.jsx` + `adminCouponService.js`.
-- **Admin Audit Log** — `AdminAuditLog.model.js`, `AdminAuditLog.service.js`, `AdminAuditLog.controller.js`, `AdminAuditLog.routes.js`; frontend `AdminAuditLogPage.jsx` + `adminAuditLogService.js`.
-- **Seller Analytics** — `Seller.dashboard.service.js` computes `topSellingProducts` and `salesTrend`; **backend-only, not rendered frontend** (known gap).
-
-## Priority 5 — 🟡 PARTIALLY IMPLEMENTED (Uncommitted)
-
-All Priority 5 work is **uncommitted** (present in the working tree only). It is not yet committed to Git.
-
-### Rating Moderation — 🟡 PARTIAL (Uncommitted)
-- `RatingModeration.service.js`, `RatingModeration.repository.js`.
-- Product low threshold 3.0, seller low threshold 2.5, max warnings 3.
-- **Warnings do not auto-suspend** (pending business-rule decision).
-- Known issue: `ratingModeration.test.js` has a warningCount assertion mismatch.
-
-### Delivery Charges — 🟡 BACKEND ONLY (Uncommitted)
-- `DeliveryCharge.model.js`, `DeliveryCharge.service.js`, `DeliveryCharge.controller.js`, `DeliveryCharge.routes.js`.
-- Checkout is integrated.
-- **No admin frontend UI** (known gap).
-
-### Email OTP Verification Upgrade — 🟡 PARTIAL (Uncommitted)
-- `User.emailVerified` added; normal registration sets `emailVerified: false`.
-- Checkout and seller application require `emailVerified: true`.
-- Google OAuth sets `emailVerified: true`.
-- OTP expiry 3 minutes, resend cooldown 3 minutes, max 5 attempts.
-- OTP bcrypt-hashed; recipient email derived from authenticated user, not request body.
-- `Email.service.js` uses Nodemailer SMTP when `EMAIL_PROVIDER=smtp`; development fallback logs OTP to console.
-- `VerifyEmailPage.jsx` has read-only email, countdown, expiry message.
-- `authSlice` has `setEmailVerified` reducer.
-- **Email OTP tests passed 4/4 in the last actual run.**
-
-### Google OAuth — 🟡 PARTIAL (Uncommitted)
-- `GoogleAuth.controller.js`, `GoogleAuth.service.js`, `GoogleAuth.routes.js`.
-- `GoogleAuthButton.jsx` (`pages/auth/GoogleAuthButton.jsx`).
-- Sets `emailVerified: true` after successful authentication.
-
-### JazzCash/EasyPaisa Sandbox Processors — 🟡 PARTIAL (Uncommitted)
-- `services/payment/processors/JazzCashProcessor.js`, `EasyPaisaProcessor.js`, `CashOnDeliveryProcessor.js`.
-- `PaymentFactory.js` updated.
-- Known issue: `easypaisaJazzcash.test.js` fails because tests omit `mobileAccount`.
-
-### Seller Cannot Add Own Product to Cart — 🟡 PARTIAL (Uncommitted)
-- `Cart.service.js` rule.
-
-### Not Started
-- Product variants — 🔴 NOT STARTED
-- Advanced recommendations — 🔴 NOT STARTED
-- PayPal — 🔴 NOT IMPLEMENTED (enum-only)
-
-## Known Issues (Priority 5)
-
-1. Avatar upload limit comment mismatch (comment says 10MB, configured limit is 20MB).
-2. `Refund.returnRequest` ref points at `'ReturnRequest'` while the registered model is `Return`.
-3. PayPal unimplemented (enum-only).
-4. Hardcoded colors in older CSS selectors (`.dashboard-footer`, `.stat-card`, `.hero-banner`).
-5. Duplicate status field in `SellerProfile.model.js`.
-6. Rating warnings never auto-suspend (pending business-rule decision).
-7. `CodProcessor.js` orphaned.
-8. Seller analytics backend-only (not rendered frontend).
-9. Delivery charges backend-only, no admin UI.
-10. Email delivery is SMTP-gated; dev fallback logs OTP.
-11. `easypaisaJazzcash.test.js` fails because tests omit `mobileAccount`.
-12. `ratingModeration.test.js` has warningCount assertion mismatch.
-13. Full test pass/fail not fully re-verified.
-
-## Test Status
-
-- Vitest + Supertest + mongodb-memory-server configured in `multi-vendor-mern/` (`npm test` → `vitest run`).
-- Test files exist under `multi-vendor-mern/tests/` (including `priority4/` and `priority5/` subdirectories).
-- Email OTP tests passed 4/4 in the last actual run.
-- `checkout.test.js` and `deliveryCharges.test.js` were fixed with `emailVerified: true` but were **not re-run** in this audit.
-- **Do not claim full tests pass unless actually executed.**
-
-## Recommended Next Steps
-
-1. **Commit/review the uncommitted Priority 5 work** — review the working tree changes and commit them as a coherent unit.
-2. **Decide the rating-moderation suspension rule** — warnings currently never auto-suspend; decide whether to add auto-suspension.
-3. **Run targeted tests** — run the Priority 5 tests (email OTP, delivery charges, rating moderation, easypaisa/jazzcash) and fix the known assertion mismatches.
-4. **Build the delivery-charges admin UI** — delivery charges are backend-only; add an admin frontend.
-5. **Render seller analytics** — `topSellingProducts` and `salesTrend` are computed backend-only; add frontend rendering.
-
-## Completed Work — Priority 1-3
-
-### Priority 1 — Basic / Required Improvements — ✅ COMPLETE
-- Regression/bug audit
-- Order Status History/Timeline
-- Low-Stock Indicators on Seller Dashboard
-- Related Products backend refinement
-- Reusable Pagination Component
-- Automated/API testing for critical workflows
-
-### Priority 2 — Small & Lightweight Features — ✅ COMPLETE
-- Recently Viewed Products
-- Search Autocomplete / Suggestions
-- Additional Basic Seller Performance Indicators
-- Minor Customer / Seller / Admin UI/UX Improvements
-
-### Priority 3 — Frontend Enhancement — ✅ COMPLETE
-- Full light/dark theme across frontend
-- Cards, forms, tables, navigation, modals, text, borders adapt correctly
-- Existing functionality preserved
+## Checkpoint Summary
+- **Phase 2 status:** Priorities 1–5 complete.
+- **Automated tests:** 33 test files / 248 tests / 0 failures.
+- **Frontend build:** PASS (194 modules; chunk-size advisory non-blocking).
+- **Manual regression:** PASS.
+- **Next work (logical):** seller suspension & appeal system; product variants; advanced recommendations; PayPal; delivery-charge admin UI; production email delivery; bundle-size optimization; Stripe webhook end-to-end verification.
