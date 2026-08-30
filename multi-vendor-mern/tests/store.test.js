@@ -177,6 +177,59 @@ describe('Store API', () => {
 
       expect(res.body.message).toBe('Resource not found');
     });
+
+    it('is publicly accessible without authentication', async () => {
+      const { store } = await seedSeller();
+
+      const res = await request(app).get(`/api/v1/stores/${store._id}`).expect(200);
+
+      expect(res.body.message).toBe('Store retrieved');
+      expect(res.body.data.name).toBe(store.name);
+    });
+
+    it('is accessible to a Customer', async () => {
+      const customer = await User.create({
+        name: 'Store Viewer',
+        email: uniqueEmail('customer'),
+        password: 'password123',
+        role: 'Customer',
+      });
+      const customerToken = generateTestToken({ sub: customer._id.toString(), roles: ['Customer'] });
+      const { store } = await seedSeller();
+
+      const res = await request(app)
+        .get(`/api/v1/stores/${store._id}`)
+        .set('Authorization', `Bearer ${customerToken}`)
+        .expect(200);
+
+      expect(res.body.data.name).toBe(store.name);
+    });
+
+    it('is accessible to an Admin', async () => {
+      const admin = await User.create({
+        name: 'Admin',
+        email: uniqueEmail('admin'),
+        password: 'password123',
+        role: 'Admin',
+      });
+      const adminToken = generateTestToken({ sub: admin._id.toString(), roles: ['Admin'] });
+      const { store } = await seedSeller();
+
+      const res = await request(app)
+        .get(`/api/v1/stores/${store._id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(res.body.data.name).toBe(store.name);
+    });
+
+    it('hides a suspended seller store from anonymous users with a neutral 404', async () => {
+      const { store } = await seedSeller({ status: 'Suspended' });
+
+      const res = await request(app).get(`/api/v1/stores/${store._id}`).expect(404);
+
+      expect(res.body.message).toBe('Store not found');
+    });
   });
 
   describe('authorization', () => {
@@ -196,6 +249,33 @@ describe('Store API', () => {
 
       const res = await request(app)
         .get('/api/v1/stores/mine')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+
+      expect(res.body.message).toBe('You must be a Seller');
+    });
+
+    it('keeps PUT /mine protected from unauthenticated access with 401', async () => {
+      const res = await request(app).put('/api/v1/stores/mine').send({ name: 'X' }).expect(401);
+      expect(res.body.message).toBe('Authentication required');
+    });
+
+    it('keeps DELETE /mine protected from unauthenticated access with 401', async () => {
+      const res = await request(app).delete('/api/v1/stores/mine').expect(401);
+      expect(res.body.message).toBe('Authentication required');
+    });
+
+    it('keeps DELETE /mine protected from a Customer with 403', async () => {
+      const customer = await User.create({
+        name: 'Customer 2',
+        email: uniqueEmail('customer'),
+        password: 'password123',
+        role: 'Customer',
+      });
+      const token = generateTestToken({ sub: customer._id.toString(), roles: ['Customer'] });
+
+      const res = await request(app)
+        .delete('/api/v1/stores/mine')
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
 

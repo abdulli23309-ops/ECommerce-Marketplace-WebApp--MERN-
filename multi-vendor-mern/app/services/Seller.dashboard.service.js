@@ -54,7 +54,12 @@ const emptyDashboard = () => ({
 
 // ---------- Dashboard stats ----------
 export const getDashboard = async (userId) => {
-  const { store } = await getStoreId(userId);
+  const { profile, store } = await getStoreId(userId);
+  // Suspended sellers cannot access their dashboard (it is read activity tied
+  // to their marketplace presence; the suspension page is the only allowed view).
+  if (profile?.status === 'Suspended') {
+    throw new ApiError(403, 'Your seller account is suspended');
+  }
   if (!store) return emptyDashboard();
 
   const storeId = store._id;
@@ -436,8 +441,18 @@ export const getSellerReviews = async (userId, { page = 1, pageSize = 10 } = {})
     Review.countDocuments({ product: { $in: productIds } }),
   ]);
 
+  const sanitizedReviews = reviews.map((rev) => {
+    if (rev.isAnonymous) {
+      return {
+        ...rev,
+        customer: { name: 'Anonymous Customer' },
+      };
+    }
+    return rev;
+  });
+
   return {
-    items: reviews,
+    items: sanitizedReviews,
     total,
     page: Number(page),
     pageSize: limit,
@@ -446,8 +461,14 @@ export const getSellerReviews = async (userId, { page = 1, pageSize = 10 } = {})
 };
 
 export const replyToReview = async (userId, reviewId, replyText) => {
-  const { store } = await getStoreId(userId);
+  const { profile, store } = await getStoreId(userId);
   if (!store) throw new ApiError(404, 'Seller profile not found');
+  // Public marketplace messaging is part of "new marketplace activity" and is
+  // blocked while the seller is suspended (Spec: suspended sellers cannot create
+  // new marketplace activity, though they may still fulfil existing obligations).
+  if (profile?.status === 'Suspended') {
+    throw new ApiError(403, 'Your seller account is suspended and cannot create new marketplace activity');
+  }
 
   const review = await Review.findById(reviewId).populate('product', 'store');
   if (!review) throw new ApiError(404, 'Review not found');

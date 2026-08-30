@@ -1,14 +1,7 @@
-import jwt from 'jsonwebtoken';
 import User from '../models/User.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
-
-const generateAccessToken = (payload) => {
-  return jwt.sign(
-    payload,
-    process.env.JWT_ACCESS_SECRET || 'change_me_access',
-    { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m' }
-  );
-};
+import { hashToken, getRefreshTokenExpiry, generateAccessToken, generateRefreshToken } from '../helpers/Jwt.helper.js';
+import { createRefreshToken } from '../repositories/Auth.repository.js';
 
 const verifyRealGoogleToken = async (idToken) => {
   const response = await fetch(
@@ -34,6 +27,21 @@ const verifyRealGoogleToken = async (idToken) => {
   };
 };
 
+/**
+ * Determines whether mock Google authentication is enabled.
+ * Mock mode is a test/development convenience and MUST NEVER be active in a
+ * production environment. Even an explicit ALLOW_MOCK_GOOGLE=true does not
+ * override NODE_ENV=production — that is the fail-safe that keeps the mock
+ * flag from silently becoming a production authentication bypass.
+ */
+const isMockGoogleAuthEnabled = () => {
+  if (process.env.NODE_ENV === 'production') return false;
+  return (
+    process.env.NODE_ENV === 'test' ||
+    process.env.ALLOW_MOCK_GOOGLE === 'true'
+  );
+};
+
 export const authenticateWithGoogle = async (googlePayload) => {
   const {
     idToken,
@@ -47,17 +55,11 @@ export const authenticateWithGoogle = async (googlePayload) => {
   let googleUser;
 
   // ----- DEV / TEST MOCK MODE -----
-  // This block runs when:
-  // NODE_ENV === 'test'
-  // OR
-  // ALLOW_MOCK_GOOGLE === 'true'
-  //
-  // You can enable mock mode locally by adding this to your backend .env:
-  // ALLOW_MOCK_GOOGLE=true
-  if (
-    process.env.NODE_ENV === 'test' ||
-    process.env.ALLOW_MOCK_GOOGLE === 'true'
-  ) {
+  // Mock mode runs ONLY when explicitly enabled (test NODE_ENV or
+  // ALLOW_MOCK_GOOGLE=true) AND the process is NOT production. When mock
+  // mode is disabled, a mock-shaped token is rejected outright rather than
+  // being treated as a real identity — it must never be accepted.
+  if (isMockGoogleAuthEnabled()) {
     if (!idToken || !idToken.startsWith('mock')) {
       // If a real token is provided, verify it against Google.
       googleUser = await verifyRealGoogleToken(idToken);
@@ -71,6 +73,10 @@ export const authenticateWithGoogle = async (googlePayload) => {
         picture: picture || null,
       };
     }
+  } else if (idToken && idToken.startsWith('mock')) {
+    // Fail-safe: mock authentication is disabled; a supplied mock identity
+    // is rejected rather than trusted.
+    throw new ApiError(401, 'Mock authentication is not enabled');
   } else {
     // ----- PRODUCTION / REAL GOOGLE VERIFICATION -----
     googleUser = await verifyRealGoogleToken(idToken);
@@ -100,16 +106,15 @@ export const authenticateWithGoogle = async (googlePayload) => {
 
     await user.save();
 
-    const accessToken = generateAccessToken({
-      sub: user._id,
-      roles: user.role ? [user.role] : [],
-      permissions: [],
-    });
+    const accessToken = generateAccessToken(user._id, user.role, []);
+    const refreshToken = generateRefreshToken(user._id);
+    await createRefreshToken(user._id, hashToken(refreshToken), getRefreshTokenExpiry());
 
     return {
       user,
       tokens: {
         accessToken,
+        refreshToken,
       },
     };
   }
@@ -126,16 +131,15 @@ export const authenticateWithGoogle = async (googlePayload) => {
     avatar: googleUser.picture || null,
   });
 
-  const accessToken = generateAccessToken({
-    sub: newUser._id,
-    roles: ['Customer'],
-    permissions: [],
-  });
+  const accessToken = generateAccessToken(newUser._id, 'Customer', []);
+  const refreshToken = generateRefreshToken(newUser._id);
+  await createRefreshToken(newUser._id, hashToken(refreshToken), getRefreshTokenExpiry());
 
   return {
     user: newUser,
     tokens: {
       accessToken,
+      refreshToken,
     },
   };
 };

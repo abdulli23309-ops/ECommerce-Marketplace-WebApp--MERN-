@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getImageUrl } from '../../utils/imageHelper';
+import { formatPKR } from '../../utils/currency';
 import axiosInstance from '../../services/axiosInstance';
 import {
   PRODUCT_LOW_RATING_THRESHOLD,
@@ -83,13 +84,13 @@ const ProductDetailModal = ({ product, onClose }) => {
           maxWidth: '90vw',
           maxHeight: '75vh',
           background: warning
-            ? 'linear-gradient(rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.15)), var(--surface)'
+            ? 'linear-gradient(var(--danger-bg), var(--danger-bg)), var(--surface)'
             : 'var(--surface)',
           border: warning
-            ? '1px solid rgba(239, 68, 68, 0.45)'
+            ? '1px solid var(--danger)'
             : '1px solid var(--border)',
           boxShadow: warning
-            ? '0 0 24px rgba(239, 68, 68, 0.25)'
+            ? '0 0 24px var(--danger)'
             : '0 20px 60px rgba(0,0,0,0.2)',
           borderRadius: '12px',
           zIndex: 1000,
@@ -123,8 +124,8 @@ const ProductDetailModal = ({ product, onClose }) => {
             style={{
               padding: '0.75rem',
               borderRadius: '8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.12)',
-              border: '1px solid rgba(239, 68, 68, 0.45)',
+              backgroundColor: 'var(--danger-bg)',
+              border: '1px solid var(--danger)',
               marginBottom: '1rem',
               fontWeight: 600,
               color: 'var(--danger-text)',
@@ -176,8 +177,8 @@ const ProductDetailModal = ({ product, onClose }) => {
                       top: '50%',
                       left: '10px',
                       transform: 'translateY(-50%)',
-                      backgroundColor: 'rgba(255,255,255,0.8)',
-                      border: 'none',
+                      backgroundColor: 'var(--surface)',
+                      border: '1px solid var(--border)',
                       borderRadius: '50%',
                       width: '36px',
                       height: '36px',
@@ -189,6 +190,7 @@ const ProductDetailModal = ({ product, onClose }) => {
                       fontSize: '18px',
                       fontWeight: 'bold',
                       color: 'var(--text-primary)',
+                      boxShadow: 'var(--shadow-md)',
                     }}
                   >
                     ‹
@@ -200,8 +202,8 @@ const ProductDetailModal = ({ product, onClose }) => {
                       top: '50%',
                       right: '10px',
                       transform: 'translateY(-50%)',
-                      backgroundColor: 'rgba(255,255,255,0.8)',
-                      border: 'none',
+                      backgroundColor: 'var(--surface)',
+                      border: '1px solid var(--border)',
                       borderRadius: '50%',
                       width: '36px',
                       height: '36px',
@@ -213,6 +215,7 @@ const ProductDetailModal = ({ product, onClose }) => {
                       fontSize: '18px',
                       fontWeight: 'bold',
                       color: 'var(--text-primary)',
+                      boxShadow: 'var(--shadow-md)',
                     }}
                   >
                     ›
@@ -264,7 +267,7 @@ const ProductDetailModal = ({ product, onClose }) => {
               {product.name}
             </h2>
             <p style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 1rem' }}>
-              PKR {product.price?.toLocaleString()}
+              PKR {formatPKR(product.price)}
             </p>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <span

@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import Product from '../models/Product.model.js';
 import Review from '../models/Review.model.js';
 import * as storeRepo from './Store.repository.js';
+import { sanitizePagination } from '../utils/pagination.js';
+import { ApiError } from '../utils/ApiError.util.js';
 
 export const create = (data) => Product.create(data);
 
@@ -26,8 +28,8 @@ export const findByIdWithRating = async (productId, storeId) => {
 export const findByStore = async (storeId, options = {}) => {
   const { page = 1, pageSize = 12, ...query } = options;
   const filter = { ...query, store: storeId, isDeleted: false };
-  const skip = (Number(page) - 1) * Number(pageSize);
-  const limit = Number(pageSize);
+  const { page: safePage, pageSize: limit } = sanitizePagination(page, pageSize, 12);
+  const skip = (safePage - 1) * limit;
 
   const [products, total] = await Promise.all([
     Product.find(filter)
@@ -43,12 +45,17 @@ export const findByStore = async (storeId, options = {}) => {
 
   return {
     products,
-    page: Number(page),
+    page: safePage,
     pageSize: limit,
     total,
     totalPages: Math.ceil(total / limit),
   };
 };
+
+// Lightweight store-scoped id list (used by the moderation timeline to map
+// a seller's products to their audit events such as product.republish).
+export const findIdsByStore = (storeId) =>
+  Product.find({ store: storeId, isDeleted: false }).select('_id').lean();
 
 export const updateById = (id, data) =>
   Product.findByIdAndUpdate(id, data, { new: true, runValidators: true });
@@ -56,13 +63,38 @@ export const updateById = (id, data) =>
 export const softDelete = (id) =>
   Product.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
 
-export const findPublic = (query = {}) =>
-  Product.find({ ...query, isDeleted: false, status: 'Approved' });
+// Bulk transition a store's live (Approved) products to a new status within a
+// transaction. Used when suspending a seller: their Approved products become
+// 'Suspended' so they stay inactive after reinstatement until explicitly
+// republished (frozen D8), and the explicit republish lifecycle stays meaningful.
+export const bulkSetStatusByStore = async (storeId, status, session) =>
+  Product.updateMany(
+    { store: storeId, isDeleted: false, status: 'Approved' },
+    { $set: { status } },
+    session ? { session } : {}
+  );
 
-export const findPublicById = (id) =>
-  Product.findOne({ _id: id, isDeleted: false, status: 'Approved' })
+export const findPublic = async (query = {}) => {
+  const allowedStoreIds = await storeRepo.getPubliclyActiveStoreIds();
+  return Product.find({
+    ...query,
+    isDeleted: false,
+    status: 'Approved',
+    store: { $in: allowedStoreIds },
+  });
+};
+
+export const findPublicById = async (id) => {
+  const allowedStoreIds = await storeRepo.getPubliclyActiveStoreIds();
+  return Product.findOne({
+    _id: id,
+    isDeleted: false,
+    status: 'Approved',
+    store: { $in: allowedStoreIds },
+  })
     .populate('store', 'name description logo')
     .lean();
+};
 
 export const findPublicWithFilters = async (filters = {}) => {
   const {
@@ -83,10 +115,12 @@ export const findPublicWithFilters = async (filters = {}) => {
     status: 'Approved',
   };
 
+  const allowedStoreIds = await storeRepo.getPubliclyActiveStoreIds();
   if (store) {
-    query.store = store;
+    // Explicit store filter must also respect public seller availability.
+    // If the requested store is not in the publicly active list, the query will match nothing.
+    query.store = { $in: allowedStoreIds.filter(id => id.toString() === store) };
   } else {
-    const allowedStoreIds = await storeRepo.getActiveStoreIdsForApprovedSellers();
     query.store = { $in: allowedStoreIds };
   }
 
@@ -110,8 +144,9 @@ export const findPublicWithFilters = async (filters = {}) => {
   else if (sortBy === 'price_desc') sortOption = { price: -1 };
   else if (sortBy === 'newest') sortOption = { createdAt: -1 };
 
-  const skip = (Number(page) - 1) * Number(pageSize);
-  const limit = Number(pageSize);
+  // M-019: page/pageSize are validated and bounded (public catalog surface).
+  const { page: safePage, pageSize: limit } = sanitizePagination(page, pageSize, 12);
+  const skip = (safePage - 1) * limit;
 
   const [products, total] = await Promise.all([
     Product.find(query)
@@ -127,18 +162,24 @@ export const findPublicWithFilters = async (filters = {}) => {
 
   return {
     items: products,
-    page: Number(page),
+    page: safePage,
     pageSize: limit,
     total,
     totalPages: Math.ceil(total / limit),
   };
 };
 
+
 export const deductStock = async (productId, quantity, session) => {
-  const product = await Product.findById(productId).session(session);
-  if (!product) throw new Error('Product not found');
-  product.stock -= quantity;
-  return product.save({ session });
+  const updatedProduct = await Product.findOneAndUpdate(
+    { _id: productId, stock: { $gte: quantity } },
+    { $inc: { stock: -quantity } },
+    { new: true, session }
+  );
+  if (!updatedProduct) {
+    throw new ApiError(400, `Insufficient stock for product ${productId}`);
+  }
+  return updatedProduct;
 };
 
 export const findAllAdmin = async (filters = {}) => {
@@ -192,9 +233,11 @@ export const getRatingStats = async (productId) => {
 
 export const findSuggestions = async (q, limit = 8) => {
   if (!q || q.trim().length < 2) return [];
+  const allowedStoreIds = await storeRepo.getPubliclyActiveStoreIds();
   return Product.find({
     isDeleted: false,
     status: 'Approved',
+    store: { $in: allowedStoreIds },
     name: { $regex: `^${q.trim()}`, $options: 'i' },
   })
     .select('_id name')

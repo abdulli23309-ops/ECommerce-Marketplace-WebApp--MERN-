@@ -35,10 +35,13 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   useIdleLogout();
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const [pendingSellers, setPendingSellers] = useState(0);
   const [pendingProducts, setPendingProducts] = useState(0);
   const [pendingReturns, setPendingReturns] = useState(0);
   const [pendingRefunds, setPendingRefunds] = useState(0);
+  const [pendingAppeals, setPendingAppeals] = useState(0);
 
   const [dismissedSellers, setDismissedSellers] = useState(false);
   const [dismissedProducts, setDismissedProducts] = useState(false);
@@ -68,15 +71,45 @@ const AdminLayout = () => {
     }
   };
 
+  const fetchPendingAppeals = async () => {
+    try {
+      const res = await axiosInstance.get('/admin/seller-appeals', {
+        params: { status: 'Pending' },
+      });
+      const data = res.data?.data || res.data;
+      const appeals = Array.isArray(data) ? data : data?.items || [];
+      setPendingAppeals(appeals.length);
+    } catch (err) {
+      console.error('Failed to fetch pending appeals count', err);
+    }
+  };
+
   useEffect(() => {
     fetchAdminStats();
     fetchPendingRefunds();
+    fetchPendingAppeals();
     const interval = setInterval(() => {
       fetchAdminStats();
       fetchPendingRefunds();
+      fetchPendingAppeals();
     }, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Mobile sidebar: Escape-to-close + body scroll lock
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [sidebarOpen]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -89,7 +122,30 @@ const AdminLayout = () => {
   return (
     <>
       <div className="dashboard-layout">
-        <aside className="dashboard-sidebar">
+        <button
+          type="button"
+          className="dashboard-menu-toggle"
+          aria-label="Open navigation menu"
+          aria-expanded={sidebarOpen}
+          onClick={() => setSidebarOpen(true)}
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        <aside className={`dashboard-sidebar${sidebarOpen ? " is-open" : ""}`}>
+          <button
+            type="button"
+            className="dashboard-sidebar-close"
+            aria-label="Close navigation menu"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+
           <div
             style={{
               height: `${headerHeight}px`,
@@ -181,6 +237,24 @@ const AdminLayout = () => {
               {!dismissedSellers && pendingSellers > 0 && (
                 <span className="notification-badge">
                   {pendingSellers}
+                </span>
+              )}
+            </Link>
+
+            <Link
+              to="/admin/seller-appeals"
+              className="dashboard-nav-link"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg className="dashboard-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                Seller Appeals
+              </span>
+              {pendingAppeals > 0 && (
+                <span className="notification-badge">
+                  {pendingAppeals}
                 </span>
               )}
             </Link>
@@ -351,6 +425,14 @@ const AdminLayout = () => {
             </button>
           </div>
         </aside>
+
+        {sidebarOpen && (
+          <div
+            className="dashboard-sidebar-scrim"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
 
         <main className="dashboard-main">
           <Outlet />

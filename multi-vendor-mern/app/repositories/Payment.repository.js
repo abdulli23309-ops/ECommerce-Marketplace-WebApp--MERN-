@@ -34,3 +34,10 @@ export const findByIdQuery = (id, session) =>
 
 export const findByParentOrderQuery = (parentOrderId, session) =>
   Payment.findOne({ parentOrder: parentOrderId }).session(session);
+
+export const findOnePendingByParentOrders = (parentOrderIds, method) =>
+  Payment.findOne({
+    parentOrder: { $in: parentOrderIds },
+    status: 'Pending',
+    method,
+  }).lean();

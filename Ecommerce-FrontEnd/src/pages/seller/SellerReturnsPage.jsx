@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import axiosInstance from "../../services/axiosInstance";
 import { getImageUrl } from "../../utils/imageHelper";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import { toastError } from "../../components/common/Toast";
 
 const getStatusLabel = (status) => {
   const labels = {
@@ -71,7 +72,7 @@ const SellerReturnsPage = () => {
       load();
     } catch (err) {
       console.error("Failed to process decision", err);
-      alert(err.response?.data?.message || "Could not process request.");
+      toastError(err.response?.data?.message || "Could not process request.");
     }
   };
 

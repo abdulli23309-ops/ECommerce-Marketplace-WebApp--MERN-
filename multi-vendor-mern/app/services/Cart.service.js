@@ -1,10 +1,44 @@
 import * as cartRepo from '../repositories/Cart.repository.js';
 import * as productRepo from '../repositories/Product.repository.js';
+import * as storeRepo from '../repositories/Store.repository.js';
 import SellerProfile from '../models/SellerProfile.model.js';
 import Store from '../models/Store.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
+import Product from '../models/Product.model.js';
 
 const getPopulatedCart = (userId) => cartRepo.findByUser(userId);
+
+/**
+ * Enrich cart items with an `available` flag computed live via the public
+ * product predicate (same as findPublicById). Uses a single batched query.
+ * Does NOT modify the Cart model or persist the flag.
+ */
+const enrichCartWithAvailability = async (cart) => {
+  if (!cart || !cart.items || cart.items.length === 0) return;
+
+  const productIds = cart.items
+    .map((item) => item.product?._id || item.product)
+    .filter(Boolean);
+  if (productIds.length === 0) return;
+
+  const allowedStoreIds = await storeRepo.getPubliclyActiveStoreIds();
+  const availableProducts = await Product.find(
+    {
+      _id: { $in: productIds },
+      status: 'Approved',
+      store: { $in: allowedStoreIds },
+      isDeleted: false,
+    },
+    { _id: 1 }
+  ).lean();
+
+  const availableSet = new Set(availableProducts.map((p) => p._id.toString()));
+
+  for (const item of cart.items) {
+    const id = (item.product?._id || item.product)?.toString();
+    item.available = id ? availableSet.has(id) : false;
+  }
+};
 
 export const getCart = async (userId) => {
   let cart = await getPopulatedCart(userId);
@@ -12,6 +46,7 @@ export const getCart = async (userId) => {
     cart = await cartRepo.create(userId);
     cart = await getPopulatedCart(userId);
   }
+  await enrichCartWithAvailability(cart);
   return cart;
 };
 
@@ -68,7 +103,9 @@ export const addItem = async (userId, productId, quantity) => {
     await cart.save();
   }
 
-  return getPopulatedCart(userId);
+  const populatedCart = await getPopulatedCart(userId);
+  await enrichCartWithAvailability(populatedCart);
+  return populatedCart;
 };
 
 // Keep other functions unchanged
@@ -80,16 +117,22 @@ export const updateItemQuantity = async (userId, productId, quantity) => {
   const cart = await cartRepo.updateItemQuantity(userId, productId, quantity);
   if (!cart) throw new ApiError(404, 'Cart or item not found');
 
-  return getPopulatedCart(userId);
+  const populatedCart = await getPopulatedCart(userId);
+  await enrichCartWithAvailability(populatedCart);
+  return populatedCart;
 };
 
 export const removeItem = async (userId, productId) => {
   const cart = await cartRepo.removeItem(userId, productId);
   if (!cart) throw new ApiError(404, 'Cart or item not found');
-  return getPopulatedCart(userId);
+  const populatedCart = await getPopulatedCart(userId);
+  await enrichCartWithAvailability(populatedCart);
+  return populatedCart;
 };
 
 export const clearCart = async (userId) => {
   await cartRepo.clearCart(userId);
-  return getPopulatedCart(userId);
+  const populatedCart = await getPopulatedCart(userId);
+  await enrichCartWithAvailability(populatedCart);
+  return populatedCart;
 };

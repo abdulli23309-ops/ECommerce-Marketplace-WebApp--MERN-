@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import axiosInstance from "../../services/axiosInstance";
 import { getImageUrl } from "../../utils/imageHelper";
+import { toastError, toastSuccess } from "../../components/common/Toast";
+import ErrorState from "../../components/common/ErrorState";
+import EmptyState from "../../components/common/EmptyState";
 
 const StarIcon = ({ filled, size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "var(--warning)" : "var(--border)"}>
@@ -35,7 +38,7 @@ const styles = {
     padding: "1.5rem", marginBottom: "1rem", boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
   },
   reviewerRow: { display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" },
-  avatar: (initial) => ({
+  avatar: () => ({
     width: "36px", height: "36px", borderRadius: "50%", background: "var(--primary)", color: "var(--primary-contrast)",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontWeight: 600, fontSize: "0.9rem"
@@ -60,6 +63,7 @@ const styles = {
 const SellerReviewsPage = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [sort, setSort] = useState("newest");
@@ -67,11 +71,13 @@ const SellerReviewsPage = () => {
 
   const [replyText, setReplyText] = useState({});
   const [replyingId, setReplyingId] = useState(null);
+  const [replyLoadingId, setReplyLoadingId] = useState(null);
 
   const [lightboxImage, setLightboxImage] = useState(null);
 
   const fetchReviews = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await axiosInstance.get("/seller/reviews", {
         params: { page, pageSize: 10, sort, filter }
@@ -82,6 +88,7 @@ const SellerReviewsPage = () => {
       setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error("Failed to fetch reviews", err);
+      setError(err.response?.status);
     } finally {
       setLoading(false);
     }
@@ -93,14 +100,19 @@ const SellerReviewsPage = () => {
   const totalReviewsCount = reviews.length;
 
   const handleReplySubmit = async (reviewId) => {
-    if (!replyText[reviewId]?.trim()) return;
+    if (!replyText[reviewId]?.trim() || replyLoadingId) return;
+    setReplyLoadingId(reviewId);
     try {
       await axiosInstance.put(`/seller/reviews/${reviewId}/reply`, { replyText: replyText[reviewId] });
       setReplyText(prev => ({ ...prev, [reviewId]: "" }));
       setReplyingId(null);
+      toastSuccess("Reply posted successfully.");
       fetchReviews();
     } catch (err) {
       console.error("Failed to submit reply", err);
+      toastError(err.response?.data?.message || "Failed to post reply. Please try again.");
+    } finally {
+      setReplyLoadingId(null);
     }
   };
 
@@ -152,7 +164,20 @@ const SellerReviewsPage = () => {
       </div>
 
       {loading ? <p style={{ textAlign: "center", color: "var(--text-secondary)" }}>Loading reviews...</p> :
-       reviews.length === 0 ? <p style={{ textAlign: "center", color: "var(--text-secondary)" }}>No reviews yet.</p> :
+       error ? (
+        <ErrorState
+          statusCode={error}
+          onRetry={() => fetchReviews()}
+          style={{ margin: "2rem 0" }}
+        />
+      ) :
+       reviews.length === 0 ? (
+        <EmptyState
+          title="No reviews yet"
+          body="When customers leave reviews, they will appear here."
+          style={{ margin: "2rem 0" }}
+        />
+      ) :
         reviews.map(review => (
           <div key={review._id} style={styles.reviewCard}>
             <div style={styles.reviewerRow}>
@@ -232,9 +257,10 @@ const SellerReviewsPage = () => {
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
                   <button
                     onClick={() => handleReplySubmit(review._id)}
-                    style={{ padding: "0.4rem 1rem", borderRadius: "6px", border: "none", background: "var(--primary)", color: "var(--primary-contrast)", fontWeight: 600, cursor: "pointer" }}
+                    disabled={!replyText[review._id]?.trim() || replyLoadingId === review._id}
+                    style={{ padding: "0.4rem 1rem", borderRadius: "6px", border: "none", background: "var(--primary)", color: "var(--primary-contrast)", fontWeight: 600, cursor: "pointer", opacity: !replyText[review._id]?.trim() || replyLoadingId === review._id ? 0.6 : 1 }}
                   >
-                    Submit Reply
+                    {replyLoadingId === review._id ? "Posting..." : "Submit Reply"}
                   </button>
                   <button
                     onClick={() => setReplyingId(null)}

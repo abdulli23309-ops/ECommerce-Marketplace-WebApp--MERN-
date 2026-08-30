@@ -4,6 +4,9 @@ import { useSelector } from "react-redux";
 import { fetchApprovedProducts, fetchSearchSuggestions } from "../../services/productService";
 import { getImageUrl } from "../../utils/imageHelper";
 import FreeDeliveryBadge from "../../components/common/FreeDeliveryBadge";
+import { GridSkeleton } from "../../components/common/Skeleton";
+import EmptyState from "../../components/common/EmptyState";
+import { formatPKR } from "../../utils/currency";
 
 const HomePage = () => {
   const [products, setProducts] = useState([]);
@@ -195,9 +198,12 @@ const HomePage = () => {
         <h3 className="section-title">New Arrivals</h3>
 
         {loading ? (
-          <p style={{ color: "var(--text-secondary)" }}>Loading products...</p>
+          <GridSkeleton count={8} />
         ) : products.length === 0 ? (
-          <p style={{ color: "var(--text-secondary)" }}>No products available right now.</p>
+          <EmptyState
+            title="No products available right now"
+            body="Check back soon — sellers are adding new products all the time."
+          />
         ) : (
           <div className="product-grid">
             {products.map((product) => (
@@ -230,7 +236,7 @@ const HomePage = () => {
 
                 <div className="product-details">
                   <p className="product-name">{product.name}</p>
-                  <p className="product-price">PKR {product.price?.toLocaleString()}</p>
+                  <p className="product-price">PKR {formatPKR(product.price)}</p>
 
                   {product.freeDelivery === true && (
                     <FreeDeliveryBadge style={{ marginTop: "0.5rem" }} />
@@ -278,9 +284,7 @@ const HomePage = () => {
 
                 <div className="product-details">
                   <p className="product-name">{product.name}</p>
-                  <p className="product-price">
-                    PKR {product.price?.toLocaleString()}
-                  </p>
+                  <p className="product-price">PKR {formatPKR(product.price)}</p>
                 </div>
               </Link>
             ))}

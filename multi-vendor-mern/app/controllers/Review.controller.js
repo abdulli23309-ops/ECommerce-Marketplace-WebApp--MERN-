@@ -19,7 +19,7 @@ export const getMyReviews = asyncHandler(async (req, res) => {
 });
 
 export const getReviewById = asyncHandler(async (req, res) => {
-  const review = await reviewService.getReviewById(req.params.id);
+  const review = await reviewService.getReviewById(req.params.id, req.user.id);
   if (!review) throw new ApiError(404, 'Review not found');
   new ApiResponse(200, review, 'Review retrieved').send(res);
 });

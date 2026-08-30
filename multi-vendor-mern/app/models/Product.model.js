@@ -75,6 +75,10 @@ const productSchema = new mongoose.Schema(
     },
 
     // ---- Priority 5: product rating moderation state ----
+    lastProductWarningAt: {
+      type: Date,
+      default: null,
+    },
     averageRating: {
       type: Number,
       default: 0,

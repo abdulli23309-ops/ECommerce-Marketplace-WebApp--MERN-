@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { ApiError } from '../utils/ApiError.util.js';
+import { accessSecret } from '../helpers/Jwt.helper.js';
 
 export const authenticate = async (req, res, next) => {
   try {
@@ -10,10 +11,9 @@ export const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_ACCESS_SECRET || 'change_me_access'
-    );
+    // M-025: verify against the fail-fast access secret (no silent fallback
+    // to a predictable default when JWT_ACCESS_SECRET is missing).
+    const decoded = jwt.verify(token, accessSecret());
 
     req.user = {
       id: decoded.sub,

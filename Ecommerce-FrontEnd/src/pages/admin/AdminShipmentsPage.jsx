@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getAdminShipments } from "../../services/adminService";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import ErrorState from "../../components/common/ErrorState";
 
 const AdminShipmentsPage = () => {
   const [shipments, setShipments] = useState([]);
@@ -11,14 +12,19 @@ const AdminShipmentsPage = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [selectedShipment, setSelectedShipment] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   const fetchShipments = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await getAdminShipments({ page, pageSize: 10, search, status: statusFilter });
       setShipments(res.items || []);
       setTotalPages(res.totalPages || 1);
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+    } catch (err) {
+      console.error(err);
+      setLoadError(err.response?.status);
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchShipments(); }, [page, search, statusFilter]);
@@ -27,6 +33,21 @@ const AdminShipmentsPage = () => {
     setSelectedShipment(shipment);
     setModalOpen(true);
   };
+
+  // Escape-to-close + body scroll lock for Shipment Detail modal
+  useEffect(() => {
+    if (!modalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") setModalOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [modalOpen]);
 
   return (
     <div style={{ backgroundColor: "var(--bg-secondary)", minHeight: "100vh", padding: "2rem" }}>
@@ -78,11 +99,14 @@ const AdminShipmentsPage = () => {
         <div style={{ background: "var(--surface)", borderRadius: "12px", boxShadow: "0 1px 3px var(--shadow)", border: "1px solid var(--border)", overflow: "hidden" }}>
           {loading ? (
             <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading...</div>
+          ) : loadError ? (
+            <ErrorState statusCode={loadError} onRetry={() => fetchShipments()} />
           ) : shipments.length === 0 ? (
             <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>No shipments found.</div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
+            <div className="table-responsive">
+              <table className="shipments-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
                   <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Shipment ID</th>
                   <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Order ID</th>
@@ -115,6 +139,7 @@ const AdminShipmentsPage = () => {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
@@ -144,6 +169,9 @@ const AdminShipmentsPage = () => {
         {modalOpen && selectedShipment && (
           <div
             className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shipment-modal-title"
             style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}
             onClick={() => setModalOpen(false)}
           >
@@ -162,7 +190,7 @@ const AdminShipmentsPage = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>Shipment Details</h3>
+                <h3 id="shipment-modal-title" style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>Shipment Details</h3>
                 <button onClick={() => setModalOpen(false)} style={{ background: "transparent", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--text-secondary)" }}>×</button>
               </div>
               <p><strong>Shipment ID:</strong> {selectedShipment.id?.toString().slice(0, 8).toUpperCase()}</p>

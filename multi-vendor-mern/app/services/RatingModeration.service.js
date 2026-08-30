@@ -8,7 +8,27 @@ export const SELLER_LOW_RATING_THRESHOLD = 2.5;
 export const LOW_STOCK_THRESHOLD = 5;
 export const MAX_WARNINGS = 3;
 
+// Spec D4: a warning cycle decays 7 days after the MOST RECENT warning. A new
+// warning resets the 7-day window. The stored warningCount/history are preserved
+// permanently; only the *effective* count (used for gating/display) decays.
+export const WARNING_DECAY_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const roundForDisplay = (value) => Math.round(value * 10) / 10;
+
+// Effective warning count: 0 once 7 days have elapsed since the most recent
+// warning, otherwise the stored count. Works for both seller profiles
+// (lastSellerWarningAt) and products (lastProductWarningAt).
+export const getEffectiveWarningCount = (doc, now = new Date()) => {
+  if (!doc) return 0;
+  const base = doc.warningCount || 0;
+  const lastWarnedAt = doc.lastSellerWarningAt || doc.lastProductWarningAt;
+  if (!lastWarnedAt) return base;
+  const ageMs = now.getTime() - new Date(lastWarnedAt).getTime();
+  if (ageMs >= WARNING_DECAY_DAYS * DAY_MS) return 0;
+  return base;
+};
+
 
 export const recalculateProductRating = async (productId) => {
   const product = await ratingModerationRepo.findProductById(productId);
@@ -88,15 +108,19 @@ export const getSellerModerationStatus = async (sellerProfileId) => {
   const sellerProfile = await ratingModerationRepo.findSellerProfileById(sellerProfileId);
   if (!sellerProfile) throw new ApiError(404, 'Seller profile not found');
 
+  const effectiveWarningCount = getEffectiveWarningCount(sellerProfile);
+
   return {
     sellerProfileId: sellerProfile._id,
     averageRating: sellerProfile.averageRating,
     lowRatingStatus: sellerProfile.lowRatingStatus,
-    warningCount: sellerProfile.warningCount,
+    warningCount: effectiveWarningCount,
+    storedWarningCount: sellerProfile.warningCount,
     maxWarnings: MAX_WARNINGS,
     canWarn:
-      sellerProfile.lowRatingStatus && sellerProfile.warningCount < MAX_WARNINGS,
+      sellerProfile.lowRatingStatus && effectiveWarningCount < MAX_WARNINGS,
     warningHistory: sellerProfile.warningHistory,
+    lastSellerWarningAt: sellerProfile.lastSellerWarningAt,
   };
 };
 
@@ -113,7 +137,8 @@ export const issueSellerWarning = async (sellerProfileId, adminId, reason) => {
     throw new ApiError(400, 'Seller rating is not below the warning threshold');
   }
 
-  if (updatedProfile.warningCount >= MAX_WARNINGS) {
+  // Spec D4: gate on the EFFECTIVE (decayed) count, not the stored count.
+  if (getEffectiveWarningCount(updatedProfile) >= MAX_WARNINGS) {
     throw new ApiError(400, 'Warning limit reached for this seller');
   }
 
@@ -121,6 +146,7 @@ export const issueSellerWarning = async (sellerProfileId, adminId, reason) => {
 
   const updated = await ratingModerationRepo.updateSellerModerationState(sellerProfileId, {
     warningCount,
+    lastSellerWarningAt: new Date(),
     $push: {
       warningHistory: {
         warnedBy: adminId,
@@ -158,15 +184,19 @@ export const getProductModerationStatus = async (productId) => {
   const product = await ratingModerationRepo.findProductById(productId);
   if (!product) throw new ApiError(404, 'Product not found');
 
+  const effectiveWarningCount = getEffectiveWarningCount(product);
+
   return {
     productId: product._id,
     averageRating: product.averageRating,
     lowRatingStatus: product.lowRatingStatus,
-    warningCount: product.warningCount,
+    warningCount: effectiveWarningCount,
+    storedWarningCount: product.warningCount,
     maxWarnings: MAX_WARNINGS,
     canWarn:
-      product.lowRatingStatus && product.warningCount < MAX_WARNINGS,
+      product.lowRatingStatus && effectiveWarningCount < MAX_WARNINGS,
     warningHistory: product.warningHistory,
+    lastProductWarningAt: product.lastProductWarningAt,
   };
 };
 
@@ -183,7 +213,8 @@ export const issueProductWarning = async (productId, adminId, reason) => {
     throw new ApiError(400, 'Product rating is not below the warning threshold');
   }
 
-  if (updatedProduct.warningCount >= MAX_WARNINGS) {
+  // Spec D4: gate on the EFFECTIVE (decayed) count, not the stored count.
+  if (getEffectiveWarningCount(updatedProduct) >= MAX_WARNINGS) {
     throw new ApiError(400, 'Warning limit reached for this product');
   }
 
@@ -191,6 +222,7 @@ export const issueProductWarning = async (productId, adminId, reason) => {
 
   const updated = await ratingModerationRepo.updateProductModerationState(productId, {
     warningCount,
+    lastProductWarningAt: new Date(),
     $push: {
       warningHistory: {
         warnedBy: adminId,

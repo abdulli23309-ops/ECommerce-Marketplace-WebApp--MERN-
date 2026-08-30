@@ -112,6 +112,7 @@ const CheckoutPage = () => {
   const [couponError, setCouponError] = useState(null);
 
   const [orderPreview, setOrderPreview] = useState(null);
+  const [unavailableItems, setUnavailableItems] = useState([]);
 
   const cardElementOptions = {
     style: {
@@ -160,9 +161,15 @@ const CheckoutPage = () => {
     const loadPreview = async () => {
       try {
         const preview = await fetchOrderPreview(appliedCoupon?.code || null);
-        if (!cancelled) setOrderPreview(preview);
+        if (!cancelled) {
+          setOrderPreview(preview);
+          setUnavailableItems(preview?.unavailableItems || []);
+        }
       } catch {
-        if (!cancelled) setOrderPreview(null);
+        if (!cancelled) {
+          setOrderPreview(null);
+          setUnavailableItems([]);
+        }
       }
     };
     loadPreview();
@@ -209,6 +216,8 @@ const CheckoutPage = () => {
   const summaryDelivery = previewLoaded ? Number(orderPreview.deliveryCharges || 0) : null;
   const summaryFreeDeliveryDiscount = previewLoaded ? Number(orderPreview.freeDeliveryDiscount || 0) : 0;
   const summaryTotal = previewLoaded ? Number(orderPreview.total || 0) : finalTotal();
+
+  const hasUnavailableItems = !!unavailableItems?.length;
 
   const isMobileValid = /^03\d{9}$/.test(mobileAccount);
   const requiresMobile = paymentMethod === "easypaisa" || paymentMethod === "jazzcash";
@@ -427,9 +436,29 @@ const CheckoutPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border)', fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}><span>Total</span><span>PKR {formatPKR(summaryTotal)}</span></div>
               </div>
 
+              {hasUnavailableItems && (
+                <div
+                  style={{
+                    marginTop: '16px',
+                    padding: '12px',
+                    background: 'var(--danger-bg)',
+                    border: '1px solid var(--danger)',
+                    borderRadius: '8px',
+                    color: 'var(--danger-text)',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  <strong>Some items in your cart are no longer available.</strong> {unavailableItems.map((u, i) => (
+                    <span key={i} style={{ marginLeft: '8px', color: 'var(--danger-text)' }}>
+                      {u.productName}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {error && <p style={{ marginTop: '16px', fontSize: '0.875rem', color: 'var(--danger-text)', backgroundColor: 'var(--danger-bg)', padding: '12px', borderRadius: '8px' }}>{error}</p>}
 
-              <button onClick={handlePlaceOrder} disabled={canPlaceOrder} style={{ marginTop: '24px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: canPlaceOrder ? 'var(--disabled-bg)' : 'var(--primary)', color: 'var(--primary-contrast)', padding: '12px', borderRadius: '12px', fontWeight: 600, border: 'none', cursor: canPlaceOrder ? 'not-allowed' : 'pointer', opacity: canPlaceOrder ? 0.5 : 1, transition: 'all 0.2s' }}>
+              <button onClick={handlePlaceOrder} disabled={canPlaceOrder || hasUnavailableItems} style={{ marginTop: '24px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: (canPlaceOrder && !hasUnavailableItems) ? 'var(--primary)' : 'var(--disabled-bg)', color: 'var(--primary-contrast)', padding: '12px', borderRadius: '12px', fontWeight: 600, border: 'none', cursor: (canPlaceOrder && !hasUnavailableItems) ? 'pointer' : 'not-allowed', opacity: (canPlaceOrder && !hasUnavailableItems) ? 1 : 0.5, transition: 'all 0.2s' }}>
                 {placing ? <span>Processing...</span> : <><Lock /> Place Order</>}
               </button>
             </div>

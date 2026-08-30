@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getPayments } from "../../services/adminService";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import ErrorState from "../../components/common/ErrorState";
 
 const AdminPaymentsPage = () => {
   const [payments, setPayments] = useState([]);
@@ -13,9 +14,11 @@ const AdminPaymentsPage = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [methodFilter, setMethodFilter] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const [loadError, setLoadError] = useState(null);
 
   const loadPayments = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const { items, totalPages } = await getPayments({
         page,
@@ -29,6 +32,7 @@ const AdminPaymentsPage = () => {
       setTotalPages(totalPages || 1);
     } catch (err) {
       console.error("Failed to load payments", err);
+      setLoadError(err.response?.status);
     } finally {
       setLoading(false);
     }
@@ -149,7 +153,8 @@ const AdminPaymentsPage = () => {
         border: "1px solid var(--border)",
         overflow: "auto"
       }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+        <div className="table-responsive">
+          <table className="payments-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
               <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)" }}>Payment ID</th>
@@ -161,7 +166,13 @@ const AdminPaymentsPage = () => {
             </tr>
           </thead>
           <tbody>
-            {payments.length === 0 ? (
+            {loadError ? (
+              <tr>
+                <td colSpan={6} style={{ padding: "1rem" }}>
+                  <ErrorState statusCode={loadError} onRetry={() => loadPayments()} />
+                </td>
+              </tr>
+            ) : payments.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
                   No payments found.
@@ -193,6 +204,7 @@ const AdminPaymentsPage = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

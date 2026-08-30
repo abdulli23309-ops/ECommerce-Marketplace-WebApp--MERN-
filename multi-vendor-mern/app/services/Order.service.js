@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import stripe from '../stripe.js';
 import PaymentTransaction from '../models/PaymentTransaction.model.js';
 import Product from '../models/Product.model.js';
+import { sanitizePagination } from '../utils/pagination.js';
 import * as paymentRepo from '../repositories/Payment.repository.js';
 import ParentOrder from '../models/ParentOrder.model.js';
 import SellerOrder from '../models/SellerOrder.model.js';
@@ -14,6 +15,7 @@ import * as couponService from './Coupon.service.js';
 import * as couponRepo from '../repositories/Coupon.repository.js';
 import { createNotification } from './Notification.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
+import CouponUsage from '../models/CouponUsage.model.js';
 import Store from '../models/Store.model.js';
 import SellerProfile from '../models/SellerProfile.model.js';
 import DeliveryCharge from '../models/DeliveryCharge.model.js';
@@ -84,10 +86,20 @@ export const checkout = async (userId, addressId, couponCode = null) => {
   }
 
   const storeItemsMap = new Map();
+  const unavailableItems = [];
 
   for (const cartItem of cart.items) {
     const product = await productRepo.findPublicById(cartItem.product);
-    if (!product) throw new ApiError(404, `Product ${cartItem.product} not found`);
+    if (!product) {
+      // Use the cart item's product name for a clear error message;
+      // fall back to Unknown Product if the name is not available.
+      unavailableItems.push({
+        productId: cartItem.product.toString(),
+        productName: cartItem.product?.name || 'Unknown Product',
+        quantity: cartItem.quantity,
+      });
+      continue;
+    }
     if (product.stock < cartItem.quantity) {
       throw new ApiError(400, `Insufficient stock for ${product.name}`);
     }
@@ -102,6 +114,14 @@ export const checkout = async (userId, addressId, couponCode = null) => {
       quantity: cartItem.quantity,
       freeDelivery: product.freeDelivery || false,
     });
+  }
+
+  if (unavailableItems.length > 0) {
+    const names = unavailableItems.map((u) => u.productName).join(', ');
+    throw new ApiError(
+      400,
+      `Some items in your cart are no longer available and cannot be ordered: ${names}. Please remove them to continue.`
+    );
   }
 
   const session = await mongoose.startSession();
@@ -187,7 +207,24 @@ export const checkout = async (userId, addressId, couponCode = null) => {
     await createdParent.save({ session });
 
     if (appliedCoupon) {
-      await couponRepo.incrementUsage(appliedCoupon._id, session);
+      // M-015: enforce the usage limit atomically — the limit check and the
+      // increment happen in one MongoDB update. If no document matches (limit
+      // reached, or a concurrent redemption already took the final slot) the
+      // update returns null and we fail cleanly like an exhausted coupon.
+      const incremented = await couponRepo.incrementUsageIfAvailable(
+        appliedCoupon._id,
+        appliedCoupon.usageLimit,
+        session
+      );
+      if (!incremented) {
+        throw new ApiError(400, 'Coupon usage limit reached');
+      }
+      await CouponUsage.create([{
+        coupon: appliedCoupon._id,
+        user: userId,
+        parentOrder: createdParent._id,
+        discountAmount: appliedCoupon.discountValue || 0,
+      }], { session });
     }
 
     await cartRepo.clearCart(userId, session);
@@ -220,9 +257,18 @@ export const prepareOrder = async (userId, addressId, session, couponCode = null
   }
 
   const storeItemsMap = new Map();
+  const unavailableItems = [];
+
   for (const cartItem of cart.items) {
     const product = await productRepo.findPublicById(cartItem.product);
-    if (!product) throw new ApiError(404, `Product ${cartItem.product} not found`);
+    if (!product) {
+      unavailableItems.push({
+        productId: cartItem.product.toString(),
+        productName: cartItem.product?.name || 'Unknown Product',
+        quantity: cartItem.quantity,
+      });
+      continue;
+    }
     if (product.stock < cartItem.quantity) {
       throw new ApiError(400, `Insufficient stock for ${product.name}`);
     }
@@ -236,6 +282,14 @@ export const prepareOrder = async (userId, addressId, session, couponCode = null
       quantity: cartItem.quantity,
       freeDelivery: product.freeDelivery || false,
     });
+  }
+
+  if (unavailableItems.length > 0) {
+    const names = unavailableItems.map((u) => u.productName).join(', ');
+    throw new ApiError(
+      400,
+      `Some items in your cart are no longer available and cannot be ordered: ${names}. Please remove them to continue.`
+    );
   }
 
   const parentOrder = await ParentOrder.create([{
@@ -322,15 +376,27 @@ export const previewOrderTotals = async (userId, couponCode = null) => {
     freeDeliveryDiscount: 0,
     total: 0,
     couponCode: null,
+    unavailableItems: [],
   };
 
   const cart = await cartRepo.findByUser(userId);
   if (!cart || cart.items.length === 0) return emptyResult;
 
   const storeItemsMap = new Map();
+  const unavailableItems = [];
+
   for (const cartItem of cart.items) {
     const product = await productRepo.findPublicById(cartItem.product);
-    if (!product) continue;
+    if (!product) {
+      // Track unavailable items for the frontend to display
+      const productName = cartItem.product?.name || 'Unknown Product';
+      unavailableItems.push({
+        productId: cartItem.product.toString(),
+        productName,
+        quantity: cartItem.quantity,
+      });
+      continue;
+    }
 
     const storeId = (product.store?._id || product.store).toString();
     if (!storeItemsMap.has(storeId)) storeItemsMap.set(storeId, []);
@@ -387,6 +453,7 @@ export const previewOrderTotals = async (userId, couponCode = null) => {
     freeDeliveryDiscount,
     total,
     couponCode: appliedCoupon ? appliedCoupon.code : null,
+    unavailableItems,
   };
 };
 
@@ -511,8 +578,8 @@ export const cancelOrder = async (orderId, userId) => {
 
 // ---------- Order listing with payment info ----------
 export const getOrders = async (userId, { page = 1, pageSize = 10 } = {}) => {
-  const skip = (Number(page) - 1) * Number(pageSize);
-  const limit = Number(pageSize);
+  const { page: safePage, pageSize: limit } = sanitizePagination(page, pageSize, 10);
+  const skip = (safePage - 1) * limit;
 
   const [parentOrders, total] = await Promise.all([
     ParentOrder.find({ customer: userId })
@@ -557,7 +624,7 @@ export const getOrders = async (userId, { page = 1, pageSize = 10 } = {}) => {
   return {
     items,
     total,
-    page: Number(page),
+    page: safePage,
     pageSize: limit,
     totalPages: Math.ceil(total / limit),
   };

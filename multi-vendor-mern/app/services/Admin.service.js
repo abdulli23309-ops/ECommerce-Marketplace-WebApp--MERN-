@@ -8,6 +8,8 @@ import { ApiError } from '../utils/ApiError.util.js';
 import { logAction } from './AdminAuditLog.service.js';
 import { createNotification } from './Notification.service.js';
 import * as ratingModerationService from './RatingModeration.service.js';
+import * as moderationService from './Moderation.service.js';
+import * as sellerAppealService from './SellerAppeal.service.js';
 
 // ---------------- Users ----------------
 export const getUsers = (query) => adminRepo.findUsers(query);
@@ -148,6 +150,21 @@ export const getSellerModerationStatus = (id) =>
 
 export const warnSeller = (id, reason, adminId) =>
   ratingModerationService.issueSellerWarning(id, adminId, reason);
+
+export const suspendSeller = (id, payload, adminId) =>
+  moderationService.suspendSeller(id, payload, adminId);
+
+export const reinstateSeller = (id, adminId) =>
+  moderationService.reinstateSeller(id, adminId);
+
+export const getSellerTimeline = (id) =>
+  moderationService.getModerationTimeline(id);
+
+export const getAppealsForAdmin = (status) =>
+  sellerAppealService.getAppealsForAdmin(status);
+
+export const decideAppeal = (appealId, decision, decisionReason, actorId) =>
+  sellerAppealService.decideAppeal(appealId, decision, decisionReason, actorId);
 
 // ---------------- Orders ----------------
 export const getOrders = (query) => adminRepo.findOrders(query);

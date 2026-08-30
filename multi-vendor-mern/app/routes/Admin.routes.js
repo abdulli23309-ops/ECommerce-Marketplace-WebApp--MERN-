@@ -17,6 +17,13 @@ router.put('/sellers/:id/approve', adminController.approveSeller);
 router.put('/sellers/:id/reject', adminController.rejectSeller);
 router.get('/sellers/:id/moderation-status', adminController.getSellerModerationStatus);
 router.post('/sellers/:id/warn', adminController.warnSeller);
+router.post('/sellers/:id/suspend', adminController.suspendSeller);
+router.post('/sellers/:id/reinstate', adminController.reinstateSeller);
+router.get('/sellers/:id/timeline', adminController.getSellerTimeline);
+
+// Seller appeals (admin review)
+router.get('/seller-appeals', adminController.getSellerAppeals);
+router.put('/seller-appeals/:id/decision', adminController.decideSellerAppeal);
 
 // Orders
 router.get('/orders', adminController.getOrders);

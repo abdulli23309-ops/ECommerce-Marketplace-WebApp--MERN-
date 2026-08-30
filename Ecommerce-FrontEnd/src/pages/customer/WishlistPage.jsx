@@ -8,6 +8,7 @@ import {
 } from "../../store/wishlistSlice";
 import { addItemToCart } from "../../store/cartSlice";
 import { getImageUrl } from "../../utils/imageHelper";
+import { toastSuccess, toastError } from "../../components/common/Toast";
 
 const HeartIcon = () => (
   <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
@@ -70,8 +71,10 @@ const WishlistPage = () => {
     setAddingProductId(productId);
     try {
       await dispatch(addItemToCart({ productId, quantity: 1 })).unwrap();
+      toastSuccess("Moved to cart");
     } catch (error) {
       console.error("Failed to add item to cart", error);
+      toastError("Could not add to cart. Please try again.");
     } finally {
       setAddingProductId(null);
     }

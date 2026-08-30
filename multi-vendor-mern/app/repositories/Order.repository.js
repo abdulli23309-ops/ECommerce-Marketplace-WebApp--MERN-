@@ -96,3 +96,20 @@ export const findByIdForMutation = (id, customerId) =>
     _id: id,
     customer: customerId,
   });
+
+// M-003 duplicate-checkout guard: an in-flight checkout is a Pending
+// ParentOrder owned by the user that still has a Pending Stripe payment.
+// Returns the blocking payment (or null when the user may start a new checkout).
+export const findPendingStripeCheckoutByUser = async (customerId) => {
+  const pendingOrders = await ParentOrder.find({
+    customer: customerId,
+    orderStatus: 'Pending',
+  })
+    .select('_id')
+    .lean();
+
+  if (pendingOrders.length === 0) return null;
+
+  const parentOrderIds = pendingOrders.map((order) => order._id);
+  return paymentRepo.findOnePendingByParentOrders(parentOrderIds, 'Stripe');
+};

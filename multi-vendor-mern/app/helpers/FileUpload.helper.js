@@ -29,10 +29,12 @@ const uploadProduct = multer({
 }).array('images', 5);
 
 // Avatar (single, field name "avatar")
+// Limit: 5 MB. Keep the comment, the limit, and the user-facing message
+// in sync (see M-024).
 const uploadAvatarMulter = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 20 * 1024 * 1024 },   // 10 MB for testing
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB avatar limit
 }).single('avatar');
 
 // Wrapper for product image upload
@@ -58,7 +60,7 @@ export const uploadAvatar = (req, res, next) => {
     if (err) {
       if (err instanceof ApiError) return next(err);
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return next(new ApiError(400, 'File too large. Maximum size is 2 MB.'));
+        return next(new ApiError(400, 'File too large. Maximum size is 5 MB.'));
       }
       return next(new ApiError(500, err.message));
     }

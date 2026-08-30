@@ -49,6 +49,7 @@ const getRefreshTokenExpiry = () =>
   new Date(Date.now() + parseDurationToMilliseconds(appConf.jwt.refreshExpiresIn));
 
 export {
+  accessSecret,
   generateAccessToken,
   generateRefreshToken,
   getRefreshTokenExpiry,

@@ -142,11 +142,31 @@ const ReviewDetailPage = () => {
               <StarRating rating={review.rating} />
             </div>
           </div>
-          <div className="verified-badge">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            Verified Purchase
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            <div className="verified-badge">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Verified Purchase
+            </div>
+            {review.isAnonymous && (
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 10px",
+                  borderRadius: "99px",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                🎭 Posted Anonymously
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,12 +1,16 @@
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect } from "react";
+import { useTheme } from "./hooks/useTheme";
 import { fetchPermissions } from "./store/permissionsSlice";
 import {
   setActualRole,
   setActiveDashboard,
   resetDashboardContext,
 } from "./store/dashboardContextSlice";
+
+// Eager: layouts, route guards, and shell-level NotFound/Login/Register stay
+// synchronous so the app shell and auth never show a loading flash.
 import AuthLayout from "./layouts/AuthLayout";
 import CustomerLayout from "./layouts/CustomerLayout";
 import SellerLayout from "./layouts/SellerLayout";
@@ -16,53 +20,59 @@ import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import VerifyEmailPage from "./pages/customer/VerifyEmailPage";
-import HomePage from "./pages/customer/HomePage";
-import AboutPage from "./pages/customer/AboutPage";
-import CartPage from "./pages/customer/CartPage";
-import OrderHistoryPage from "./pages/customer/OrderHistoryPage";
-import ProfilePage from "./pages/customer/ProfilePage";
-import CheckoutPage from "./pages/customer/CheckoutPage";
-import SellerProductsPage from "./pages/seller/SellerProductsPage";
-import ProductForm from "./pages/seller/ProductForm";
-import SellerOrdersPage from "./pages/seller/SellerOrdersPage";
-import AdminUsersPage from "./pages/admin/AdminUsersPage";
-import SellerApprovalPage from "./pages/admin/SellerApprovalPage";
-import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
-import AdminBrandsPage from "./pages/admin/AdminBrandsPage";
-import ProductModerationPage from "./pages/admin/ProductModerationPage";
-import ReturnsManagementPage from "./pages/admin/ReturnsManagementPage";
-import RefundManagementPage from "./pages/admin/RefundManagementPage";
-import ProductDetailPage from "./pages/customer/ProductDetailPage";
-import SellerPendingPage from "./pages/seller/SellerPendingPage";
-import SellerRegisterPage from "./pages/seller/SellerRegisterPage";
-import RolePermissionGroupsPage from "./pages/admin/RolePermissionGroupsPage";
-import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
-import AddressBookPage from "./pages/customer/AddressBookPage";
-import ProductListingPage from "./pages/customer/ProductListingPage";
-import StoreSettingsPage from "./pages/seller/StoreSettingsPage";
-import StorePage from "./pages/customer/StorePage";
-import OrderDetailPage from "./pages/customer/OrderDetailPage";
-import SellerReviewsPage from "./pages/seller/SellerReviewsPage";
-import SellerDashboardPage from "./pages/seller/SellerDashboardPage";
-import ShipmentManagementPage from "./pages/seller/ShipmentManagementPage";
-import ReviewPage from "./pages/customer/ReviewPage";
-import MyReviewsPage from "./pages/customer/MyReviewsPage";
-import ReviewDetailPage from "./pages/customer/ReviewDetailPage";
-import PermissionGroupsPage from "./pages/admin/PermissionGroupsPage";
-import RequestReturnPage from "./pages/customer/RequestReturnPage";
-import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
-import AdminShipmentsPage from "./pages/admin/AdminShipmentsPage";
-import ProductGrid from "./pages/seller/ProductGrid";
-import OrderConfirmationPage from "./pages/customer/OrderConfirmationPage";
-import CustomerReturnsPage from "./pages/customer/CustomerReturnsPage";
-import AdminPaymentsPage from "./pages/admin/AdminPaymentsPage";
-import SellerReturnsPage from "./pages/seller/SellerReturnsPage";
-import WishlistPage from "./pages/customer/WishlistPage";
-import { useTheme } from "./hooks/useTheme";
 
-// Priority 4 new pages
-import AdminAuditLogPage from "./pages/admin/AdminAuditLogPage";
-import AdminCouponsPage from "./pages/admin/AdminCouponsPage";
+// UI-08: route-level code-splitting. Every page module is lazy-loaded so the
+// initial bundle stays small; the shell (layouts/guards) stays eager.
+const HomePage = lazy(() => import("./pages/customer/HomePage"));
+const AboutPage = lazy(() => import("./pages/customer/AboutPage"));
+const ProductListingPage = lazy(() => import("./pages/customer/ProductListingPage"));
+const ProductDetailPage = lazy(() => import("./pages/customer/ProductDetailPage"));
+const StorePage = lazy(() => import("./pages/customer/StorePage"));
+const CartPage = lazy(() => import("./pages/customer/CartPage"));
+const WishlistPage = lazy(() => import("./pages/customer/WishlistPage"));
+const ProfilePage = lazy(() => import("./pages/customer/ProfilePage"));
+const CheckoutPage = lazy(() => import("./pages/customer/CheckoutPage"));
+const OrderHistoryPage = lazy(() => import("./pages/customer/OrderHistoryPage"));
+const AddressBookPage = lazy(() => import("./pages/customer/AddressBookPage"));
+const OrderDetailPage = lazy(() => import("./pages/customer/OrderDetailPage"));
+const ReviewPage = lazy(() => import("./pages/customer/ReviewPage"));
+const RequestReturnPage = lazy(() => import("./pages/customer/RequestReturnPage"));
+const CustomerReturnsPage = lazy(() => import("./pages/customer/CustomerReturnsPage"));
+const MyReviewsPage = lazy(() => import("./pages/customer/MyReviewsPage"));
+const OrderConfirmationPage = lazy(() => import("./pages/customer/OrderConfirmationPage"));
+const ReviewDetailPage = lazy(() => import("./pages/customer/ReviewDetailPage"));
+
+const SellerRegisterPage = lazy(() => import("./pages/seller/SellerRegisterPage"));
+const SellerPendingPage = lazy(() => import("./pages/seller/SellerPendingPage"));
+const SellerDashboardPage = lazy(() => import("./pages/seller/SellerDashboardPage"));
+const ProductGrid = lazy(() => import("./pages/seller/ProductGrid"));
+const ProductForm = lazy(() => import("./pages/seller/ProductForm"));
+const SellerOrdersPage = lazy(() => import("./pages/seller/SellerOrdersPage"));
+const StoreSettingsPage = lazy(() => import("./pages/seller/StoreSettingsPage"));
+const ShipmentManagementPage = lazy(() => import("./pages/seller/ShipmentManagementPage"));
+const SellerReviewsPage = lazy(() => import("./pages/seller/SellerReviewsPage"));
+const SellerReturnsPage = lazy(() => import("./pages/seller/SellerReturnsPage"));
+const SellerSuspendedPage = lazy(() => import("./pages/seller/SellerSuspendedPage"));
+const SellerAppealsPage = lazy(() => import("./pages/seller/SellerAppealsPage"));
+const SellerAppealDetailPage = lazy(() => import("./pages/seller/SellerAppealDetailPage"));
+const SellerAppealNewPage = lazy(() => import("./pages/seller/SellerAppealNewPage"));
+
+const SellerApprovalPage = lazy(() => import("./pages/admin/SellerApprovalPage"));
+const AdminSellerAppealsPage = lazy(() => import("./pages/admin/AdminSellerAppealsPage"));
+const ProductModerationPage = lazy(() => import("./pages/admin/ProductModerationPage"));
+const ReturnsManagementPage = lazy(() => import("./pages/admin/ReturnsManagementPage"));
+const RefundManagementPage = lazy(() => import("./pages/admin/RefundManagementPage"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
+const PermissionGroupsPage = lazy(() => import("./pages/admin/PermissionGroupsPage"));
+const RolePermissionGroupsPage = lazy(() => import("./pages/admin/RolePermissionGroupsPage"));
+const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage"));
+const AdminCategoriesPage = lazy(() => import("./pages/admin/AdminCategoriesPage"));
+const AdminOrdersPage = lazy(() => import("./pages/admin/AdminOrdersPage"));
+const AdminShipmentsPage = lazy(() => import("./pages/admin/AdminShipmentsPage"));
+const AdminPaymentsPage = lazy(() => import("./pages/admin/AdminPaymentsPage"));
+const AdminBrandsPage = lazy(() => import("./pages/admin/AdminBrandsPage"));
+const AdminAuditLogPage = lazy(() => import("./pages/admin/AdminAuditLogPage"));
+const AdminCouponsPage = lazy(() => import("./pages/admin/AdminCouponsPage"));
 
 const App = () => {
   useTheme();
@@ -125,7 +135,18 @@ const App = () => {
   }, [user, dispatch]); // do not re-run on silent token refresh
 
   return (
-    <Routes>
+    <Suspense fallback={
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '40vh',
+        color: 'var(--text-secondary)',
+      }}>
+        <span className="vv-skeleton vv-skeleton--title" style={{ width: '120px' }} />
+      </div>
+    }>
+      <Routes>
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -176,12 +197,19 @@ const App = () => {
           <Route path="/seller/shipments" element={<ShipmentManagementPage />} />
           <Route path="/seller/reviews" element={<SellerReviewsPage />} />
           <Route path="/seller/returns" element={<SellerReturnsPage />} />
+
+          {/* Suspension & Appeals (reachable while suspended via SellerLayout allowlist) */}
+          <Route path="/seller/suspended" element={<SellerSuspendedPage />} />
+          <Route path="/seller/appeals" element={<SellerAppealsPage />} />
+          <Route path="/seller/appeals/new" element={<SellerAppealNewPage />} />
+          <Route path="/seller/appeals/:id" element={<SellerAppealDetailPage />} />
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin/sellers" element={<SellerApprovalPage />} />
+          <Route path="/admin/seller-appeals" element={<AdminSellerAppealsPage />} />
           <Route path="/admin/products" element={<ProductModerationPage />} />
           <Route path="/admin/returns" element={<ReturnsManagementPage />} />
           <Route path="/admin/refunds" element={<RefundManagementPage />} />
@@ -200,7 +228,8 @@ const App = () => {
       </Route>
 
       <Route path="*" element={<NotFound />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 };
 

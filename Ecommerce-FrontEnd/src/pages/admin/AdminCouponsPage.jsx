@@ -385,12 +385,12 @@ const AdminCouponsPage = () => {
 
         {/* Table */}
         <div
+          className="table-responsive"
           style={{
             background: "var(--surface)",
             borderRadius: "12px",
             boxShadow: "0 1px 3px var(--shadow)",
             border: "1px solid var(--border)",
-            overflow: "hidden",
           }}
         >
           {loading ? (
@@ -403,7 +403,7 @@ const AdminCouponsPage = () => {
             </div>
           ) : (
             <>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table className="coupons-table" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
                     <th style={thStyle}>Code</th>
@@ -469,6 +469,9 @@ const AdminCouponsPage = () => {
         {/* Delete Confirmation Modal */}
         {isDeleteModalOpen && (
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-coupon-title"
             style={{
               position: "fixed",
               inset: 0,
@@ -496,6 +499,7 @@ const AdminCouponsPage = () => {
               </div>
 
               <h3
+                id="delete-coupon-title"
                 style={{
                   textAlign: "center",
                   fontSize: "1.25rem",

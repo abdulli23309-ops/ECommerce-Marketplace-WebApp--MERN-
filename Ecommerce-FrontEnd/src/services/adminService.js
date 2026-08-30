@@ -59,6 +59,11 @@ export const getSellers = async (params = {}) => {
     warningHistory: s.warningHistory || [],
     user: s.user,
     store: s.store,
+    // Moderation fields
+    activeSuspension: s.activeSuspension,
+    pendingAppeal: s.pendingAppeal,
+    lastRejectedAppeal: s.lastRejectedAppeal,
+    moderationStatus: s.moderationStatus,
   })),
     total: pagination.total,
     page: pagination.page,
@@ -247,4 +252,121 @@ export const getAdminUsers = async (params = {}) => {
 export const getAdminStats = async () => {
   const { data } = await axiosInstance.get("/admin/stats");
   return data.data || {};
+};
+
+// ---------- Seller Suspension & Appeals (Admin) ----------
+export const suspendSeller = async (sellerId, reason, internalNote = '') => {
+  const { data } = await axiosInstance.post(
+    `/admin/sellers/${sellerId}/suspend`,
+    { reason, internalNote }
+  );
+  return data.data || data;
+};
+
+export const reinstateSeller = async (sellerId) => {
+  const { data } = await axiosInstance.post(
+    `/admin/sellers/${sellerId}/reinstate`
+  );
+  return data.data || data;
+};
+
+export const getSellerTimeline = async (sellerId) => {
+  const { data } = await axiosInstance.get(
+    `/admin/sellers/${sellerId}/timeline`
+  );
+  return data.data || {};
+};
+
+export const getSellerAppeals = async (params = {}) => {
+  const { data } = await axiosInstance.get("/admin/seller-appeals", { params });
+  const payload = data.data || data;
+  const items = payload.items || payload || [];
+  return {
+    items: items.map((a) => ({
+      id: a._id,
+      sellerProfile: a.sellerProfile,
+      sellerName: a.sellerProfile?.businessName || a.sellerProfile?.user?.name || a.sellerName || '—',
+      sellerEmail: a.sellerProfile?.user?.email || '—',
+      storeName: a.sellerProfile?.store?.name || '—',
+      suspension: a.suspension,
+      suspensionReason: a.suspension?.reason || '',
+      suspendedAt: a.suspension?.suspendedAt || '',
+      status: a.status,
+      appealText: a.appealText,
+      submittedBy: a.submittedBy,
+      submittedAt: a.submittedAt,
+      decidedAt: a.decidedAt,
+      decidedBy: a.decidedBy,
+      decisionReason: a.decisionReason,
+      history: a.history,
+      warningCount: a.sellerProfile?.warningCount || 0,
+    })),
+    total: payload.total ?? items.length,
+    page: payload.page ?? params.page ?? 1,
+    pageSize: payload.pageSize ?? params.pageSize ?? 10,
+    totalPages:
+      payload.totalPages ??
+      Math.ceil((payload.total ?? items.length) / (params.pageSize || 10)),
+  };
+};
+
+export const decideSellerAppeal = async (appealId, decision, decisionReason) => {
+  const { data } = await axiosInstance.put(
+    `/admin/seller-appeals/${appealId}/decision`,
+    { decision, decisionReason }
+  );
+  return data.data || data;
+};
+
+// ---------- Seller Suspension & Appeals (Seller) ----------
+export const getMySuspensionStatus = async () => {
+  const { data } = await axiosInstance.get("/seller/suspension");
+  return data.data || {};
+};
+
+export const submitAppeal = async (appealText) => {
+  const { data } = await axiosInstance.post("/seller/appeals", { appealText });
+  return data.data || data;
+};
+
+export const getMyAppeals = async (params = {}) => {
+  const { data } = await axiosInstance.get("/seller/appeals", { params });
+  const payload = data.data || data;
+  const items = payload.items || payload || [];
+  return {
+    items: items.map((a) => ({
+      id: a._id,
+      suspension: a.suspension,
+      status: a.status,
+      appealText: a.appealText,
+      submittedAt: a.submittedAt,
+      decidedAt: a.decidedAt,
+      decidedBy: a.decidedBy,
+      decisionReason: a.decisionReason,
+      history: a.history,
+    })),
+    total: payload.total ?? items.length,
+    page: payload.page ?? params.page ?? 1,
+    pageSize: payload.pageSize ?? params.pageSize ?? 10,
+    totalPages:
+      payload.totalPages ??
+      Math.ceil((payload.total ?? items.length) / (params.pageSize || 10)),
+  };
+};
+
+export const getMyAppealById = async (appealId) => {
+  const { data } = await axiosInstance.get(`/seller/appeals/${appealId}`);
+  return data.data || data;
+};
+
+// ---------- Seller Product Republish ----------
+// NOTE: This is a SELLER action (republish own Suspended product). The backend
+// canonical contract aligns with the PUT-based edit/update pattern used by the
+// product routes: PUT /api/v1/seller/products/:id/republish. It requires the
+// Seller.Products.Edit permission and only works after the seller has been
+// reinstated (resolveStore blocks suspended sellers). Suspended products stay
+// unpublished and must be explicitly republished — no premature visibility.
+export const republishMyProduct = async (productId) => {
+  const { data } = await axiosInstance.put(`/seller/products/${productId}/republish`);
+  return data.data || data;
 };

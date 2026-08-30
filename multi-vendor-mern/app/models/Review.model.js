@@ -28,8 +28,9 @@ const reviewSchema = new mongoose.Schema(
       default: '',
     },
     sellerReply: { type: String, default: null },
-isReported: { type: Boolean, default: false },
-orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentOrder', default: null },
+    isReported: { type: Boolean, default: false },
+    isAnonymous: { type: Boolean, default: false },
+    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'ParentOrder', default: null },
     images: {
       type: [String],
       default: [],

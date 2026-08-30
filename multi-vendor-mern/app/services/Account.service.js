@@ -1,4 +1,5 @@
 import User from '../models/User.model.js';
+import RefreshToken from '../models/RefreshToken.model.js';
 import { ApiError } from '../utils/ApiError.util.js';
 import bcrypt from 'bcrypt'; // make sure this is imported
 
@@ -16,9 +17,17 @@ export const updateProfile = async (userId, data) => {
   for (const key of allowedFields) {
     if (data[key] !== undefined) update[key] = data[key];
   }
-  const user = await User.findByIdAndUpdate(userId, update, { new: true }).lean();
-  const { password, refreshTokens, ...profile } = user;
-  return profile;
+  // M-031: return only the deliberate profile contract fields (same shape as
+  // getProfile) instead of the full user document, so internal fields such as
+  // googleId, isActive, isVerified, role flags and timestamps are not exposed.
+  const user = await User.findByIdAndUpdate(userId, update, {
+    new: true,
+    runValidators: true,
+  })
+    .select('name email role avatar isActive emailVerified')
+    .lean();
+  if (!user) throw new ApiError(404, 'User not found');
+  return user;
 };
 
 export const getMyPermissions = async (userId) => {
@@ -58,6 +67,12 @@ export const changePassword = async (userId, currentPassword, newPassword) => {
 
   user.password = newPassword;
   await user.save();
+
+  // M-030: a password change invalidates every outstanding refresh-token
+  // session for this user (including stolen ones). Active access tokens
+  // expire naturally per JWT_ACCESS_EXPIRES_IN; new sessions require a
+  // fresh login. Uses the existing RefreshToken model — no new storage.
+  await RefreshToken.deleteMany({ user: userId });
 };
 
 export const updateAvatar = async (userId, avatarUrl) => {

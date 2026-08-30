@@ -86,14 +86,14 @@ describe('Priority 5 — Delivery Charges', () => {
     const token = generateTestToken({ sub: customer._id.toString(), roles: ['Customer'] });
 
     const res = await request(app)
-      .post('/api/v1/orders/checkout')
+      .post('/api/v1/payments/create-intent')
       .set('Authorization', `Bearer ${token}`)
-      .send({ addressId: address._id.toString() })
-      .expect(201);
+      .send({ addressId: address._id.toString(), paymentMethod: 'CashOnDelivery' })
+      .expect(200);
 
-    expect(res.body.data.subtotal).toBe(1000);
-    expect(res.body.data.deliveryCharges).toBe(200);
-    expect(res.body.data.totalAmount).toBe(1200);
+    expect(res.body.data.order.subtotal).toBe(1000);
+    expect(res.body.data.order.deliveryCharges).toBe(200);
+    expect(res.body.data.order.totalAmount).toBe(1200);
   });
 
   it('does not charge delivery for seller-provided free delivery product', async () => {
@@ -165,13 +165,13 @@ describe('Priority 5 — Delivery Charges', () => {
     const token = generateTestToken({ sub: customer._id.toString(), roles: ['Customer'] });
 
     const res = await request(app)
-      .post('/api/v1/orders/checkout')
+      .post('/api/v1/payments/create-intent')
       .set('Authorization', `Bearer ${token}`)
-      .send({ addressId: address._id.toString() })
-      .expect(201);
+      .send({ addressId: address._id.toString(), paymentMethod: 'CashOnDelivery' })
+      .expect(200);
 
-    expect(res.body.data.deliveryCharges).toBe(0);
-    expect(res.body.data.totalAmount).toBe(1000);
+    expect(res.body.data.order.deliveryCharges).toBe(0);
+    expect(res.body.data.order.totalAmount).toBe(1000);
   });
 
   it('applies free_delivery coupon to remove delivery charges', async () => {
@@ -255,13 +255,13 @@ describe('Priority 5 — Delivery Charges', () => {
     const token = generateTestToken({ sub: customer._id.toString(), roles: ['Customer'] });
 
     const res = await request(app)
-      .post('/api/v1/orders/checkout')
+      .post('/api/v1/payments/create-intent')
       .set('Authorization', `Bearer ${token}`)
-      .send({ addressId: address._id.toString(), couponCode: 'FREESHIP' })
-      .expect(201);
+      .send({ addressId: address._id.toString(), couponCode: 'FREESHIP', paymentMethod: 'CashOnDelivery' })
+      .expect(200);
 
-    expect(res.body.data.deliveryCharges).toBe(200);
-    expect(res.body.data.freeDeliveryDiscount).toBe(200);
-    expect(res.body.data.totalAmount).toBe(1000);
+    expect(res.body.data.order.deliveryCharges).toBe(200);
+    expect(res.body.data.order.freeDeliveryDiscount).toBe(200);
+    expect(res.body.data.order.totalAmount).toBe(1000);
   });
 });

@@ -8,6 +8,9 @@ const ALLOWED_UPDATE_FIELDS = ['name', 'description', 'logo', 'city'];
 const resolveSellerProfile = async (userId) => {
   const profile = await sellerProfileRepo.findByUser(userId);
   if (!profile) throw new ApiError(404, 'Seller profile not found');
+  if (profile.status === 'Suspended') {
+    throw new ApiError(403, 'Your seller account is suspended and cannot create new marketplace activity');
+  }
   if (profile.status !== 'Approved') throw new ApiError(403, 'Your seller account is not approved');
   return profile;
 };
@@ -16,6 +19,9 @@ const resolveSellerProfile = async (userId) => {
 export const createStore = async (userId, data) => {
   const profile = await sellerProfileRepo.findByUser(userId);
   if (!profile) throw new ApiError(404, 'Seller profile not found');
+  if (profile.status === 'Suspended') {
+    throw new ApiError(403, 'Your seller account is suspended and cannot create new marketplace activity');
+  }
   // No approval check – the seller is still in the application phase
 
   const existing = await storeRepo.findBySeller(profile._id);
@@ -24,9 +30,23 @@ export const createStore = async (userId, data) => {
   return storeRepo.create({ ...data, sellerProfile: profile._id });
 };
 
+// Public store lookup. A suspended seller's store must be invisible to customers
+// (neutral 404 — no internal "suspended" wording). We check the owning profile's
+// status rather than just store.isActive so the suspension state is honored.
 export const getPublicStore = async (storeId) => {
   const store = await storeRepo.findById(storeId);
   if (!store) throw new ApiError(404, 'Store not found');
+  // M-001: a deactivated/soft-deleted store (Store.isActive === false) must not
+  // be visible to customers even when the owning seller is Approved. The
+  // sellerProfile check below handles suspension; this additional check honors
+  // the Store.isActive flag so a store owner cannot leave an inactive store public.
+  if (!store.isActive) throw new ApiError(404, 'Store not found');
+  if (store.sellerProfile) {
+    const owner = await sellerProfileRepo.findById(store.sellerProfile);
+    if (!owner || owner.status === 'Suspended') {
+      throw new ApiError(404, 'Store not found');
+    }
+  }
   return store;
 };
 

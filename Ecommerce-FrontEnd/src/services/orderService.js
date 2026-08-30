@@ -17,10 +17,10 @@ export const fetchOrderPreview = async (couponCode = null) => {
   return data.data || data;
 };
 
-export const placeOrder = async (addressId) => {
-  const { data } = await axiosInstance.post("/orders/checkout", { addressId });
-  return data.data;
-};
+// M-006 / M-027: the legacy `placeOrder` wrapper (POST /orders/checkout) was
+// removed from BOTH frontend and backend. The canonical checkout flow is
+// createPaymentIntent → /payments/create-intent → backend prepareOrder.
+// POST /api/v1/orders/checkout now returns 404 (no payment bypass path).
 
 export const createPaymentIntent = async (addressId, paymentMethod, couponCode = null, mobileAccount = null) => {
   const { data } = await axiosInstance.post("/payments/create-intent", {

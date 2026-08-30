@@ -54,12 +54,17 @@
 5. Hardcoded `.hero-banner`/`.hero-subtitle` colors (dashboard-footer and stat-card were tokenized in Phase 2).
 
 ## Testing / Build Commands
-- Backend tests: `cd multi-vendor-mern && npm test` (Vitest run). 33 files / 248 tests.
-- Frontend build: `cd Ecommerce-FrontEnd && npm run build` (Vite; PASS with chunk-size advisory).
+- Backend tests: `cd multi-vendor-mern && npm test` (Vitest run). 54 files / 394 tests.
+- Frontend build: `cd Ecommerce-FrontEnd && npm run build` (Vite; PASS).
 
 ## Last Verification Record
-- **Checkpoint:** Final Phase 2 regression PASS.
-- **Tests:** 33/33 files, 248/248 tests, 0 failures.
-- **Build:** frontend build PASS (194 modules).
-- **Manual regression:** PASS.
-- **Git:** HEAD `5847f7f`, working tree clean.
+- **Checkpoint:** Customer Order Flow, Review/Return Selection, Anonymous Reviews & UI Stability.
+- **Tests:** 54/54 files, 394/394 tests, 0 failures.
+- **Build:** frontend build PASS (211 modules).
+- **Features Completed:**
+  - Multi-seller customer order separation with independent seller cards, statuses, line items, and tracking.
+  - Multi-product review picker and per-item direct review triggers.
+  - Multi-product return picker with quantity selector (1..purchasedQty) and dynamic refund calculations.
+  - Anonymous review submission with public and seller privacy sanitization.
+  - Single root Google OAuth initialization in `main.jsx`.
+  - 3D card elevation and layered depth effects on dashboard metric cards.

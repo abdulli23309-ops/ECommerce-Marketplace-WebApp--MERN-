@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axiosInstance from "../../services/axiosInstance";
+import { toastError } from "../../components/common/Toast";
 
 const iconBtnStyle = {
   background: "transparent",
@@ -117,10 +118,40 @@ const AdminBrandsPage = () => {
         fetchBrands();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Cannot delete brand.");
+      toastError(err.response?.data?.message || "Cannot delete brand.");
       closeDeleteModal();
     }
   };
+
+  // Escape-to-close + body scroll lock for Add/Edit modal
+  useEffect(() => {
+    if (!modalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") setModalOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [modalOpen]);
+
+  // Escape-to-close + body scroll lock for Delete modal
+  useEffect(() => {
+    if (!isDeleteModalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") closeDeleteModal();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isDeleteModalOpen]);
 
   return (
     <div style={{ backgroundColor: "var(--bg-secondary)", minHeight: "100vh", padding: "2rem" }}>
@@ -173,7 +204,8 @@ const AdminBrandsPage = () => {
               No brands found.
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="table-responsive">
+              <table className="brands-table" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
                   <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -215,7 +247,8 @@ const AdminBrandsPage = () => {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           )}
         </div>
 
@@ -246,6 +279,9 @@ const AdminBrandsPage = () => {
         {/* Add/Edit Modal */}
         {modalOpen && (
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="brand-modal-title"
             style={{
               position: "fixed",
               inset: 0,
@@ -267,7 +303,10 @@ const AdminBrandsPage = () => {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "1.5rem" }}>
+              <h3
+                id="brand-modal-title"
+                style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "1.5rem" }}
+              >
                 {editingBrand ? "Edit Brand" : "Add Brand"}
               </h3>
 
@@ -327,6 +366,9 @@ const AdminBrandsPage = () => {
         {/* Delete Confirmation Modal */}
         {isDeleteModalOpen && (
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="brand-delete-modal-title"
             style={{
               position: "fixed",
               inset: 0,
@@ -353,7 +395,10 @@ const AdminBrandsPage = () => {
                 <WarningIcon />
               </div>
 
-              <h3 style={{ textAlign: "center", fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.5rem" }}>
+              <h3
+                id="brand-delete-modal-title"
+                style={{ textAlign: "center", fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.5rem" }}
+              >
                 Delete Brand?
               </h3>
 

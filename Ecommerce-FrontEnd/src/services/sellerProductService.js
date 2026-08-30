@@ -66,6 +66,17 @@ export const deleteProduct = async (productId) => {
   const { data } = await axiosInstance.delete(`/seller/products/${productId}`);
   return data.data;
 };
+
+// ---------- Republish a Suspended product after reinstatement ----------
+// Canonical contract: PUT /api/v1/seller/products/:id/republish (matches the
+// PUT-based create/edit pattern). A Suspended product can only be republished
+// once the seller has been reinstated (backend resolveStore blocks suspended
+// sellers). Successful republish moves the product to PendingApproval for
+// admin review — never automatic approval.
+export const republishProduct = async (productId) => {
+  const { data } = await axiosInstance.put(`/seller/products/${productId}/republish`);
+  return data.data || data;
+};
 // Fetch RAW product (with populated objects) for editing
 export const fetchRawProductById = async (productId) => {
   const { data } = await axiosInstance.get(`/products/${productId}`);

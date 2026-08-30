@@ -8,6 +8,7 @@ import {
   emptyCart,
 } from "../../store/cartSlice";
 import FreeDeliveryBadge from "../../components/common/FreeDeliveryBadge";
+import { TableSkeleton } from "../../components/common/Skeleton";
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -18,8 +19,9 @@ const CartPage = () => {
     dispatch(loadCart());
   }, [dispatch]);
 
-  const handleQuantityChange = (productId, newQuantity) => {
+  const handleQuantityChange = (productId, newQuantity, itemAvailable) => {
     if (newQuantity < 1) return;
+    if (!itemAvailable) return; // disabled — silently no-op
     dispatch(updateQuantity({ productId, quantity: newQuantity }));
   };
 
@@ -38,11 +40,14 @@ const CartPage = () => {
 
   const hasFreeDeliveryItems =
     Array.isArray(items) && items.some((item) => item.freeDelivery === true);
+  const hasUnavailableItems =
+    Array.isArray(items) && items.some((item) => item.available === false);
 
   if (status === "loading") {
     return (
-      <div style={{ padding: "3rem", color: "var(--text-secondary)" }}>
-        Loading cart...
+      <div className="cart-page">
+        <h1 className="section-title">Shopping Cart</h1>
+        <TableSkeleton rows={4} header={false} />
       </div>
     );
   }
@@ -96,6 +101,19 @@ const CartPage = () => {
                 {item.freeDelivery === true && (
                   <FreeDeliveryBadge style={{ marginTop: "0.4rem" }} />
                 )}
+                {item.available === false && (
+                  <span
+                    style={{
+                      display: "block",
+                      marginTop: "0.5rem",
+                      fontSize: "0.75rem",
+                      color: "var(--danger)",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Currently Unavailable
+                  </span>
+                )}
               </div>
             </div>
 
@@ -104,9 +122,9 @@ const CartPage = () => {
                 <button
                   className="quantity-btn"
                   onClick={() =>
-                    handleQuantityChange(item.productId, item.quantity - 1)
+                    handleQuantityChange(item.productId, item.quantity - 1, item.available)
                   }
-                  disabled={item.quantity <= 1}
+                  disabled={!item.available || item.quantity <= 1}
                 >
                   −
                 </button>
@@ -114,8 +132,9 @@ const CartPage = () => {
                 <button
                   className="quantity-btn"
                   onClick={() =>
-                    handleQuantityChange(item.productId, item.quantity + 1)
+                    handleQuantityChange(item.productId, item.quantity + 1, item.available)
                   }
+                  disabled={!item.available}
                 >
                   +
                 </button>
@@ -210,8 +229,13 @@ const CartPage = () => {
         <button
           className="btn-checkout"
           onClick={() => navigate("/checkout")}
+          disabled={hasUnavailableItems}
+          style={{
+            opacity: hasUnavailableItems ? 0.5 : 1,
+            cursor: hasUnavailableItems ? "not-allowed" : "pointer",
+          }}
         >
-          Proceed to Checkout
+          {hasUnavailableItems ? "Unavailable items in cart" : "Proceed to Checkout"}
         </button>
       </div>
     </div>

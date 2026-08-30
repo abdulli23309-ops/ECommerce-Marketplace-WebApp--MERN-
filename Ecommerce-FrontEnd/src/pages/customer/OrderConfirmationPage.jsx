@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
 import { formatPKR } from "../../utils/currency";
+import { TableSkeleton } from "../../components/common/Skeleton";
 
 const OrderConfirmationPage = () => {
   const { orderId } = useParams();
@@ -38,8 +39,8 @@ const OrderConfirmationPage = () => {
 
   if (loading) {
     return (
-      <div style={{ textAlign: "center", padding: "4rem", color: "var(--text-secondary)" }}>
-        <p>Loading order confirmation...</p>
+      <div style={{ maxWidth: "720px", margin: "0 auto", padding: "2rem" }}>
+        <TableSkeleton rows={6} header={false} />
       </div>
     );
   }

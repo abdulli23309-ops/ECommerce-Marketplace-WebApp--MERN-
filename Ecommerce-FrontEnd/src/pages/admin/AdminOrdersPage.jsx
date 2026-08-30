@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getAdminOrders } from "../../services/adminService";
 import { fetchOrderById } from "../../services/orderService";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import ErrorState from "../../components/common/ErrorState";
 
 const AdminOrdersPage = () => {
   const [orders, setOrders] = useState([]);
@@ -13,9 +14,11 @@ const AdminOrdersPage = () => {
   const [sort, setSort] = useState("newest");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   const fetchOrders = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await getAdminOrders({
         page,
@@ -28,6 +31,7 @@ const AdminOrdersPage = () => {
       setTotalPages(res.totalPages || 1);
     } catch (err) {
       console.error(err);
+      setLoadError(err.response?.status);
     } finally {
       setLoading(false);
     }
@@ -46,6 +50,21 @@ const AdminOrdersPage = () => {
     }
     setModalOpen(true);
   };
+
+  // Escape-to-close + body scroll lock for Order Detail modal
+  useEffect(() => {
+    if (!modalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") setModalOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [modalOpen]);
 
   return (
     <div
@@ -173,6 +192,8 @@ const AdminOrdersPage = () => {
             >
               Loading...
             </div>
+          ) : loadError ? (
+            <ErrorState statusCode={loadError} onRetry={() => fetchOrders()} />
           ) : orders.length === 0 ? (
             <div
               style={{
@@ -184,7 +205,8 @@ const AdminOrdersPage = () => {
               No orders found.
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="table-responsive">
+              <table className="orders-table" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr
                   style={{
@@ -318,7 +340,8 @@ const AdminOrdersPage = () => {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           )}
         </div>
 
@@ -362,6 +385,9 @@ const AdminOrdersPage = () => {
         {modalOpen && selectedOrder && (
           <div
             className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-modal-title"
             style={{
               position: "fixed",
               inset: 0,
@@ -396,9 +422,10 @@ const AdminOrdersPage = () => {
                 }}
               >
                 <h3
+                  id="order-modal-title"
                   style={{
                     margin: 0,
-                    fontSize: "1.2rem",
+                                        fontSize: "1.2rem",
                     fontWeight: 700,
                     color: "var(--text-primary)",
                   }}

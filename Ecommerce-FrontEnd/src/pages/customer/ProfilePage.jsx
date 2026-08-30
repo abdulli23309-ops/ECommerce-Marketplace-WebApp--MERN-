@@ -5,6 +5,7 @@ import { setCredentials, logout } from "../../store/authSlice";
 import { fetchAddresses } from "../../services/addressService";
 import axiosInstance from "../../services/axiosInstance";
 import { getImageUrl } from "../../utils/imageHelper";
+import { toastSuccess, toastError } from "../../components/common/Toast";
 
 const ProfilePage = () => {
   const dispatch = useDispatch();
@@ -14,7 +15,6 @@ const ProfilePage = () => {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
-  const [message, setMessage] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
 
@@ -72,10 +72,10 @@ const ProfilePage = () => {
             refreshToken,
           })
         );
-        setMessage({ type: "success", text: "Profile picture updated." });
+        toastSuccess("Profile picture updated.");
       } catch (err) {
         console.error("Avatar upload failed", err);
-        setMessage({ type: "error", text: "Could not upload avatar." });
+        toastError("Could not upload avatar.");
       } finally {
         setUploadingAvatar(false);
         setAvatarFile(null);
@@ -101,13 +101,13 @@ const ProfilePage = () => {
       const { data } = await axiosInstance.put("/account/profile", { name, email });
       if (data.success) {
         dispatch(setCredentials({ user: { ...user, name, email }, accessToken, refreshToken }));
-        setMessage({ type: "success", text: "Profile updated!" });
+        toastSuccess("Profile updated!");
         setEditing(false);
       } else {
-        setMessage({ type: "error", text: data.message || "Update failed." });
+        toastError(data.message || "Update failed.");
       }
     } catch (err) {
-      setMessage({ type: "error", text: err.response?.data?.message || "Network error. Please try again." });
+      toastError(err.response?.data?.message || "Network error. Please try again.");
     }
   };
 
@@ -164,7 +164,6 @@ const ProfilePage = () => {
                 </div>
               </div>
             )}
-            {message && <p style={{ marginTop: "0.75rem", fontSize: "0.9rem", fontWeight: 500, color: message.type === "success" ? "var(--success-text)" : "var(--danger-text)" }}>{message.text}</p>}
           </div>
 
           {!editing && (

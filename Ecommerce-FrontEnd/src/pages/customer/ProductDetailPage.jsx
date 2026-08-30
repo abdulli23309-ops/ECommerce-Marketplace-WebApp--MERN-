@@ -9,6 +9,8 @@ import { addItemToCart } from "../../store/cartSlice";
 import { addItemToWishlist } from "../../store/wishlistSlice";
 import axiosInstance from "../../services/axiosInstance";
 import FreeDeliveryBadge from "../../components/common/FreeDeliveryBadge";
+import { Skeleton } from "../../components/common/Skeleton";
+import { toastSuccess, toastError } from "../../components/common/Toast";
 
 const ProductDetailPage = () => {
   const { productId } = useParams();
@@ -25,7 +27,6 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [message, setMessage] = useState({ text: "", type: "" });
 
   const [ownStoreId, setOwnStoreId] = useState(null);
 
@@ -139,7 +140,6 @@ const ProductDetailPage = () => {
     }
 
     setAddingToCart(true);
-    setMessage({ text: "", type: "" });
 
     try {
       await dispatch(
@@ -149,14 +149,10 @@ const ProductDetailPage = () => {
         })
       ).unwrap();
 
-      setMessage({ text: "Item added to cart.", type: "success" });
-      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
+      toastSuccess("Item added to cart.");
     } catch (error) {
       console.error("Cart error:", error);
-      setMessage({
-        text: "Could not add to cart. Please try again.",
-        type: "error",
-      });
+      toastError("Could not add to cart. Please try again.");
     } finally {
       setAddingToCart(false);
     }
@@ -170,27 +166,41 @@ const ProductDetailPage = () => {
 
     try {
       await dispatch(addItemToWishlist(product.id || product._id)).unwrap();
-      setMessage({ text: "Item added to wishlist.", type: "success" });
-      setTimeout(() => setMessage({ text: "", type: "" }), 3000);
+      toastSuccess("Item added to wishlist.");
     } catch (error) {
       console.error("Wishlist error:", error);
-      setMessage({
-        text: "Could not add to wishlist. Please try again.",
-        type: "error",
-      });
+      toastError("Could not add to wishlist. Please try again.");
     }
   };
 
   if (loading) {
     return (
-      <div
-        style={{
-          padding: "4rem",
-          textAlign: "center",
-          color: "var(--text-primary)",
-        }}
-      >
-        <p>Loading product details...</p>
+      <div className="product-detail-page">
+        <div className="product-detail-container">
+          <div className="product-detail-gallery">
+            <div className="product-detail-main-image">
+              <Skeleton variant="card" height="400px" />
+            </div>
+          </div>
+          <div className="product-detail-info">
+            <Skeleton variant="title" width="60%" />
+            <Skeleton variant="text" width="30%" />
+            <Skeleton variant="text" width="40%" />
+            <div className="product-meta" style={{ marginBottom: "2rem" }}>
+              <Skeleton variant="text" width="50%" />
+              <Skeleton variant="text" width="50%" />
+            </div>
+            <div className="store-info-card" style={{ marginBottom: "2rem" }}>
+              <Skeleton variant="circle" width="60px" height="60px" />
+              <div style={{ flex: 1 }}>
+                <Skeleton variant="title" width="80%" />
+                <Skeleton variant="text" width="60%" />
+              </div>
+            </div>
+            <Skeleton variant="text" width="100%" />
+            <Skeleton variant="text" width="80%" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -204,8 +214,8 @@ const ProductDetailPage = () => {
           color: "var(--text-primary)",
         }}
       >
-        <h2>Product not found</h2>
-        <p>This item may have been removed or is currently unavailable.</p>
+        <h2>Currently Unavailable</h2>
+        <p>This product is currently unavailable. The seller account may be suspended or the product has been removed.</p>
         <button
           onClick={() => navigate("/")}
           style={{
@@ -535,32 +545,7 @@ const ProductDetailPage = () => {
             </div>
           )}
 
-          {message.text && (
-            <p
-              style={{
-                marginTop: "1rem",
-                padding: "0.75rem",
-                border: `1px solid ${
-                  message.type === "success"
-                    ? "var(--success)"
-                    : "var(--danger)"
-                }`,
-                backgroundColor:
-                  message.type === "success"
-                    ? "var(--success-bg)"
-                    : "var(--danger-bg)",
-                color:
-                  message.type === "success"
-                    ? "var(--success-text)"
-                    : "var(--danger-text)",
-                fontWeight: "500",
-                textAlign: "center",
-              }}
-            >
-              {message.text}
-            </p>
-          )}
-        </div>
+                  </div>
       </div>
 
       <div className="reviews-section">
@@ -588,8 +573,26 @@ const ProductDetailPage = () => {
                     </span>
                   </div>
                   <p className="review-comment">{review.comment}</p>
+                  {review.images && review.images.length > 0 && (
+                    <div style={{ display: "flex", gap: "8px", margin: "10px 0", flexWrap: "wrap" }}>
+                      {review.images.map((img, i) => (
+                        <img
+                          key={i}
+                          src={getImageUrl(img)}
+                          alt="Review attachment"
+                          style={{
+                            width: "60px",
+                            height: "60px",
+                            objectFit: "cover",
+                            borderRadius: "6px",
+                            border: "1px solid var(--border)",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
                   <p className="review-author">
-                    — {review.customer?.name || "Anonymous"}
+                    — {review.isAnonymous ? "Anonymous Customer" : (review.customer?.name || "Verified Customer")}
                   </p>
                 </div>
               ))}

@@ -8,6 +8,7 @@ import { fetchBrands } from "../../services/brandService";
 import { addItemToWishlist } from "../../store/wishlistSlice";
 import Pagination from "../../components/common/Pagination";
 import FreeDeliveryBadge from "../../components/common/FreeDeliveryBadge";
+import { formatPKR } from "../../utils/currency";
 
 const ProductListingPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -17,6 +18,7 @@ const ProductListingPage = () => {
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
@@ -61,6 +63,7 @@ const ProductListingPage = () => {
         });
         setProducts(data.items || []);
         setTotalPages(data.totalPages);
+        setTotal(data.total || data.items?.length || 0);
         const params = new URLSearchParams();
         if (currentPage > 1) params.set("page", currentPage);
         if (filters.categoryId) params.set("categoryId", filters.categoryId);
@@ -239,6 +242,18 @@ const ProductListingPage = () => {
             </div>
           )}
         </form>
+        {!loading && total > 0 && (
+          <span
+            style={{
+              color: "var(--text-secondary)",
+              fontSize: "0.875rem",
+              alignSelf: "center",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {total} product{total === 1 ? "" : "s"}
+          </span>
+        )}
         <select name="sortBy" value={filters.sortBy} onChange={handleFilterChange} className="form-input" style={{ width: "auto", minWidth: "180px", borderRadius: "8px" }}>
           <option value="newest">🆕 Newest First</option>
           <option value="price_asc">💰 Price: Low to High</option>
@@ -327,7 +342,7 @@ const ProductListingPage = () => {
                       </div>
                       <div className="product-details">
                         <p className="product-name">{product.name}</p>
-                        <p className="product-price">PKR {product.price?.toLocaleString()}</p>
+                        <p className="product-price">PKR {formatPKR(product.price)}</p>
 
                         {product.freeDelivery === true && (
                           <FreeDeliveryBadge style={{ marginTop: "0.5rem" }} />

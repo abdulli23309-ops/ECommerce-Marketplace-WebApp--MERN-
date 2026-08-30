@@ -13,7 +13,7 @@ import { createNotification } from './Notification.service.js';
  * drops below 2.0 and notify the seller if so.
  */
 export const createReview = async (customerId, data) => {
-  const { productId, sellerOrderId, rating, comment, images } = data;
+  const { productId, sellerOrderId, rating, comment, images, isAnonymous } = data;
 
   // Validate the seller order
   const sellerOrder = await orderRepo.findSellerOrderById(sellerOrderId);
@@ -52,6 +52,7 @@ export const createReview = async (customerId, data) => {
     rating,
     comment,
     images,
+    isAnonymous: Boolean(isAnonymous),
   });
 
   // ---------- Rating moderation recalculation ----------
@@ -101,7 +102,8 @@ export const createReview = async (customerId, data) => {
 export const getProductReviews = (productId, queryParams) =>
   reviewRepo.findByProduct(productId, queryParams);
 
-export const getReviewById = (reviewId) => reviewRepo.findById(reviewId);
+export const getReviewById = (reviewId, requesterId) =>
+  reviewRepo.findById(reviewId, requesterId);
 
 export const getMyReviews = (customerId, queryParams) =>
   reviewRepo.findByCustomer(customerId, queryParams);

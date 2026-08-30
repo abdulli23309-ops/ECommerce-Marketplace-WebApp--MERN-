@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getReturns, createRefund } from "../../services/adminService";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
 
 const getStatusLabel = (status) => {
   const labels = {
@@ -20,6 +21,7 @@ const RefundManagementPage = () => {
   const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingRefundId, setPendingRefundId] = useState(null);
   const [message, setMessage] = useState(null);
 
   // Backend pagination
@@ -55,7 +57,16 @@ const RefundManagementPage = () => {
     loadReturns();
   }, [page]);
 
-  const handleRefund = async (returnId) => {
+  const handleRefundClick = (returnId) => {
+    if (submitting) return;
+    setPendingRefundId(returnId);
+  };
+
+  const handleRefundConfirm = async () => {
+    const returnId = pendingRefundId;
+    setPendingRefundId(null);
+    if (!returnId) return;
+
     setSubmitting(true);
     setMessage(null);
     try {
@@ -99,8 +110,9 @@ const RefundManagementPage = () => {
               No returns awaiting refund.
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
+            <div className="table-responsive">
+              <table className="refunds-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
                   <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>
                     Return
@@ -145,7 +157,7 @@ const RefundManagementPage = () => {
                       </td>
                       <td style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>
                         <button
-                          onClick={() => handleRefund(ret._id)}
+                          onClick={() => handleRefundClick(ret._id)}
                           disabled={!isRefundEnabled || submitting}
                           title={
                             isRefundEnabled
@@ -179,6 +191,7 @@ const RefundManagementPage = () => {
                 })}
               </tbody>
             </table>
+            </div>
           )}
 
           {message && (
@@ -218,6 +231,18 @@ const RefundManagementPage = () => {
             </button>
           </div>
         )}
+
+        <ConfirmDialog
+          open={Boolean(pendingRefundId)}
+          onClose={() => setPendingRefundId(null)}
+          onConfirm={handleRefundConfirm}
+          title="Process this refund?"
+          message="A refund will be recorded for this return request. This action cannot be undone."
+          confirmLabel="Process Refund"
+          cancelLabel="Cancel"
+          variant="danger"
+          loading={submitting}
+        />
       </div>
     </div>
   );

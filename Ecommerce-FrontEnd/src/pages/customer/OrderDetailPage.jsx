@@ -9,6 +9,8 @@ import { fetchMyReviews } from "../../services/reviewService";
 import { formatPKR } from "../../utils/currency";
 import { getImageUrl } from "../../utils/imageHelper";
 import ProductThumb from "../../components/common/ProductThumb";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { toastError } from "../../components/common/Toast";
 import {
   formatOrderDateTime,
   formatStatusLabel,
@@ -180,127 +182,249 @@ const ShipmentPanel = ({ shipment }) => {
 };
 
 /**
- * One card per SellerOrder. Each package carries its own status and its own
- * shipment timeline — a package is never shown as further along just because a
- * sibling package in the same order has moved ahead.
+ * One card per SellerOrder. Each package represents an independent seller's
+ * order partition with its own status, items, financial details, and shipment timeline.
  */
 const PackageCard = ({
   sellerOrder,
   index,
   packageCount,
-  isReviewed,
+  reviewedItemKeys,
   showActions,
 }) => {
   const status = getPackageStatus(sellerOrder);
   const items = sellerOrder.items || [];
+  const storeCity = sellerOrder.store?.city;
+
+  const allItemsReviewed =
+    items.length > 0 &&
+    items.every((item) => {
+      const pId = item.product?._id || item.product;
+      return reviewedItemKeys?.has(`${sellerOrder._id}_${pId}`);
+    });
 
   return (
-    <section className="vv-card">
+    <section className="vv-card" style={{ overflow: "hidden" }}>
+      {/* Seller / Store Order Section Header */}
       <div
         className="vv-split vv-split--stack"
         style={{
-          padding: "14px 20px",
+          padding: "16px 20px",
           borderBottom: "1px solid var(--border)",
           background: "var(--bg-secondary)",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-          {packageCount > 1 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            {packageCount > 1 && (
+              <span
+                style={{
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "var(--text-muted)",
+                  background: "var(--surface)",
+                  padding: "2px 8px",
+                  borderRadius: "4px",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                Seller Section {index + 1} of {packageCount}
+              </span>
+            )}
             <span
               style={{
-                fontSize: "0.7rem",
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "var(--text-muted)",
+                fontSize: "0.75rem",
+                fontFamily: "monospace",
+                color: "var(--text-secondary)",
               }}
             >
-              Package {index + 1} of {packageCount}
+              ID: #{sellerOrder._id.slice(0, 8).toUpperCase()}
             </span>
-          )}
-          <span
+          </div>
+
+          <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "7px",
-              fontSize: "0.95rem",
-              fontWeight: 600,
+              gap: "8px",
+              fontSize: "1rem",
+              fontWeight: 700,
               color: "var(--text-primary)",
+              marginTop: "2px",
             }}
           >
             <StoreIcon />
-            {sellerOrder.store?.name || "Unknown store"}
-          </span>
+            <span>{sellerOrder.store?.name || "Unknown Store"}</span>
+            {storeCity && (
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  fontWeight: 500,
+                  color: "var(--text-secondary)",
+                }}
+              >
+                ({storeCity})
+              </span>
+            )}
+          </div>
         </div>
 
-        <span style={getChipStyle(getFulfilmentTone(status))}>{status}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={getChipStyle(getFulfilmentTone(status))}>{status}</span>
+        </div>
       </div>
 
-      <div style={{ padding: "6px 20px 14px" }}>
-        {items.map((item, idx) => (
-          <div className="vv-line" key={`${sellerOrder._id}-${idx}`}>
-            <ProductThumb
-              src={getImageUrl(
-                item.productImage || item.product?.images?.[0]
-              )}
-              alt={item.productNameSnapshot}
-              size={44}
-            />
-            <div className="vv-line__main">
-              <div className="vv-line__name">{item.productNameSnapshot}</div>
-              <div className="vv-line__sub">
-                Qty {item.quantity} × PKR {formatPKR(item.unitPriceSnapshot)}
+      {/* Seller Order Items */}
+      <div style={{ padding: "8px 20px 14px" }}>
+        {items.map((item, idx) => {
+          const productId = item.product?._id || item.product;
+          const isItemReviewed = reviewedItemKeys?.has(`${sellerOrder._id}_${productId}`);
+
+          return (
+            <div
+              className="vv-line"
+              key={`${sellerOrder._id}-${idx}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "12px 0",
+                borderBottom: idx < items.length - 1 ? "1px solid var(--border-light, rgba(0,0,0,0.05))" : "none",
+              }}
+            >
+              <ProductThumb
+                src={getImageUrl(
+                  item.productImage || item.product?.images?.[0]
+                )}
+                alt={item.productNameSnapshot}
+                size={48}
+              />
+              <div className="vv-line__main" style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  className="vv-line__name"
+                  style={{
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  {item.productNameSnapshot}
+                </div>
+                <div
+                  className="vv-line__sub"
+                  style={{
+                    fontSize: "0.82rem",
+                    color: "var(--text-secondary)",
+                    marginTop: "2px",
+                  }}
+                >
+                  Qty {item.quantity} × PKR {formatPKR(item.unitPriceSnapshot)}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px" }}>
+                <span
+                  className="vv-line__total"
+                  style={{
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  PKR {formatPKR(item.unitPriceSnapshot * item.quantity)}
+                </span>
+
+                {showActions && sellerOrder.status === "Delivered" && items.length > 1 && (
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    {isItemReviewed ? (
+                      <span style={{ fontSize: "0.75rem", color: "var(--success-text)", fontWeight: 500 }}>
+                        Reviewed ✓
+                      </span>
+                    ) : (
+                      <Link
+                        to={`/review/new/${sellerOrder._id}?productId=${productId}`}
+                        style={{ fontSize: "0.78rem", color: "var(--primary)", textDecoration: "none", fontWeight: 600 }}
+                      >
+                        Review
+                      </Link>
+                    )}
+                    <span style={{ color: "var(--border)" }}>•</span>
+                    <Link
+                      to={`/returns/new/${sellerOrder._id}?productId=${productId}`}
+                      style={{ fontSize: "0.78rem", color: "var(--text-secondary)", textDecoration: "none", fontWeight: 500 }}
+                    >
+                      Return
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
-            <span className="vv-line__total">
-              PKR {formatPKR(item.unitPriceSnapshot * item.quantity)}
-            </span>
-          </div>
-        ))}
+          );
+        })}
 
+        {/* Financial Subtotals for this Seller Order */}
         <div
           style={{
             display: "flex",
-            justifyContent: "flex-end",
-            gap: "8px",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: "4px",
             paddingTop: "12px",
+            borderTop: "1px solid var(--border)",
             fontSize: "0.875rem",
             color: "var(--text-secondary)",
           }}
         >
-          <span>Package subtotal</span>
-          <strong style={{ color: "var(--text-primary)" }}>
-            PKR {formatPKR(sellerOrder.subTotal)}
-          </strong>
+          <div style={{ display: "flex", gap: "12px" }}>
+            <span>Items subtotal</span>
+            <strong style={{ color: "var(--text-primary)" }}>
+              PKR {formatPKR(sellerOrder.subTotal)}
+            </strong>
+          </div>
+          {Number(sellerOrder.deliveryCharge || 0) > 0 && (
+            <div style={{ display: "flex", gap: "12px", fontSize: "0.82rem" }}>
+              <span>Seller delivery charge</span>
+              <span>PKR {formatPKR(sellerOrder.deliveryCharge)}</span>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Seller Specific Shipment & Tracking History */}
       <div style={{ padding: "0 20px 16px" }}>
         <ShipmentPanel shipment={sellerOrder.shipment} />
       </div>
 
+      {/* Seller Order Level Actions */}
       {showActions && sellerOrder.status === "Delivered" && (
         <div
           style={{
             display: "flex",
-            justifyContent: "flex-end",
-            gap: "10px",
+            justifyContent: "space-between",
+            alignItems: "center",
             flexWrap: "wrap",
+            gap: "10px",
             padding: "12px 20px",
             borderTop: "1px solid var(--border)",
             background: "var(--bg-secondary)",
           }}
         >
+          <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+            Fulfillment and returns are handled by {sellerOrder.store?.name || "the seller"}.
+          </span>
           <div className="vv-actions" style={{ justifyContent: "flex-end" }}>
-            {isReviewed ? (
+            {allItemsReviewed ? (
               <span
                 style={{
                   alignSelf: "center",
                   fontSize: "0.8rem",
                   color: "var(--text-muted)",
+                  fontWeight: 500,
                 }}
               >
-                Review submitted ✓
+                All items reviewed ✓
               </span>
             ) : (
               <Link
@@ -329,7 +453,7 @@ const OrderDetailPage = () => {
   const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
-  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -337,10 +461,14 @@ const OrderDetailPage = () => {
         const orderData = await fetchOrderById(orderId);
         const reviewsRes = await fetchMyReviews({ pageSize: 100 });
         const allReviews = reviewsRes.items || [];
-        const reviewedSellerOrderIds = new Set(
-          allReviews.map((r) => (r.sellerOrder?._id || r.sellerOrder).toString())
+        const reviewedItemKeys = new Set(
+          allReviews.map((r) => {
+            const sId = r.sellerOrder?._id || r.sellerOrder;
+            const pId = r.product?._id || r.product;
+            return `${sId}_${pId}`;
+          })
         );
-        orderData.reviewedSellerOrderIds = reviewedSellerOrderIds;
+        orderData.reviewedItemKeys = reviewedItemKeys;
         setOrder(orderData);
       } catch (err) {
         console.error("Failed to load order", err);
@@ -359,10 +487,10 @@ const OrderDetailPage = () => {
       .catch(() => setPayment(null));
   }, [orderId]);
 
-  const handleCancelClick = () => setIsCancelModalOpen(true);
+  const handleCancelClick = () => setShowCancelDialog(true);
 
   const handleConfirmCancel = async () => {
-    setIsCancelModalOpen(false);
+    setShowCancelDialog(false);
     setCancelling(true);
     try {
       await cancelOrder(orderId);
@@ -370,7 +498,7 @@ const OrderDetailPage = () => {
       setOrder(updatedOrder);
     } catch (err) {
       console.error("Failed to cancel order", err);
-      alert("Could not cancel the order. Please try again.");
+      toastError("Could not cancel the order. Please try again.");
     } finally {
       setCancelling(false);
     }
@@ -598,9 +726,7 @@ const OrderDetailPage = () => {
                 sellerOrder={so}
                 index={idx}
                 packageCount={packages.length}
-                isReviewed={Boolean(
-                  order.reviewedSellerOrderIds?.has(so._id.toString())
-                )}
+                reviewedItemKeys={order.reviewedItemKeys}
                 showActions={!isCancelled}
               />
             ))}
@@ -608,107 +734,21 @@ const OrderDetailPage = () => {
         </div>
       </div>
 
-      {isCancelModalOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 9999,
-            padding: "16px",
-          }}
-          onClick={() => setIsCancelModalOpen(false)}
-        >
-          <div
-            style={{
-              backgroundColor: "var(--surface)",
-              padding: "32px",
-              borderRadius: "16px",
-              width: "100%",
-              maxWidth: "400px",
-              boxShadow:
-                "0 20px 25px -5px var(--shadow), 0 10px 10px -5px var(--shadow)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <svg
-              style={{
-                width: 48,
-                height: 48,
-                color: "var(--danger)",
-                marginBottom: 16,
-              }}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <h3
-              style={{
-                fontSize: "1.25rem",
-                fontWeight: 700,
-                color: "var(--text-primary)",
-                margin: "0 0 8px",
-              }}
-            >
-              Cancel this order?
-            </h3>
-            <p
-              style={{
-                fontSize: "0.9rem",
-                color: "var(--text-secondary)",
-                margin: 0,
-              }}
-            >
-              {isStripeRefundCancellation
-                ? "Are you sure you want to cancel this order? Your payment will be automatically refunded to your original payment method. This action cannot be undone."
-                : "Are you sure you want to cancel this order? This action cannot be undone and the seller will be notified."}
-            </p>
-            <div
-              style={{ display: "flex", gap: 12, width: "100%", marginTop: 24 }}
-            >
-              <button
-                type="button"
-                onClick={() => setIsCancelModalOpen(false)}
-                className="vv-btn vv-btn--ghost"
-                style={{ flex: 1, padding: "12px" }}
-              >
-                Nevermind
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmCancel}
-                className="vv-btn"
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  backgroundColor: "var(--danger)",
-                  color: "#fff",
-                }}
-              >
-                {isStripeRefundCancellation ? "Cancel & Refund" : "Cancel Order"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={showCancelDialog}
+        onClose={() => setShowCancelDialog(false)}
+        onConfirm={handleConfirmCancel}
+        title="Cancel this order?"
+        message={
+          isStripeRefundCancellation
+            ? "Are you sure you want to cancel this order? Your payment will be automatically refunded to your original payment method. This action cannot be undone."
+            : "Are you sure you want to cancel this order? This action cannot be undone and the seller will be notified."
+        }
+        confirmLabel={isStripeRefundCancellation ? "Cancel & Refund" : "Cancel Order"}
+        cancelLabel="Nevermind"
+        variant="danger"
+        loading={cancelling}
+      />
     </div>
   );
 };

@@ -49,6 +49,45 @@ export const warnSeller = asyncHandler(async (req, res) => {
   new ApiResponse(200, seller, 'Seller warning issued').send(res);
 });
 
+export const suspendSeller = asyncHandler(async (req, res) => {
+  const result = await adminService.suspendSeller(
+    req.params.id,
+    {
+      reason: req.body.reason,
+      internalNote: req.body.internalNote,
+    },
+    req.user.id
+  );
+  new ApiResponse(200, result, 'Seller suspended').send(res);
+});
+
+export const reinstateSeller = asyncHandler(async (req, res) => {
+  const profile = await adminService.reinstateSeller(req.params.id, req.user.id);
+  new ApiResponse(200, profile, 'Seller reinstated').send(res);
+});
+
+export const getSellerTimeline = asyncHandler(async (req, res) => {
+  const timeline = await adminService.getSellerTimeline(req.params.id);
+  new ApiResponse(200, timeline, 'Seller moderation timeline retrieved').send(res);
+});
+
+// Appeals dashboard
+export const getSellerAppeals = asyncHandler(async (req, res) => {
+  const data = await adminService.getAppealsForAdmin(req.query.status);
+  new ApiResponse(200, data, 'Seller appeals retrieved').send(res);
+});
+
+export const decideSellerAppeal = asyncHandler(async (req, res) => {
+  const { decision, decisionReason } = req.body;
+  const appeal = await adminService.decideAppeal(
+    req.params.id,
+    decision,
+    decisionReason,
+    req.user.id
+  );
+  new ApiResponse(200, appeal, 'Appeal decision recorded').send(res);
+});
+
 // Orders
 export const getOrders = asyncHandler(async (req, res) => {
   const data = await adminService.getOrders(req.query);

@@ -261,9 +261,12 @@ const ProductFormModal = () => {
               <label className="form-label">Name</label>
               <input
                 className="form-input"
+                aria-label="Product name"
+                aria-invalid={!!errors.name}
                 {...register("name", { required: true })}
                 style={{ width: "100%", boxSizing: "border-box" }}
               />
+              {errors.name && <p className="error-text">Product name is required.</p>}
             </div>
 
             <div className="form-group" style={{ gridColumn: "span 2" }}>
@@ -282,24 +285,40 @@ const ProductFormModal = () => {
                 type="number"
                 step="0.01"
                 className="form-input"
+                aria-label="Price in PKR"
+                aria-invalid={!!errors.price}
                 {...register("price", { required: true, min: 0.01 })}
                 style={{ width: "100%", boxSizing: "border-box" }}
               />
+              {errors.price && (
+                <p className="error-text">
+                  {errors.price.type === "min" ? "Price must be greater than 0." : "Price is required."}
+                </p>
+              )}
             </div>
             <div className="form-group">
               <label className="form-label">Stock Qty</label>
               <input
                 type="number"
                 className="form-input"
+                aria-label="Stock quantity"
+                aria-invalid={!!errors.stock}
                 {...register("stock", { required: true, valueAsNumber: true, min: 0 })}
                 style={{ width: "100%", boxSizing: "border-box" }}
               />
+              {errors.stock && (
+                <p className="error-text">
+                  {errors.stock.type === "min" ? "Stock cannot be negative." : "Stock quantity is required."}
+                </p>
+              )}
             </div>
 
             <div className="form-group">
               <label className="form-label">Category</label>
               <select
                 className="form-input"
+                aria-label="Category"
+                aria-invalid={!!errors.category}
                 {...register("category", { required: true })}
                 style={{ width: "100%", boxSizing: "border-box" }}
               >
@@ -310,11 +329,14 @@ const ProductFormModal = () => {
                   </option>
                 ))}
               </select>
+              {errors.category && <p className="error-text">Category is required.</p>}
             </div>
             <div className="form-group">
               <label className="form-label">Subcategory</label>
               <select
                 className="form-input"
+                aria-label="Subcategory"
+                aria-invalid={!!errors.subCategory}
                 {...register("subCategory", { required: true })}
                 style={{ width: "100%", boxSizing: "border-box" }}
               >
@@ -325,6 +347,7 @@ const ProductFormModal = () => {
                   </option>
                 ))}
               </select>
+              {errors.subCategory && <p className="error-text">Subcategory is required.</p>}
             </div>
 
             <div className="form-group" style={{ gridColumn: "span 2" }}>
@@ -385,7 +408,7 @@ const ProductFormModal = () => {
                         position: "absolute",
                         top: "-6px",
                         right: "-6px",
-                        background: "#ef4444",
+                        background: "var(--danger)",
                         color: "#fff",
                         border: "none",
                         borderRadius: "50%",
@@ -437,7 +460,7 @@ const ProductFormModal = () => {
                         position: "absolute",
                         top: "-6px",
                         right: "-6px",
-                        background: "#ef4444",
+                        background: "var(--danger)",
                         color: "#fff",
                         border: "none",
                         borderRadius: "50%",

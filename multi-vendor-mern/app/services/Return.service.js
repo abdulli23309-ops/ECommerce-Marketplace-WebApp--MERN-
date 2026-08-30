@@ -46,7 +46,7 @@ const verifyReturnOwnership = async (returnId, userId) => {
 // ---------- Customer-facing operations ----------
 
 export const createReturn = async (customerId, data) => {
-  const { productId, sellerOrderId, reason, description, images } = data;
+  const { productId, sellerOrderId, reason, description, images, quantity } = data;
 
   // Validate seller order
   const sellerOrder = await orderRepo.findSellerOrderById(sellerOrderId);
@@ -65,11 +65,16 @@ export const createReturn = async (customerId, data) => {
   }
 
   // Verify product exists in the order
-  const itemExists = sellerOrder.items.some(
-    (item) => item.product.toString() === productId
+  const orderItem = sellerOrder.items.find(
+    (item) => item.product && item.product.toString() === productId
   );
-  if (!itemExists) {
+  if (!orderItem) {
     throw new ApiError(400, 'Product not found in this order');
+  }
+
+  const requestedQty = Number(quantity) || 1;
+  if (requestedQty < 1 || requestedQty > orderItem.quantity) {
+    throw new ApiError(400, `Return quantity must be between 1 and ${orderItem.quantity}`);
   }
 
   // Check for duplicate return requests
@@ -82,6 +87,8 @@ export const createReturn = async (customerId, data) => {
     throw new ApiError(409, 'A return request already exists for this item');
   }
 
+  const refundAmount = (orderItem.unitPriceSnapshot || 0) * requestedQty;
+
   const createdReturn = await returnRepo.create({
     customer: customerId,
     product: productId,
@@ -89,6 +96,8 @@ export const createReturn = async (customerId, data) => {
     reason,
     description,
     images,
+    quantity: requestedQty,
+    refundAmount,
   });
 
   // Notify customer

@@ -3,6 +3,7 @@ import * as storeRepo from '../repositories/Store.repository.js';
 import * as categoryRepo from '../repositories/Category.repository.js';
 import * as subCategoryRepo from '../repositories/SubCategory.repository.js';
 import * as sellerProfileRepo from '../repositories/SellerProfile.repository.js';
+import { logAction } from './AdminAuditLog.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
 /**
@@ -17,24 +18,28 @@ const getStoreId = async (userId) => {
 };
 
 /**
- * Resolve store – throws if profile missing, not approved, or store missing.
- * Used for write operations and single product retrieval.
+ * Resolve store – throws if profile missing, not approved, not approved (suspended),
+ * or store missing. Used for write operations and single product retrieval.
+ * NOTE: a Suspended seller may still fulfil existing obligations (shipments,
+ * returns) — those paths intentionally do NOT route through resolveStore.
  */
 const resolveStore = async (userId) => {
   const { profile, store } = await getStoreId(userId);
   if (!profile) throw new ApiError(404, 'Seller profile not found');
+  if (profile.status === 'Suspended') {
+    throw new ApiError(403, 'Your seller account is suspended and cannot create new marketplace activity');
+  }
   if (profile.status !== 'Approved') throw new ApiError(403, 'Your seller account is not approved');
   if (!store) throw new ApiError(404, 'Store not found');
   return store;
 };
 
 // ----------------------------------------------------------------------
-// Public / customer endpoints (unchanged)
+// Public / customer endpoints
 // ----------------------------------------------------------------------
-export const getPublicProducts = (filters) => {
-  return productRepo.findPublicWithFilters(filters);
-};
-
+// M-028: this duplicated getPublicProducts wrapper was removed — the live
+// public catalog path is Product.public.service.getPublicProducts, consumed
+// by Product.public.controller via /api/v1/products.
 // ----------------------------------------------------------------------
 // Seller endpoints – null‑safe listing
 // ----------------------------------------------------------------------
@@ -100,9 +105,15 @@ export const createProduct = async (userId, data) => {
 
 /**
  * Get a single product by ID – requires store ownership.
+ * M-011: this is a READ path and intentionally does NOT go through
+ * resolveStore, so a suspended seller can still view their own product
+ * details (consistent with the allowed product-list read). Ownership is
+ * enforced by scoping the lookup to the seller's own store, so cross-seller
+ * access is impossible. Write paths keep the resolveStore suspension gate.
  */
 export const getMyProductById = async (userId, productId) => {
-  const store = await resolveStore(userId);
+  const { store } = await getStoreId(userId);
+  if (!store) throw new ApiError(404, 'Store not found');
   const product = await productRepo.findByIdWithRating(productId, store._id);
   if (!product) throw new ApiError(404, 'Product not found');
   return product;
@@ -135,14 +146,50 @@ export const updateMyProduct = async (userId, productId, data) => {
   // Prevent seller from overriding the status directly
   delete data.status;
 
-  // Auto‑transition Rejected/Suspended → PendingApproval
-  if (['Rejected', 'Suspended'].includes(product.status)) {
+  // Auto‑transition Rejected → PendingApproval on a normal edit (re-approval flow).
+  // Suspended products are EXCLUDED here: a suspended seller cannot silently
+  // republish via a regular edit — they must use the explicit republish action,
+  // which itself is only reachable after reinstatement (resolveStore blocks
+  // suspended sellers). This neutralizes the auto-transition bypass.
+  if (product.status === 'Rejected') {
     data.status = 'PendingApproval';
     data.rejectionReason = null;
     data.internalNote = null;
   }
 
   return productRepo.updateById(productId, data);
+};
+
+/**
+ * Explicit republish of a Suspended product. Only reachable after reinstatement
+ * (resolveStore blocks suspended sellers). Moves the product back to
+ * PendingApproval for admin review (Spec D5 — products do NOT auto-return).
+ * Resets the product warning count to 0 (D5) while preserving warning history.
+ */
+export const republishMyProduct = async (userId, productId) => {
+  const store = await resolveStore(userId);
+  const product = await productRepo.findById(productId);
+  if (!product || product.store.toString() !== store._id.toString()) {
+    throw new ApiError(404, 'Product not found');
+  }
+  if (product.status !== 'Suspended') {
+    throw new ApiError(409, 'Only suspended products can be republished');
+  }
+  const republished = await productRepo.updateById(productId, {
+    status: 'PendingApproval',
+    rejectionReason: null,
+    internalNote: null,
+    warningCount: 0,
+  });
+
+  // Step 9 audit: a product republish has no dedicated domain record in the
+  // moderation timeline, so it is recorded in the immutable AdminAuditLog and
+  // surfaced in the seller timeline via the audit source.
+  await logAction(userId, 'product.republish', 'Product', productId, {
+    store: store._id,
+  });
+
+  return republished;
 };
 
 /**

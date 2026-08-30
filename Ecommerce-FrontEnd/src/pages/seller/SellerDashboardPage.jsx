@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../services/axiosInstance";
+import { GridSkeleton } from "../../components/common/Skeleton";
+import ErrorState from "../../components/common/ErrorState";
+import EmptyState from "../../components/common/EmptyState";
+import { formatPKR } from "../../utils/currency";
 import {
   SELLER_LOW_RATING_THRESHOLD,
   LOW_STOCK_THRESHOLD,
@@ -121,11 +125,31 @@ const SellerDashboardPage = () => {
   }, []);
 
   if (loading) {
-    return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Loading dashboard...</div>;
+    return (
+      <div style={{ padding: "1.5rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
+        <GridSkeleton count={4} style={{ marginBottom: "2.5rem" }} />
+        <GridSkeleton count={8} style={{ marginBottom: "2.5rem" }} />
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", padding: "1.5rem", marginTop: "2.5rem" }}>
+          <div style={{ height: "16px", width: "40%", background: "var(--border)", borderRadius: "4px", marginBottom: "1rem" }} />
+          <div style={{ height: "80px", background: "var(--border)", borderRadius: "8px" }} />
+        </div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", padding: "1.5rem", marginTop: "2.5rem" }}>
+          <div style={{ height: "16px", width: "40%", background: "var(--border)", borderRadius: "4px", marginBottom: "1rem" }} />
+          <div style={{ height: "80px", background: "var(--border)", borderRadius: "8px" }} />
+        </div>
+      </div>
+    );
   }
 
   if (!stats) {
-    return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Could not load stats.</div>;
+    return (
+      <ErrorState
+        title="Could not load dashboard"
+        body="We couldn't load your seller dashboard stats. Please try again."
+        onRetry={() => window.location.reload()}
+        style={{ padding: "1.5rem" }}
+      />
+    );
   }
 
   // Cards with warning flags based on thresholds
@@ -184,7 +208,7 @@ const SellerDashboardPage = () => {
     },
     {
       label: "Total Revenue",
-      value: `PKR ${Number(stats.totalRevenue ?? 0).toLocaleString()}`,
+      value: `PKR ${formatPKR(stats.totalRevenue ?? 0)}`,
       icon: "revenue",
       color: "var(--success)",
       bg: "var(--success-bg)",
@@ -201,7 +225,7 @@ const SellerDashboardPage = () => {
     },
     {
       label: "Avg Order Value",
-      value: `PKR ${Number(stats.averageOrderValue ?? 0).toLocaleString()}`,
+      value: `PKR ${formatPKR(stats.averageOrderValue ?? 0)}`,
       icon: "avgOrder",
       color: "var(--info)",
       bg: "var(--info-bg)",
@@ -265,13 +289,15 @@ const SellerDashboardPage = () => {
     display: "flex",
     flexDirection: "column",
     gap: "0.75rem",
-    transition: "box-shadow 0.2s, transform 0.2s",
+    transition: "box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease",
     cursor: "pointer",
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
   };
 
   const hoverStyle = {
-    boxShadow: "0 8px 24px var(--shadow)",
-    transform: "translateY(-2px)",
+    boxShadow: "0 12px 28px -4px rgba(0, 0, 0, 0.12), 0 6px 12px -2px rgba(0, 0, 0, 0.06)",
+    transform: "translateY(-3px)",
+    borderColor: "var(--primary)",
   };
 
   const handleCardClick = (to) => navigate(to);
@@ -377,7 +403,11 @@ const SellerDashboardPage = () => {
       <section style={{ marginTop: "2.5rem" }}>
         <h3 style={sectionHeaderStyle}>Top Selling Products</h3>
         {topSellingProducts.length === 0 ? (
-          <div style={emptyStateStyle}>No sales yet — your best sellers will appear here.</div>
+          <EmptyState
+            title="No sales yet"
+            body="Your best-selling products will appear here once you start making sales."
+            style={emptyStateStyle}
+          />
         ) : (
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", overflow: "hidden" }}>
             {topSellingProducts.map((p, i) => (
@@ -401,7 +431,7 @@ const SellerDashboardPage = () => {
                   {Number(p.quantitySold || 0).toLocaleString()} sold
                 </span>
                 <span style={{ fontWeight: 600, color: "var(--success)", whiteSpace: "nowrap", minWidth: 90, textAlign: "right" }}>
-                  PKR {Number(p.revenue || 0).toLocaleString()}
+                  PKR {formatPKR(p.revenue || 0)}
                 </span>
               </div>
             ))}
@@ -413,7 +443,11 @@ const SellerDashboardPage = () => {
       <section style={{ marginTop: "2.5rem" }}>
         <h3 style={sectionHeaderStyle}>Sales Trend — Last 7 Days</h3>
         {maxTrendRevenue === 0 ? (
-          <div style={emptyStateStyle}>No sales in the last 7 days.</div>
+          <EmptyState
+            title="No sales yet"
+            body="There were no sales in the last 7 days."
+            style={emptyStateStyle}
+          />
         ) : (
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "16px", padding: "1.5rem 1.25rem 1rem" }}>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "0.5rem" }}>
@@ -424,11 +458,11 @@ const SellerDashboardPage = () => {
                 return (
                   <div
                     key={d.date || i}
-                    title={`${label}: PKR ${rev.toLocaleString()} • ${Number(d.orderCount || 0)} order(s)`}
+                    title={`${label}: PKR ${formatPKR(rev)} • ${Number(d.orderCount || 0)} order(s)`}
                     style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem" }}
                   >
                     <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)", fontWeight: 600, minHeight: "1rem" }}>
-                      {rev > 0 ? rev.toLocaleString() : ""}
+                      {rev > 0 ? formatPKR(rev) : ""}
                     </span>
                     <div
                       style={{

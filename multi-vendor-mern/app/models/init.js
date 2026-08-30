@@ -16,3 +16,5 @@ import SellerProfile from './SellerProfile.model.js';
 import Payment from './Payment.model.js';
 import Shipment from './Shipment.model.js';
 import ReturnRequest from './Return.model.js';
+import SellerSuspension from './SellerSuspension.model.js';
+import SellerAppeal from './SellerAppeal.model.js';

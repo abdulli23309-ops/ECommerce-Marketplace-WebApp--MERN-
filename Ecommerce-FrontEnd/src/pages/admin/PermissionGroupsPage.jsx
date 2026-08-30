@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import axiosInstance from "../../services/axiosInstance";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { toastError } from "../../components/common/Toast";
 
 const iconBtnStyle = {
   background: "transparent",
@@ -37,6 +39,9 @@ const PermissionGroupsPage = () => {
   const [error, setError] = useState(null);
   const [allPermissions, setAllPermissions] = useState([]);
   const [selectedPermIds, setSelectedPermIds] = useState([]);
+
+  // ConfirmDialog state for delete action
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const fetchGroups = async () => {
     setLoading(true);
@@ -117,13 +122,17 @@ const PermissionGroupsPage = () => {
     }
   };
 
-  const handleDelete = async (groupId) => {
-    if (!window.confirm("Delete this group?")) return;
+  const handleDeleteClick = (groupId) => setDeleteTarget(groupId);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await axiosInstance.delete(`/admin/permission-groups/${groupId}`);
+      await axiosInstance.delete(`/admin/permission-groups/${deleteTarget}`);
       fetchGroups();
     } catch (err) {
-      alert(err.response?.data?.message || "Cannot delete group.");
+      toastError(err.response?.data?.message || "Cannot delete group.");
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -192,7 +201,7 @@ const PermissionGroupsPage = () => {
                     <td style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>
                       <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
                         <button onClick={() => openEditModal(group)} style={iconBtnStyle} title="Edit"><EditIcon /></button>
-                        <button onClick={() => handleDelete(group.id)} style={{ ...iconBtnStyle, color: "var(--danger)" }} title="Delete"><DeleteIcon /></button>
+                        <button onClick={() => handleDeleteClick(group.id)} style={{ ...iconBtnStyle, color: "var(--danger)" }} title="Delete"><DeleteIcon /></button>
                       </div>
                     </td>
                   </tr>
@@ -245,6 +254,17 @@ const PermissionGroupsPage = () => {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Delete this group?"
+        message="This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
     </div>
   );
 };

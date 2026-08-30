@@ -3,6 +3,9 @@ import axiosInstance from "../../services/axiosInstance";
 import { useSelector, useDispatch } from "react-redux";
 import { setCredentials } from "../../store/authSlice";
 import { getImageUrl } from "../../utils/imageHelper";
+import ErrorState from "../../components/common/ErrorState";
+import { TableSkeleton } from "../../components/common/Skeleton";
+import { LoadingButton } from "../../components/common/Button";
 
 const StoreSettingsPage = () => {
   const dispatch = useDispatch();
@@ -45,9 +48,13 @@ const StoreSettingsPage = () => {
   const logoInputRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState("profile");
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [initialError, setInitialError] = useState(null);
 
   useEffect(() => {
     (async () => {
+      setInitialLoading(true);
+      setInitialError(null);
       try {
         const profileRes = await axiosInstance.get("/seller/profile");
         const profileData = profileRes.data?.data || profileRes.data;
@@ -62,6 +69,7 @@ const StoreSettingsPage = () => {
         }
       } catch (err) {
         console.error("Failed to load seller profile", err);
+        setInitialError(err.response?.status);
       }
 
       try {
@@ -77,6 +85,9 @@ const StoreSettingsPage = () => {
         }
       } catch (err) {
         console.error("Failed to load store", err);
+        setInitialError(err.response?.status);
+      } finally {
+        setInitialLoading(false);
       }
     })();
   }, [user]);
@@ -214,12 +225,23 @@ const StoreSettingsPage = () => {
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
-      <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem", color: "var(--text-primary)" }}>Settings</h2>
-        <p style={{ color: "var(--text-secondary)", margin: 0 }}>Manage your account and store preferences.</p>
-      </div>
+      {initialLoading && (
+        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
+          <h2 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 1.5rem", color: "var(--text-primary)" }}>Settings</h2>
+          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading settings...</div>
+        </div>
+      )}
+      {initialError && !initialLoading && (
+        <ErrorState statusCode={initialError} onRetry={() => window.location.reload()} style={{ marginBottom: "2rem" }} />
+      )}
+      {!initialLoading && !initialError && (
+        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
+          <div style={{ marginBottom: "2rem" }}>
+            <h2 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem", color: "var(--text-primary)" }}>Settings</h2>
+            <p style={{ color: "var(--text-secondary)", margin: 0 }}>Manage your account and store preferences.</p>
+          </div>
 
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "2rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "2rem", borderBottom: "1px solid var(--border)", paddingBottom: "0.5rem" }}>
         <button onClick={() => setActiveTab("profile")} style={{ ...tabStyle, ...(activeTab === "profile" ? tabActive : tabInactive) }}>
           <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
           Profile
@@ -303,14 +325,9 @@ const StoreSettingsPage = () => {
               </div>
               {profileMsg.text && <p style={{ color: profileMsg.type === "success" ? "var(--success-text)" : "var(--danger-text)", fontSize: "0.9rem", marginBottom: "1rem", fontWeight: 500 }}>{profileMsg.text}</p>}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button type="submit" className="btn-primary" disabled={profileLoading}>
-                  {profileLoading ? (
-                    <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <span style={{ width: "16px", height: "16px", border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite", display: "inline-block" }}></span>
-                      Saving...
-                    </span>
-                  ) : "Save Profile"}
-                </button>
+                <LoadingButton loading={profileLoading} variant="primary" type="submit">
+                  Save Profile
+                </LoadingButton>
               </div>
             </form>
           </div>
@@ -334,14 +351,9 @@ const StoreSettingsPage = () => {
               </div>
               {passwordMsg.text && <p style={{ color: passwordMsg.type === "success" ? "var(--success-text)" : "var(--danger-text)", fontSize: "0.9rem", marginBottom: "1rem", fontWeight: 500 }}>{passwordMsg.text}</p>}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button type="submit" className="btn-primary" disabled={passwordLoading}>
-                  {passwordLoading ? (
-                    <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <span style={{ width: "16px", height: "16px", border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite", display: "inline-block" }}></span>
-                      Changing...
-                    </span>
-                  ) : "Change Password"}
-                </button>
+                <LoadingButton loading={passwordLoading} variant="primary" type="submit">
+                  Change Password
+                </LoadingButton>
               </div>
             </form>
           </div>
@@ -410,20 +422,17 @@ const StoreSettingsPage = () => {
               </div>
               {storeMsg.text && <p style={{ color: storeMsg.type === "success" ? "var(--success-text)" : "var(--danger-text)", fontSize: "0.9rem", marginBottom: "1rem", fontWeight: 500 }}>{storeMsg.text}</p>}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button type="submit" className="btn-primary" disabled={storeLoading || uploadingLogo}>
-                  {storeLoading || uploadingLogo ? (
-                    <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <span style={{ width: "16px", height: "16px", border: "2px solid #fff", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite", display: "inline-block" }}></span>
-                      {uploadingLogo ? "Uploading logo..." : "Saving..."}
-                    </span>
-                  ) : "Save Store"}
-                </button>
+                <LoadingButton loading={storeLoading || uploadingLogo} variant="primary" type="submit">
+                  {uploadingLogo ? "Uploading logo..." : "Save Store"}
+                </LoadingButton>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      </div>
+      )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

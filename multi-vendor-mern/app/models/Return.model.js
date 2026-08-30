@@ -34,6 +34,7 @@ const returnSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    quantity: { type: Number, default: 1, min: 1 },
     refundAmount: { type: Number, default: null },
     status: {
       type: String,
@@ -70,12 +71,21 @@ returnSchema.index(
   { unique: true }
 );
 
-// Auto‑generate unique returnNumber before saving
-// Auto‑generate unique returnNumber before saving
+// Auto-generate unique returnNumber before saving.
+// Concurrency-safe: uses an atomic findOneAndUpdate counter collection instead
+// of countDocuments(), which could produce duplicate numbers (and unique-index
+// collisions) when concurrent return requests are created.
 returnSchema.pre('save', async function () {
   if (!this.returnNumber) {
-    const count = await mongoose.model('ReturnRequest').countDocuments();
-    this.returnNumber = `RET-${String(count + 1).padStart(6, '0')}`;
+    const counter = await mongoose.connection
+      .collection('counters')
+      .findOneAndUpdate(
+        { _id: 'returnNumber' },
+        { $inc: { seq: 1 } },
+        { upsert: true, returnDocument: 'after' }
+      );
+    const seq = counter.seq ?? counter.value?.seq ?? 1;
+    this.returnNumber = `RET-${String(seq).padStart(6, '0')}`;
   }
 });
 

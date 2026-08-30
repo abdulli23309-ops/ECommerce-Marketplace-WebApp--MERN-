@@ -185,8 +185,8 @@ describe('Payments API', () => {
     });
   });
 
-  describe('POST /api/v1/payments (legacy dummy payment)', () => {
-    it('creates a dummy completed payment and moves the order to Processing', async () => {
+  describe('POST /api/v1/payments (legacy dummy payment retired — M-004)', () => {
+    it('no longer exposes the legacy dummy payment route (404)', async () => {
       const { customer, token } = await createCustomer();
       const order = await createParentOrder(customer._id, { totalAmount: 200 });
 
@@ -194,48 +194,27 @@ describe('Payments API', () => {
         .post('/api/v1/payments')
         .set('Authorization', `Bearer ${token}`)
         .send({ parentOrderId: order._id.toString() })
-        .expect(201);
+        .expect(404);
 
-      expect(res.body.message).toBe('Payment processed');
-      expect(res.body.data.method).toBe('Dummy');
-      expect(res.body.data.status).toBe('Completed');
-      expect(res.body.data.amount).toBe(200);
-
-      const dbOrder = await ParentOrder.findById(order._id).lean();
-      expect(dbOrder.orderStatus).toBe('Processing');
+      expect(res.body.message).toBe('Route not found');
     });
 
-    it('rejects a second payment for the same order with 409', async () => {
+    it('a customer can no longer mark their own pending order as paid', async () => {
       const { customer, token } = await createCustomer();
-      const order = await createParentOrder(customer._id);
+      const order = await createParentOrder(customer._id, { totalAmount: 200 });
 
       await request(app)
         .post('/api/v1/payments')
         .set('Authorization', `Bearer ${token}`)
         .send({ parentOrderId: order._id.toString() })
-        .expect(201);
-
-      const res = await request(app)
-        .post('/api/v1/payments')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ parentOrderId: order._id.toString() })
-        .expect(409);
-
-      expect(res.body.message).toBe('Payment already exists for this order');
-    });
-
-    it('returns 404 when paying for an order the customer does not own', async () => {
-      const { customer } = await createCustomer();
-      const { token: otherToken } = await createCustomer();
-      const order = await createParentOrder(customer._id);
-
-      const res = await request(app)
-        .post('/api/v1/payments')
-        .set('Authorization', `Bearer ${otherToken}`)
-        .send({ parentOrderId: order._id.toString() })
         .expect(404);
 
-      expect(res.body.message).toBe('Order not found');
+      // The order was never advanced to Processing and no fake Completed
+      // payment record exists — payment truth comes only from the real
+      // processors (Stripe webhook / COD settlement).
+      const dbOrder = await ParentOrder.findById(order._id).lean();
+      expect(dbOrder.orderStatus).toBe('Pending');
+      expect(await Payment.countDocuments({ parentOrder: order._id })).toBe(0);
     });
   });
 
@@ -243,11 +222,12 @@ describe('Payments API', () => {
     it('returns the payment status for an owned order', async () => {
       const { customer, token } = await createCustomer();
       const order = await createParentOrder(customer._id);
-      await request(app)
-        .post('/api/v1/payments')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ parentOrderId: order._id.toString() })
-        .expect(201);
+      await Payment.create({
+        parentOrder: order._id,
+        amount: order.totalAmount,
+        method: 'CashOnDelivery',
+        status: 'Pending',
+      });
 
       const res = await request(app)
         .get(`/api/v1/payments/${order._id}`)
@@ -255,7 +235,7 @@ describe('Payments API', () => {
         .expect(200);
 
       expect(res.body.message).toBe('Payment status retrieved');
-      expect(res.body.data.method).toBe('Dummy');
+      expect(res.body.data.method).toBe('CashOnDelivery');
     });
 
     it('returns 404 when the order has no payment yet', async () => {
@@ -275,11 +255,12 @@ describe('Payments API', () => {
     it('returns the payment for an owned order', async () => {
       const { customer, token } = await createCustomer();
       const order = await createParentOrder(customer._id);
-      await request(app)
-        .post('/api/v1/payments')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ parentOrderId: order._id.toString() })
-        .expect(201);
+      await Payment.create({
+        parentOrder: order._id,
+        amount: order.totalAmount,
+        method: 'CashOnDelivery',
+        status: 'Pending',
+      });
 
       const res = await request(app)
         .get(`/api/v1/payments/order/${order._id}`)
@@ -287,7 +268,7 @@ describe('Payments API', () => {
         .expect(200);
 
       expect(res.body.message).toBe('Payment retrieved');
-      expect(res.body.data.method).toBe('Dummy');
+      expect(res.body.data.method).toBe('CashOnDelivery');
     });
   });
 });

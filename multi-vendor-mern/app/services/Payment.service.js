@@ -12,30 +12,11 @@ import * as paymentRepo from '../repositories/Payment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import * as orderService from './Order.service.js';
 import * as couponService from './Coupon.service.js';
+import * as couponRepo from '../repositories/Coupon.repository.js';
 import { createPaymentProcessor } from './payment/PaymentFactory.js';
 import { createNotification, notifyAdmins } from './Notification.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
 import mongoose from 'mongoose';
-
-// ---------- OLD dummy payment ----------
-export const createPayment = async (parentOrderId, userId) => {
-  const order = await orderRepo.findById(parentOrderId, userId);
-  if (!order) throw new ApiError(404, 'Order not found');
-
-  const existing = await paymentRepo.findByParentOrder(parentOrderId);
-  if (existing) throw new ApiError(409, 'Payment already exists for this order');
-
-  const payment = await paymentRepo.create({
-    parentOrder: parentOrderId,
-    amount: order.totalAmount,
-    method: 'Dummy',
-    status: 'Completed',
-    paidAt: new Date(),
-  });
-
-  await orderRepo.updateStatus(parentOrderId, 'Processing');
-  return payment;
-};
 
 // ---------- Stripe webhook signature verification ----------
 export const verifyWebhookSignature = (rawBody, signature) => {
@@ -103,7 +84,7 @@ const notifyLowStockForItems = async (sellerOrders) => {
 };
 
 const redeemCoupon = async (parentOrder, session) => {
-  if (!parentOrder?.couponCode) return;
+  if (!parentOrder?.couponCode) return true;
 
   const coupon = await Coupon.findOne({
     code: parentOrder.couponCode,
@@ -111,13 +92,27 @@ const redeemCoupon = async (parentOrder, session) => {
     isActive: true,
   }).session(session);
 
-  if (!coupon) return;
+  if (!coupon) return true;
 
   const existingUsage = await CouponUsage.findOne({
     parentOrder: parentOrder._id,
   }).session(session);
 
-  if (existingUsage) return;
+  if (existingUsage) return true;
+
+  // M-015: atomically increment usageCount while usage remains. The limit
+  // condition and increment are a single MongoDB update, so concurrent
+  // redemptions cannot over-increment. If the update matches nothing (limit
+  // already reached, or a concurrent redemption took the final slot) we skip
+  // the settlement: no increment and no audit record, and the owning payment
+  // flow (webhook/COD/wallet) is left untouched. This preserves the core
+  // guarantee that usageCount never exceeds usageLimit.
+  const incremented = await couponRepo.incrementUsageIfAvailable(
+    coupon._id,
+    coupon.usageLimit,
+    session
+  );
+  if (!incremented) return false;
 
   await CouponUsage.create([{
     coupon: coupon._id,
@@ -126,8 +121,7 @@ const redeemCoupon = async (parentOrder, session) => {
     discountAmount: parentOrder.discountAmount || 0,
   }], { session });
 
-  coupon.usageCount += 1;
-  await coupon.save({ session });
+  return true;
 };
 
 const createPaymentTransaction = async (payment, type, status, amount, metadata = {}) => {
@@ -156,6 +150,19 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
     if (!mobileAccount || !isValidMobileNumber(mobileAccount)) {
       throw new ApiError(400, 'Invalid mobile account number. Use 03XXXXXXXXX.');
     }
+  }
+
+  // M-003 duplicate-checkout guard: reject repeated checkout attempts while an
+  // earlier Stripe checkout is still awaiting payment. Without this, every
+  // retry mints another Pending ParentOrder + Payment pair (duplicate orders).
+  // The guard only matches Pending order + Pending Stripe payment, so settled
+  // COD/wallet orders (Processing) and cancelled attempts never block checkout.
+  const inFlightCheckout = await orderRepo.findPendingStripeCheckoutByUser(userId);
+  if (inFlightCheckout) {
+    throw new ApiError(
+      409,
+      'You already have a pending order awaiting payment. Complete or cancel it before starting a new checkout.'
+    );
   }
 
   const session = await mongoose.startSession();
@@ -198,6 +205,10 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
       payment.status = 'Failed';
       await payment.save();
       await createPaymentTransaction(payment, 'failure', 'failed', payment.amount, { failureReason: stripeError.message });
+      // M-003: the order transaction already committed, so a failed intent
+      // must cancel the order — otherwise it remains Pending forever as an
+      // orphan (same convention as the wallet failure path below).
+      await orderRepo.updateStatus(parentOrder._id, 'Cancelled');
       throw new ApiError(502, 'Payment processing failed. Please try again.');
     }
   } else if (paymentMethod === 'CashOnDelivery') {
@@ -223,8 +234,42 @@ export const createPaymentIntent = async (userId, addressId, paymentMethod, coup
       await redemptionSession.commitTransaction();
       redemptionSession.endSession();
     } catch (error) {
+      // A write conflict is expected when a concurrent checkout won the final
+      // coupon slot: both sessions read usageCount < limit, but only one can
+      // commit the increment. The loser's transaction aborts here.
       await redemptionSession.abortTransaction();
       redemptionSession.endSession();
+    }
+
+    // M-015: determine whether THIS order actually redeemed the coupon by
+    // checking for a persisted CouponUsage record scoped to this order. This
+    // is authoritative regardless of whether the increment returned null or
+    // the redemption transaction aborted on a write conflict. If the coupon
+    // was applied to the order but no usage record exists, a concurrent
+    // checkout claimed the final slot first — cancel this order, restore the
+    // deducted stock, and fail the checkout cleanly so a single-use coupon
+    // cannot be claimed twice.
+    if (parentOrder.couponCode) {
+      const usageRecord = await CouponUsage.findOne({
+        parentOrder: parentOrder._id,
+      }).lean();
+
+      if (!usageRecord) {
+        for (const so of sellerOrders) {
+          for (const item of so.items || []) {
+            await Product.updateOne(
+              { _id: item.product },
+              { $inc: { stock: item.quantity } }
+            );
+          }
+        }
+        await orderRepo.updateStatus(parentOrder._id, 'Cancelled');
+        await SellerOrder.updateMany(
+          { parentOrder: parentOrder._id },
+          { $set: { status: 'Cancelled' } }
+        );
+        throw new ApiError(409, 'Coupon usage limit reached');
+      }
     }
 
     // COD is unpaid at checkout, so we do NOT record a 'success' payment
@@ -316,6 +361,8 @@ export const handlePaymentSuccess = async (event) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
+  let parentOrder;
+
   try {
     const currentPayment = await paymentRepo.findByIdQuery(payment._id, session);
     if (!currentPayment || currentPayment.status !== 'Pending') {
@@ -324,7 +371,7 @@ export const handlePaymentSuccess = async (event) => {
       return;
     }
 
-    const parentOrder = await orderRepo.findByIdQuery(currentPayment.parentOrder, session);
+    parentOrder = await orderRepo.findByIdQuery(currentPayment.parentOrder, session);
     if (!parentOrder) throw new Error('ParentOrder not found');
 
     const sellerOrders = await orderRepo.findSellerOrdersByParentQuery(parentOrder._id, session);
@@ -368,7 +415,7 @@ export const handlePaymentSuccess = async (event) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    if (error.message.includes('Insufficient stock')) {
+    if (parentOrder && error.message.includes('Insufficient stock')) {
       await ParentOrder.findByIdAndUpdate(parentOrder._id, { orderStatus: 'Cancelled' });
     }
     throw error;
@@ -411,6 +458,15 @@ export const handlePaymentFailure = async (event) => {
 
     currentPayment.status = 'Failed';
     await currentPayment.save({ session });
+
+    // M-003: an intent the customer never completes (abandoned confirm,
+    // declined card) must not leave its order Pending forever. Cancel the
+    // order in the same transaction so a new checkout can start cleanly.
+    await ParentOrder.findByIdAndUpdate(
+      currentPayment.parentOrder,
+      { orderStatus: 'Cancelled' },
+      { session }
+    );
 
     await session.commitTransaction();
     session.endSession();

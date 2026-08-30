@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin } from "@react-oauth/google";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../services/axiosInstance";
@@ -38,43 +38,41 @@ const GoogleAuthSection = () => {
   return (
     <div style={{ width: "100%", marginTop: "1rem" }}>
       <GoogleLogin
-  onSuccess={handleGoogleSuccess}
-  onError={() => console.error("Google login error")}
-  size="large"
-  text="continue_with"
-  shape="pill"
-/>
+        onSuccess={handleGoogleSuccess}
+        onError={() => console.error("Google login error")}
+        size="large"
+        text="continue_with"
+        shape="pill"
+      />
     </div>
   );
 };
 
 const AuthLayout = () => {
   return (
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-      <div className="auth-layout">
-        <div className="auth-frame">
-          <div className="auth-branding">
-            <BrandLogo
-              variant="combine"
-              className="auth-logo"
-              maxWidth="200px"
-            />
-          </div>
-
-          <div className="auth-card">
-            <Outlet />
-
-            <div className="auth-divider">
-              <span>or</span>
-            </div>
-
-            <GoogleAuthSection />
-          </div>
+    <div className="auth-layout">
+      <div className="auth-frame">
+        <div className="auth-branding">
+          <BrandLogo
+            variant="combine"
+            className="auth-logo"
+            maxWidth="200px"
+          />
         </div>
 
-        <Footer />
+        <div className="auth-card">
+          <Outlet />
+
+          <div className="auth-divider">
+            <span>or</span>
+          </div>
+
+          <GoogleAuthSection />
+        </div>
       </div>
-    </GoogleOAuthProvider>
+
+      <Footer />
+    </div>
   );
 };
 

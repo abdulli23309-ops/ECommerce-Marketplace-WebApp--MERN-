@@ -3,6 +3,7 @@ import { getReturns } from "../../services/adminService";
 import { getImageUrl } from "../../utils/imageHelper";
 import axiosInstance from "../../services/axiosInstance";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import { toastError } from "../../components/common/Toast";
 
 const getStatusLabel = (status) => {
   const labels = {
@@ -69,7 +70,7 @@ const ReturnsManagementPage = () => {
       setAdminNotes("");
     } catch (err) {
       console.error(`Failed to ${action} return`, err);
-      alert(err.response?.data?.message || "Could not process request.");
+      toastError(err.response?.data?.message || "Could not process request.");
     }
   };
 

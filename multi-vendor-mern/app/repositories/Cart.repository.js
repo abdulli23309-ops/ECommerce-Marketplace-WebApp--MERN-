@@ -2,7 +2,7 @@ import Cart from '../models/Cart.model.js';
 
 export const findByUser = (userId) =>
   Cart.findOne({ user: userId })
-    .populate('items.product', 'name images price')
+    .populate('items.product', 'name images price freeDelivery')
     .lean();
 
 export const findByUserForMutation = (userId) =>

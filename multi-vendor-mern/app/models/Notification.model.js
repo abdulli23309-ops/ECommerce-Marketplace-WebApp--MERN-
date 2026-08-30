@@ -21,6 +21,7 @@ const notificationSchema = new mongoose.Schema(
         'inventory',
         'rating',
         'payment',
+        'moderation',
       ],
       required: true,
     },

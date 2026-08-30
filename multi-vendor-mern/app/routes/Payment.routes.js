@@ -15,8 +15,6 @@ router.use(authenticate);
 // NEW – Stripe / COD payment intent creation
 router.post('/create-intent', paymentController.createPaymentIntent);
 
-// OLD dummy payment – keep for backward compatibility
-router.post('/', paymentController.createPayment);
 router.get('/order/:orderId', paymentController.getPaymentByOrder);
 // Get payment status
 router.get('/:parentOrderId', paymentController.getPaymentStatus);

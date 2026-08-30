@@ -22,6 +22,13 @@ export const handleStripeWebhook = asyncHandler(async (req, res) => {
       return res.status(400).send(`Webhook signature verification failed: ${err.message}`);
     }
     console.error('Webhook processing error:', err);
-    res.status(200).json({ received: true });
+    // Do NOT acknowledge processing/database/application failures as successful.
+    // Returning 200 here would tell Stripe the webhook was handled, causing it to
+    // stop retrying even though the order/payment state may be incomplete. A 5xx
+    // response lets Stripe retry the delivery so the event can be reprocessed.
+    // Idempotency is preserved: handlePaymentSuccess/handlePaymentFailure short
+    // circuit (return without throwing) for already-processed events, so a retry
+    // after a transient failure resolves to a 200.
+    res.status(500).json({ received: false, error: 'Webhook processing failed' });
   }
 });

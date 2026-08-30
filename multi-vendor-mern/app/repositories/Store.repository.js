@@ -26,3 +26,17 @@ export const getActiveStoreIdsForApprovedSellers = async () => {
   }).select('_id');
   return activeStores.map(s => s._id);
 };
+
+// Single public-availability predicate: a store is publicly listable only when
+// it belongs to an Approved seller AND that seller is NOT suspended. Suspended
+// sellers' stores (and their Approved products) must be invisible to customers.
+export const getPubliclyActiveStoreIds = async () => {
+  const eligibleSellerIds = await mongoose.model('SellerProfile')
+    .find({ status: { $in: ['Approved'] } })
+    .distinct('_id');
+  const activeStores = await Store.find({
+    sellerProfile: { $in: eligibleSellerIds },
+    isActive: true,
+  }).select('_id');
+  return activeStores.map(s => s._id);
+};

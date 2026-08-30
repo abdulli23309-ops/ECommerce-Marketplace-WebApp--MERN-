@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { fetchSellerOrders } from "../../services/sellerOrderService";
 import axiosInstance from "../../services/axiosInstance";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import { toastError, toastWarning } from "../../components/common/Toast";
 
 const renderItemSummary = (sellerOrders) => {
   const allItems = sellerOrders.flatMap(so => so.items || []);
@@ -102,7 +103,7 @@ const ShipmentManagementPage = () => {
       loadOrders();
     } catch (err) {
       console.error("Failed to save shipment", err);
-      alert("Could not save shipment details.");
+      toastError("Could not save shipment details.");
     } finally {
       setSavingShipment(false);
     }
@@ -114,7 +115,7 @@ const ShipmentManagementPage = () => {
     if (!shipment?._id) return;
 
     if (shipmentStatus === shipment.status) {
-      alert("This status is already applied.");
+      toastWarning("This status is already applied.");
       return;
     }
 
@@ -139,7 +140,7 @@ const ShipmentManagementPage = () => {
       }
     } catch (err) {
       console.error("Failed to update status", err);
-      alert("Could not update shipment status.");
+      toastError("Could not update shipment status.");
     } finally {
       setUpdatingStatus(false);
     }

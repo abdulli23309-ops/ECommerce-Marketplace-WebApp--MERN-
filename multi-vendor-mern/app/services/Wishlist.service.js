@@ -15,13 +15,10 @@ export const getWishlist = (userId) => ensureWishlist(userId);
 export const addProduct = async (userId, productId) => {
   const product = await productRepo.findPublicById(productId);
   if (!product) throw new ApiError(404, 'Product not found');
-  
-  let wishlist = await wishlistRepo.findByUser(userId);
-  if (!wishlist) {
-    wishlist = await wishlistRepo.create(userId, [productId]);
-    return wishlist;
-  }
-  return wishlistRepo.addProduct(userId, productId);
+  // M-023: single atomic upsert handles both the first-time creation and the
+  // existing-wishlist add, so concurrent first additions never race on the
+  // unique `user` index or produce a generic 409, and duplicates never occur.
+  return wishlistRepo.upsertAddProduct(userId, productId);
 };
 
 export const removeProduct = async (userId, productId) => {

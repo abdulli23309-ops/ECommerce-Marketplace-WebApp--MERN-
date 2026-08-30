@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fetchSellerOrders } from "../../services/sellerOrderService";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
+import { TableSkeleton } from "../../components/common/Skeleton";
+import Pagination from "../../components/common/Pagination";
+import ErrorState from "../../components/common/ErrorState";
 
 const renderItemSummary = (sellerOrders) => {
   const allItems = sellerOrders.flatMap(so => so.items || []);
@@ -33,17 +36,20 @@ const PaymentIcon = ({ method }) => {
 const SellerOrdersPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const loadOrders = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetchSellerOrders({ page, pageSize: 10 });
       setOrders(res.items || []);
       setTotalPages(res.totalPages || 1);
     } catch (err) {
       console.error("Failed to load seller orders", err);
+      setError(err.response?.status);
     } finally {
       setLoading(false);
     }
@@ -53,11 +59,29 @@ const SellerOrdersPage = () => {
     loadOrders();
   }, [page]);
 
-  if (loading) return <div style={{ padding: "2rem", color: "var(--text-secondary)" }}>Loading orders...</div>;
+  if (loading) {
+    return (
+      <div style={{ padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem", color: "var(--text-primary)" }}>Your Orders</h2>
+        <TableSkeleton rows={5} header={false} />
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div style={{ padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem", color: "var(--text-primary)" }}>Your Orders</h2>
+        <ErrorState statusCode={error} onRetry={() => loadOrders()} />
+      </div>
+    );
+  }
   if (orders.length === 0) {
     return (
-      <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-secondary)" }}>
-        No orders yet.
+      <div style={{ padding: "2rem", fontFamily: "Inter, system-ui, sans-serif", color: "var(--text-primary)" }}>
+        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem", color: "var(--text-primary)" }}>Your Orders</h2>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "3rem", textAlign: "center" }}>
+          <p style={{ color: "var(--text-secondary)", margin: 0 }}>No orders yet.</p>
+        </div>
       </div>
     );
   }
@@ -127,27 +151,13 @@ const SellerOrdersPage = () => {
         })}
       </div>
 
-      {totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "2rem" }}>
-          <button
-            className="page-btn"
-            disabled={page <= 1}
-            onClick={() => setPage(page - 1)}
-          >
-            Previous
-          </button>
-          <span style={{ alignSelf: "center", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-            Page {page} of {totalPages}
-          </span>
-          <button
-            className="page-btn"
-            disabled={page >= totalPages}
-            onClick={() => setPage(page + 1)}
-          >
-            Next
-          </button>
-        </div>
-      )}
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        showPageSize={false}
+        ariaLabel="Orders pagination"
+      />
     </div>
   );
 };

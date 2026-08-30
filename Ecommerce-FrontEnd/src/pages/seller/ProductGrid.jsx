@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getImageUrl } from "../../utils/imageHelper";
+import { formatPKR } from "../../utils/currency";
 import PermissionGate from "../../components/common/PermissionGate";
 import ProductDetailModal from "./ProductDetailModal";
-import { fetchSellerProducts, deleteProduct } from "../../services/sellerProductService";
+import { fetchSellerProducts, deleteProduct, republishProduct } from "../../services/sellerProductService";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
 import {
   PRODUCT_LOW_RATING_THRESHOLD,
@@ -86,6 +87,19 @@ const ProductGrid = () => {
     } catch (err) {
       console.error('Failed to delete', err);
       closeDeleteModal();
+    }
+  };
+
+  // M-009: explicit republish for a Suspended product (PUT republish contract).
+  // Only reachable here because a suspended seller is blocked at the layout
+  // level; a reinstated seller can republish their Suspended product, which
+  // returns to PendingApproval for admin review.
+  const handleRepublish = async (product) => {
+    try {
+      await republishProduct(product._id);
+      loadProducts();
+    } catch (err) {
+      console.error('Failed to republish', err);
     }
   };
 
@@ -194,7 +208,7 @@ const ProductGrid = () => {
                       to={`/seller/products/edit/${product._id}`}
                       onClick={(e) => e.stopPropagation()}
                       style={{
-                        backgroundColor: '#ef4444',
+                        backgroundColor: 'var(--danger)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: '6px',
@@ -215,10 +229,10 @@ const ProductGrid = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        window.location.href = `/seller/products/edit/${product._id}`;
+                        handleRepublish(product);
                       }}
                       style={{
-                        backgroundColor: '#eab308',
+                        backgroundColor: 'var(--warning)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: '6px',
@@ -228,7 +242,7 @@ const ProductGrid = () => {
                         cursor: 'pointer',
                       }}
                     >
-                      Resolve Suspension
+                      Republish
                     </button>
                   );
                 }
@@ -286,7 +300,7 @@ const ProductGrid = () => {
                     cursor: 'pointer',
                     transition: 'box-shadow 0.2s, transform 0.1s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 12px var(--shadow)')}
                   onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
                 >
                   <div style={{ position: 'relative', height: '180px', overflow: 'hidden' }}>
@@ -353,7 +367,7 @@ const ProductGrid = () => {
                       }}
                     >
                       <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                        PKR {product.price?.toLocaleString()}
+                        PKR {formatPKR(product.price)}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                         Stock: {product.stockQuantity ?? product.stock ?? 0}
@@ -469,7 +483,7 @@ const ProductGrid = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ marginBottom: '1rem' }}>
-              <svg width="36" height="36" fill="none" stroke="#dc2626" viewBox="0 0 24 24">
+              <svg width="36" height="36" fill="none" stroke="var(--danger)" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -514,7 +528,7 @@ const ProductGrid = () => {
                   padding: '0.6rem 1rem',
                   borderRadius: '8px',
                   border: 'none',
-                  background: '#dc2626',
+                  background: 'var(--danger)',
                   color: '#fff',
                   fontWeight: 600,
                   cursor: 'pointer',

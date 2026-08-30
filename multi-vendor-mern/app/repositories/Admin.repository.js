@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import User from '../models/User.model.js';
 import SellerProfile from '../models/SellerProfile.model.js';
+import SellerSuspension from '../models/SellerSuspension.model.js';
+import SellerAppeal from '../models/SellerAppeal.model.js';
 import ParentOrder from '../models/ParentOrder.model.js';
 import Product from '../models/Product.model.js';
 import Payment from '../models/Payment.model.js';
@@ -63,14 +65,66 @@ export const findSellers = async ({ page = 1, pageSize = 10, search, status }) =
 
   const [profiles, total] = await Promise.all([pipeline, totalPromise]);
 
-  const storeIds = profiles.map(p => p._id);
-  const stores = await mongoose.model('Store').find({ sellerProfile: { $in: storeIds } }).lean();
+  const sellerProfileIds = profiles.map(p => p._id);
+  const stores = await mongoose.model('Store').find({ sellerProfile: { $in: sellerProfileIds } }).lean();
   const storeMap = new Map(stores.map(s => [s.sellerProfile.toString(), s]));
 
-  let items = profiles.map(p => ({
-    ...p,
-    store: storeMap.get(p._id.toString()) || null,
-  }));
+  // Fetch active suspensions and pending/rejected appeals for moderation badges
+  const [activeSuspensions, pendingAppeals, recentRejectedAppeals] = await Promise.all([
+    SellerSuspension.find({ sellerProfile: { $in: sellerProfileIds }, status: 'Active' }).lean(),
+    SellerAppeal.find({ sellerProfile: { $in: sellerProfileIds }, status: 'Pending' }).lean(),
+    SellerAppeal.find({ sellerProfile: { $in: sellerProfileIds }, status: 'Rejected' })
+      .sort({ decidedAt: -1 })
+      .lean(),
+  ]);
+
+  const activeSuspensionMap = new Map(activeSuspensions.map(s => [s.sellerProfile.toString(), s]));
+  const pendingAppealMap = new Map(pendingAppeals.map(a => [a.sellerProfile.toString(), a]));
+  // Build rejected appeal map keeping only the most recent per seller.
+  // Results are sorted by decidedAt descending, so the first entry per seller key is newest.
+  const rejectedAppealMap = new Map();
+  for (const a of recentRejectedAppeals) {
+    const key = a.sellerProfile.toString();
+    if (!rejectedAppealMap.has(key)) {
+      rejectedAppealMap.set(key, a);
+    }
+  }
+
+  let items = profiles.map(p => {
+    const id = p._id.toString();
+    const activeSuspension = activeSuspensionMap.get(id);
+    const pendingAppeal = pendingAppealMap.get(id);
+    const rejectedAppeal = rejectedAppealMap.get(id);
+
+    // Derive moderation status per spec:
+    // - Suspended + pending appeal -> "Appeal Pending"
+    // - Suspended + recent rejected appeal / cooldown -> "Appeal Rejected"
+    // - Suspended otherwise -> "Suspended"
+    // - Approved + low rating or warning count > 0 -> "At Risk"
+    // - Approved otherwise -> "Active"
+    // - Pending / Rejected remain application statuses
+    let moderationStatus = p.status;
+    if (p.status === 'Suspended') {
+      if (pendingAppeal) moderationStatus = 'Appeal Pending';
+      else if (rejectedAppeal) moderationStatus = 'Appeal Rejected';
+      else moderationStatus = 'Suspended';
+    } else if (p.status === 'Approved') {
+      const rating = Number(p.averageRating ?? p.avgRating ?? 0);
+      const lowRating = p.lowRatingStatus === true || (rating > 0 && rating < 3.0);
+      const warningCount = p.warningCount || 0;
+      if (lowRating || warningCount > 0) moderationStatus = 'At Risk';
+      else moderationStatus = 'Active';
+    }
+
+    return {
+      ...p,
+      store: storeMap.get(id) || null,
+      activeSuspension: activeSuspension || null,
+      pendingAppeal: pendingAppeal || null,
+      lastRejectedAppeal: rejectedAppeal || null,
+      moderationStatus,
+    };
+  });
 
   if (search) {
     const regex = new RegExp(search, 'i');

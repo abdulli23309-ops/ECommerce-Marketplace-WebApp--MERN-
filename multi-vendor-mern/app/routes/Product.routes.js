@@ -40,4 +40,12 @@ router.delete(
 );
 router.get('/:id', productController.getMyProductById);
 
+// Republish a Suspended product — reachable only after reinstatement
+// (resolveStore in the service blocks suspended sellers).
+router.put(
+  '/:id/republish',
+  requirePermission('Seller.Products.Edit'),
+  productController.republishMyProduct
+);
+
 export default router;

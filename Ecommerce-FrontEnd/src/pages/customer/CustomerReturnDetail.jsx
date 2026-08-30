@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getImageUrl } from "../../utils/imageHelper";
 import axiosInstance from "../../services/axiosInstance";
+import { toastError } from "../../components/common/Toast";
 
 const CustomerReturnDetail = ({ returnReq, onClose, onUpdate }) => {
   const [tracking, setTracking] = useState("");
@@ -24,7 +25,7 @@ const CustomerReturnDetail = ({ returnReq, onClose, onUpdate }) => {
       onClose();
     } catch (err) {
       console.error("Failed to update tracking", err);
-      alert("Could not update tracking.");
+      toastError("Could not update tracking.");
     } finally {
       setSubmitting(false);
     }

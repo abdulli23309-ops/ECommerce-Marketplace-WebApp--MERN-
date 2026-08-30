@@ -311,4 +311,195 @@ describe('Reviews API', () => {
       expect(res.body.message).toBe('Review not found');
     });
   });
+
+  // -------------------------------------------------------------------
+  // M-018 — Review IDOR / ownership exposure regression
+  // -------------------------------------------------------------------
+  describe('GET /api/v1/reviews/:id (M-018 ownership check)', () => {
+    it('rejects cross-user access (another customer cannot read it)', async () => {
+      const { token, product, sellerOrder } = await seedReviewContext();
+      const createRes = await request(app)
+        .post('/api/v1/reviews')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          productId: product._id.toString(),
+          sellerOrderId: sellerOrder._id.toString(),
+          rating: 5,
+        })
+        .expect(201);
+
+      const reviewId = createRes.body.data._id;
+
+      // A different authenticated customer must not retrieve the review.
+      const { token: otherToken } = await createCustomer();
+
+      const res = await request(app)
+        .get(`/api/v1/reviews/${reviewId}`)
+        .set('Authorization', `Bearer ${otherToken}`)
+        .expect(404);
+
+      expect(res.body.message).toBe('Review not found');
+    });
+
+    it('still allows the author to read their own review', async () => {
+      const { token, product, sellerOrder } = await seedReviewContext();
+      const createRes = await request(app)
+        .post('/api/v1/reviews')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          productId: product._id.toString(),
+          sellerOrderId: sellerOrder._id.toString(),
+          rating: 4,
+          comment: 'Good',
+        })
+        .expect(201);
+
+      const reviewId = createRes.body.data._id;
+
+      const res = await request(app)
+        .get(`/api/v1/reviews/${reviewId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(res.body.data._id).toBe(reviewId);
+    });
+
+    it('does not break public product reviews (no token required)', async () => {
+      const { token, product, sellerOrder } = await seedReviewContext();
+      await request(app)
+        .post('/api/v1/reviews')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          productId: product._id.toString(),
+          sellerOrderId: sellerOrder._id.toString(),
+          rating: 5,
+        })
+        .expect(201);
+
+      const res = await request(app)
+        .get(`/api/v1/reviews/product/${product._id}`)
+        .expect(200);
+
+      expect(res.body.data.total).toBe(1);
+    });
+  });
+
+  // -------------------------------------------------------------------
+  // Anonymous Reviews & Multi-Product Seller Order Tests
+  // -------------------------------------------------------------------
+  describe('Anonymous reviews & Multi-product reviews', () => {
+    it('creates an anonymous review and hides reviewer identity in public product reviews', async () => {
+      const { token, product, sellerOrder, customer } = await seedReviewContext();
+
+      const createRes = await request(app)
+        .post('/api/v1/reviews')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          productId: product._id.toString(),
+          sellerOrderId: sellerOrder._id.toString(),
+          rating: 5,
+          comment: 'Anonymous feedback',
+          isAnonymous: true,
+        })
+        .expect(201);
+
+      expect(createRes.body.data.isAnonymous).toBe(true);
+
+      // Public product reviews must sanitize the customer name and not leak real customer name or ID
+      const publicRes = await request(app)
+        .get(`/api/v1/reviews/product/${product._id}`)
+        .expect(200);
+
+      const items = publicRes.body.data.items;
+      expect(items.length).toBe(1);
+      expect(items[0].isAnonymous).toBe(true);
+      expect(items[0].customer.name).toBe('Anonymous Customer');
+      expect(items[0].customer._id).toBeUndefined();
+      expect(items[0].customer.email).toBeUndefined();
+
+      // Author can still fetch their own reviews and see it was submitted anonymously
+      const myRes = await request(app)
+        .get('/api/v1/reviews/mine')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const myItems = myRes.body.data.items;
+      expect(myItems.length).toBe(1);
+      expect(myItems[0].isAnonymous).toBe(true);
+    });
+
+    it('allows reviewing separate products in the same multi-product seller order independently', async () => {
+      const { customer, token } = await createCustomer();
+      const { store, product: productA } = await seedStoreProduct();
+
+      // Create a second product in the same store
+      const productB = await Product.create({
+        name: 'Product B',
+        description: 'Second product',
+        price: 150,
+        stock: 10,
+        store: store._id,
+        category: new mongoose.Types.ObjectId(),
+        subCategory: new mongoose.Types.ObjectId(),
+        status: 'Approved',
+      });
+
+      const parent = await createParentOrder(customer._id);
+      const sellerOrder = await SellerOrder.create({
+        parentOrder: parent._id,
+        store: store._id,
+        subTotal: 250,
+        status: 'Delivered',
+        items: [
+          {
+            product: productA._id,
+            productNameSnapshot: productA.name,
+            unitPriceSnapshot: productA.price,
+            quantity: 1,
+          },
+          {
+            product: productB._id,
+            productNameSnapshot: productB.name,
+            unitPriceSnapshot: productB.price,
+            quantity: 2,
+          },
+        ],
+      });
+
+      // Review Product A
+      await request(app)
+        .post('/api/v1/reviews')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          productId: productA._id.toString(),
+          sellerOrderId: sellerOrder._id.toString(),
+          rating: 4,
+          comment: 'Product A review',
+        })
+        .expect(201);
+
+      // Review Product B
+      await request(app)
+        .post('/api/v1/reviews')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          productId: productB._id.toString(),
+          sellerOrderId: sellerOrder._id.toString(),
+          rating: 5,
+          comment: 'Product B review',
+        })
+        .expect(201);
+
+      // Duplicate review on Product A is rejected
+      await request(app)
+        .post('/api/v1/reviews')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          productId: productA._id.toString(),
+          sellerOrderId: sellerOrder._id.toString(),
+          rating: 3,
+        })
+        .expect(409);
+    });
+  });
 });

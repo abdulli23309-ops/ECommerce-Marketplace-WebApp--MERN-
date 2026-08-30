@@ -9,6 +9,7 @@ import ProductInspectionModal from "./ProductInspectionModal";
 import { getImageUrl } from "../../utils/imageHelper";
 import { getStatusBadgeStyle } from "../../utils/statusBadge";
 import Pagination from "../../components/common/Pagination";
+import { toastError, toastWarning } from "../../components/common/Toast";
 import {
   LOW_STOCK_THRESHOLD,
   MAX_WARNINGS,
@@ -81,6 +82,21 @@ const ProductModerationPage = () => {
     fetchGlobalStats();
   }, []);
 
+  // Warning modal: Escape-to-close + body scroll lock
+  useEffect(() => {
+    if (!warningModalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") closeWarningModal();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [warningModalOpen]);
+
   const handleStatusChange = async (productId, newStatus, reason, note) => {
     try {
       await updateProductStatus(productId, newStatus, reason, note);
@@ -128,7 +144,7 @@ const ProductModerationPage = () => {
         : warningReasonType;
 
     if (!finalReason) {
-      alert("Please select or enter a warning reason.");
+      toastWarning("Please select or enter a warning reason.");
       return;
     }
 
@@ -141,7 +157,7 @@ const ProductModerationPage = () => {
       closeWarningModal();
     } catch (err) {
       console.error("Failed to warn product", err);
-      alert(err.response?.data?.message || "Could not issue warning.");
+      toastError(err.response?.data?.message || "Could not issue warning.");
     } finally {
       setWarningLoading(false);
     }
@@ -311,15 +327,9 @@ const ProductModerationPage = () => {
       </div>
 
       {/* Data Table */}
-      <div
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: "8px",
-          overflow: "auto",
-        }}
-      >
+      <div className="table-responsive">
         <table
+          className="product-table"
           style={{
             width: "100%",
             borderCollapse: "collapse",
@@ -599,6 +609,9 @@ const ProductModerationPage = () => {
       {/* Custom Warning Reason Modal */}
       {warningModalOpen && warningProduct && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="warning-modal-title"
           style={{
             position: "fixed",
             inset: 0,
@@ -633,6 +646,7 @@ const ProductModerationPage = () => {
               }}
             >
               <h3
+                id="warning-modal-title"
                 style={{
                   margin: 0,
                   fontSize: "1.25rem",
@@ -643,6 +657,7 @@ const ProductModerationPage = () => {
               </h3>
               <button
                 onClick={closeWarningModal}
+                aria-label="Close warning dialog"
                 style={{
                   background: "transparent",
                   border: "none",

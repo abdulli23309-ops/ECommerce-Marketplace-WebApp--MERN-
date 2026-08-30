@@ -1,27 +1,33 @@
 import { useState, useEffect } from "react";
 import { fetchAuditLogs } from "../../services/adminAuditLogService";
 import Pagination from "../../components/common/Pagination";
+import ErrorState from "../../components/common/ErrorState";
 
 const AdminAuditLogPage = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [loadError, setLoadError] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await fetchAuditLogs({ page, pageSize: 50 });
+      setLogs(res.items || []);
+      setTotalPages(res.totalPages || 1);
+    } catch (err) {
+      console.error("Failed to fetch audit logs", err);
+      setLoadError(err.response?.status);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await fetchAuditLogs({ page, pageSize: 50 });
-        setLogs(res.items || []);
-        setTotalPages(res.totalPages || 1);
-      } catch (err) {
-        console.error("Failed to fetch audit logs", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   return (
@@ -30,12 +36,15 @@ const AdminAuditLogPage = () => {
 
       {loading ? (
         <p style={{ color: "var(--text-secondary)" }}>Loading audit logs...</p>
+      ) : loadError ? (
+        <ErrorState statusCode={loadError} onRetry={() => load()} />
       ) : logs.length === 0 ? (
         <p style={{ color: "var(--text-secondary)" }}>No audit logs found.</p>
       ) : (
         <>
-          <div style={{ overflowX: "auto" }}>
+          <div className="table-responsive">
             <table
+              className="audit-log-table"
               style={{
                 width: "100%",
                 borderCollapse: "collapse",

@@ -11,6 +11,10 @@ function transformCart(cart) {
     unitPrice: item.price,
     quantity: item.quantity,
     productImage: item.product?.images?.[0] || null,
+    // Preserve the live availability flag set by the backend
+    available: item.available,
+    // Preserve the free-delivery flag from the product record
+    freeDelivery: item.product?.freeDelivery === true,
   }));
   return { ...cart, items };
 }

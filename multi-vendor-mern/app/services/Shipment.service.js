@@ -2,6 +2,7 @@ import * as shipmentRepo from '../repositories/Shipment.repository.js';
 import * as orderRepo from '../repositories/Order.repository.js';
 import * as sellerProfileRepo from '../repositories/SellerProfile.repository.js';
 import Payment from '../models/Payment.model.js';
+import PaymentTransaction from '../models/PaymentTransaction.model.js';
 import { createNotification } from './Notification.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
 
@@ -103,17 +104,48 @@ export const updateShipmentStatus = async (shipmentId, status, note, userId) => 
     const allDelivered = allSellerOrders.every(so => so.status === 'Delivered');
     if (allDelivered) {
       await orderRepo.updateStatus(parentOrderId, 'Delivered');
-    }
 
-    const payment = await Payment.findOne({
-      parentOrder: parentOrderId,
-      method: 'CashOnDelivery',
-      status: 'Pending',
-    });
-    if (payment) {
-      payment.status = 'Completed';
-      payment.paidAt = new Date();
-      await payment.save();
+      // M-012: the COD payment settles only when the WHOLE order has been
+      // delivered (cash collected at the door). A partial delivery must not
+      // complete the single parent-level payment.
+      const payment = await Payment.findOne({
+        parentOrder: parentOrderId,
+        method: 'CashOnDelivery',
+        status: 'Pending',
+      });
+      if (payment) {
+        // Deterministic event id makes the settlement traceable and idempotent —
+        // a second delivery transition can never create a duplicate record.
+        const settlementEventId = `cod-settlement-${payment._id}`;
+        const existingSettlement = await PaymentTransaction.findOne({
+          stripeEventId: settlementEventId,
+        });
+        if (!existingSettlement) {
+          payment.status = 'Completed';
+          payment.paidAt = new Date();
+          await payment.save();
+
+          await PaymentTransaction.create({
+            payment: payment._id,
+            type: 'success',
+            status: 'success',
+            amount: payment.amount,
+            stripeEventId: settlementEventId,
+          });
+
+          const parentOrder = await orderRepo.findByIdQuery(parentOrderId);
+          if (parentOrder?.customer) {
+            await createNotification(
+              parentOrder.customer,
+              'payment',
+              'Cash payment received',
+              `Your cash payment of PKR ${payment.amount} has been collected for order #${parentOrderId}.`,
+              `/orders/${parentOrderId}`,
+              { parentOrderId: parentOrderId.toString() }
+            );
+          }
+        }
+      }
     }
   }
 

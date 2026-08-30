@@ -51,6 +51,13 @@ export const getMyProductById = asyncHandler(async (req, res) => {
   new ApiResponse(200, product, 'Product retrieved').send(res);
 });
 
+// Republish a Suspended product (only reachable after reinstatement since
+// resolveStore blocks suspended sellers). Resets product warningCount to 0 (D5).
+export const republishMyProduct = asyncHandler(async (req, res) => {
+  const product = await productService.republishMyProduct(req.user.id, req.params.id);
+  new ApiResponse(200, product, 'Product submitted for re-approval').send(res);
+});
+
 export const deleteMyProduct = asyncHandler(async (req, res) => {
   await productService.deleteMyProduct(req.user.id, req.params.id);
   new ApiResponse(200, null, 'Product deleted').send(res);
@@ -61,7 +68,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
   if (imagePaths.length === 0) throw new ApiError(400, 'No image uploaded');
   new ApiResponse(200, { url: imagePaths[0] }, 'Image uploaded').send(res);
 });
-export const getPublicProducts = asyncHandler(async (req, res) => {
-  const data = await productService.getPublicProducts(req.query);
-  new ApiResponse(200, data, 'Products retrieved').send(res);
-});
+// M-028: the duplicated getPublicProducts handler was removed. The active
+// public catalog API is Product.public.controller (mounted at
+// /api/v1/products via Product.public.routes.js); this seller-scoped router
+// (authenticate + requireRole('Seller')) never exposed it.

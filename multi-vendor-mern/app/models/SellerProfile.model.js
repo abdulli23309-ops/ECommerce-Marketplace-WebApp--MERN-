@@ -34,7 +34,7 @@ const sellerProfileSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'Approved', 'Rejected'],
+      enum: ['Pending', 'Approved', 'Rejected', 'Suspended'],
       default: 'Pending',
     },
     rejectionReason: {
@@ -45,13 +45,12 @@ const sellerProfileSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    status: {
-  type: String,
-  enum: ['Pending', 'Approved', 'Rejected', 'Suspended'],
-  default: 'Pending',
-},
 
     // ---- Priority 5: seller rating moderation state ----
+    lastSellerWarningAt: {
+      type: Date,
+      default: null,
+    },
     averageRating: {
       type: Number,
       default: 0,

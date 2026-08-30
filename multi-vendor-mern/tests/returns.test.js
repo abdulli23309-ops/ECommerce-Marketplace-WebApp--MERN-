@@ -11,6 +11,7 @@ import Product from '../app/models/Product.model.js';
 import ParentOrder from '../app/models/ParentOrder.model.js';
 import SellerOrder from '../app/models/SellerOrder.model.js';
 
+
 const seedReturnData = async () => {
   const customer = await User.create({
     name: 'Return Customer',
@@ -200,5 +201,139 @@ describe('Return API', () => {
       .expect(403);
 
     expect(res.body.message).toContain('This return does not belong to your store');
+  });
+
+  it('handles item quantity selection and calculates refund amount accurately', async () => {
+    const customer = await User.create({
+      name: 'Return Qty Customer',
+      email: `return-qty-${Date.now()}@example.com`,
+      password: 'password123',
+      role: 'Customer',
+    });
+
+    const seller = await User.create({
+      name: 'Return Qty Seller',
+      email: `return-seller-qty-${Date.now()}@example.com`,
+      password: 'password123',
+      role: 'Seller',
+    });
+
+    const profile = await SellerProfile.create({
+      user: seller._id,
+      status: 'Approved',
+      businessName: 'Qty Return Store',
+      taxId: '1234',
+      phone: '03001234567',
+      address: 'Return Address',
+    });
+
+    const store = await Store.create({
+      sellerProfile: profile._id,
+      name: 'Qty Return Store',
+      description: 'Store',
+      city: 'Lahore',
+    });
+
+    const productA = await Product.create({
+      name: 'Product A',
+      description: 'Description A',
+      price: 200,
+      stock: 10,
+      store: store._id,
+      category: new mongoose.Types.ObjectId(),
+      subCategory: new mongoose.Types.ObjectId(),
+      status: 'Approved',
+    });
+
+    const productB = await Product.create({
+      name: 'Product B',
+      description: 'Description B',
+      price: 350,
+      stock: 10,
+      store: store._id,
+      category: new mongoose.Types.ObjectId(),
+      subCategory: new mongoose.Types.ObjectId(),
+      status: 'Approved',
+    });
+
+    const parentOrder = await ParentOrder.create({
+      customer: customer._id,
+      orderStatus: 'Delivered',
+      shippingFullName: 'Return Qty Customer',
+      shippingPhone: '03451234567',
+      shippingAddressLine1: 'Main Street',
+      shippingCity: 'Lahore',
+      totalAmount: 1300,
+    });
+
+    const sellerOrder = await SellerOrder.create({
+      parentOrder: parentOrder._id,
+      store: store._id,
+      subTotal: 1300,
+      status: 'Delivered',
+      items: [
+        {
+          product: productA._id,
+          productNameSnapshot: productA.name,
+          unitPriceSnapshot: productA.price, // 200
+          quantity: 3, // purchased 3
+        },
+        {
+          product: productB._id,
+          productNameSnapshot: productB.name,
+          unitPriceSnapshot: productB.price, // 350
+          quantity: 2, // purchased 2
+        },
+      ],
+    });
+
+    const token = generateTestToken({
+      sub: customer._id.toString(),
+      roles: ['Customer'],
+    });
+
+    // Returning 2 units of Product A (price 200 each => 400 refund)
+    const returnResA = await request(app)
+      .post('/api/v1/returns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        sellerOrderId: sellerOrder._id.toString(),
+        productId: productA._id.toString(),
+        quantity: 2,
+        reason: 'Item is defective/broken',
+      })
+      .expect(201);
+
+    expect(returnResA.body.data.quantity).toBe(2);
+    expect(returnResA.body.data.refundAmount).toBe(400);
+
+    // Returning 1 unit of Product B in the same seller order (independent return)
+    const returnResB = await request(app)
+      .post('/api/v1/returns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        sellerOrderId: sellerOrder._id.toString(),
+        productId: productB._id.toString(),
+        quantity: 1,
+        reason: 'Wrong item received',
+      })
+      .expect(201);
+
+    expect(returnResB.body.data.quantity).toBe(1);
+    expect(returnResB.body.data.refundAmount).toBe(350);
+
+    // Reject invalid quantity exceeding purchased quantity
+    const invalidQtyRes = await request(app)
+      .post('/api/v1/returns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        sellerOrderId: sellerOrder._id.toString(),
+        productId: productB._id.toString(),
+        quantity: 99,
+        reason: 'Wrong item received',
+      })
+      .expect(400);
+
+    expect(invalidQtyRes.body.message).toContain('Return quantity must be between 1 and 2');
   });
 });

@@ -23,6 +23,12 @@ router.get('/dashboard', sellerDashboardController.getDashboard);
 router.get('/orders', sellerDashboardController.getOrders);
 router.get('/reviews', sellerDashboardController.getReviews);
 router.get('/profile', sellerController.getProfile);       // GET own seller profile
-router.put('/profile', sellerController.updateProfile); 
+router.put('/profile', sellerController.updateProfile);
+
+// ---------- Appeals & suspension status (reachable while suspended) ----------
+router.get('/suspension', sellerController.getSuspensionStatus);
+router.post('/appeals', sellerController.submitAppeal);
+router.get('/appeals', sellerController.getMyAppeals);
+router.get('/appeals/:id', sellerController.getMyAppealById);
 
 export default router;

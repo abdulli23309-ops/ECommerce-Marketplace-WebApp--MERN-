@@ -3,6 +3,8 @@ import { useSelector } from "react-redux";
 import { getAdminUsers } from "../../services/adminService";
 import axiosInstance from "../../services/axiosInstance";
 import { getImageUrl } from "../../utils/imageHelper";
+import ErrorState from "../../components/common/ErrorState";
+import { toastError } from "../../components/common/Toast";
 
 const statusBadgeStyle = (active) => ({
   display: "inline-block",
@@ -45,21 +47,32 @@ const AdminUsersPage = () => {
   const [activeFilter, setActiveFilter] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   const fetchUsers = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await getAdminUsers({ page, pageSize: 10, search, role: roleFilter, isActive: activeFilter });
       setUsers(res.items || []);
       setTotalPages(res.totalPages || 1);
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+    } catch (err) {
+      console.error(err);
+      setLoadError(err.response?.status);
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchUsers(); }, [page, search, roleFilter, activeFilter]);
 
   const handleToggleActive = async (userId, currentlyActive) => {
     const endpoint = currentlyActive ? "deactivate" : "activate";
-    await axiosInstance.put(`/admin/users/${userId}/${endpoint}`);
+    try {
+      await axiosInstance.put(`/admin/users/${userId}/${endpoint}`);
+    } catch (err) {
+      console.error(`Failed to ${endpoint} user`, err);
+      toastError(err.response?.data?.message || `Failed to ${endpoint} user. Please try again.`);
+      return;
+    }
     fetchUsers();
     setModalOpen(false);
   };
@@ -70,6 +83,21 @@ const AdminUsersPage = () => {
   };
 
   const isSelf = (userId) => currentUser?.id === userId;
+
+  // Escape-to-close + body scroll lock for User Details modal
+  useEffect(() => {
+    if (!modalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") setModalOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [modalOpen]);
 
   return (
     <div style={{ backgroundColor: "var(--bg-secondary)", minHeight: "100vh", padding: "2rem" }}>
@@ -136,11 +164,14 @@ const AdminUsersPage = () => {
         <div style={{ background: "var(--surface)", borderRadius: "12px", boxShadow: "0 1px 3px var(--shadow)", border: "1px solid var(--border)", overflow: "hidden" }}>
           {loading ? (
             <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading...</div>
+          ) : loadError ? (
+            <ErrorState statusCode={loadError} onRetry={() => fetchUsers()} />
           ) : users.length === 0 ? (
             <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>No users found.</div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
+            <div className="table-responsive">
+              <table className="users-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
                   <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Name</th>
                   <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Email</th>
@@ -182,6 +213,7 @@ const AdminUsersPage = () => {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
@@ -196,6 +228,9 @@ const AdminUsersPage = () => {
         {modalOpen && selectedUser && (
           <div
             className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="user-modal-title"
             style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}
             onClick={() => setModalOpen(false)}
           >
@@ -205,7 +240,7 @@ const AdminUsersPage = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>User Details</h3>
+                <h3 id="user-modal-title" style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>User Details</h3>
                 <button onClick={() => setModalOpen(false)} style={{ background: "transparent", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--text-secondary)" }}>×</button>
               </div>
 

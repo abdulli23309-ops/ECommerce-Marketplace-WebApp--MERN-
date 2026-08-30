@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../../services/axiosInstance";
+import { toastError } from "../../components/common/Toast";
 
 const EditIcon = () => (
   <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,6 +198,21 @@ const AdminCategoriesPage = () => {
     setDeleteTarget(null);
   };
 
+  // Escape-to-close + body scroll lock for Delete modal
+  useEffect(() => {
+    if (!isDeleteModalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") closeDeleteModal();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isDeleteModalOpen]);
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
 
@@ -216,7 +232,7 @@ const AdminCategoriesPage = () => {
 
       closeDeleteModal();
     } catch (err) {
-      alert(err.response?.data?.message || "Cannot delete.");
+      toastError(err.response?.data?.message || "Cannot delete.");
       closeDeleteModal();
     }
   };
@@ -238,6 +254,21 @@ const AdminCategoriesPage = () => {
     setError(null);
     setModalOpen(true);
   };
+
+  // Escape-to-close + body scroll lock for Add/Edit modal
+  useEffect(() => {
+    if (!modalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") setModalOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [modalOpen]);
 
   const handleSubCategorySave = async () => {
     const catId = editingCategory?.id;
@@ -348,7 +379,8 @@ const AdminCategoriesPage = () => {
               No categories found.
             </div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="table-responsive">
+              <table className="categories-table" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr
                   style={{
@@ -567,7 +599,8 @@ const AdminCategoriesPage = () => {
                   );
                 })}
               </tbody>
-            </table>
+              </table>
+            </div>
           )}
         </div>
 
@@ -617,6 +650,9 @@ const AdminCategoriesPage = () => {
         {modalOpen && (
           <div
             className="modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-modal-title"
             style={{
               position: "fixed",
               inset: 0,
@@ -640,6 +676,7 @@ const AdminCategoriesPage = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <h3
+                id="category-modal-title"
                 style={{
                   fontSize: "1.25rem",
                   fontWeight: 700,
@@ -724,6 +761,9 @@ const AdminCategoriesPage = () => {
         {/* Delete Confirmation Modal */}
         {isDeleteModalOpen && (
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
             style={{
               position: "fixed",
               inset: 0,
@@ -751,6 +791,7 @@ const AdminCategoriesPage = () => {
               </div>
 
               <h3
+                id="delete-modal-title"
                 style={{
                   textAlign: "center",
                   fontSize: "1.25rem",

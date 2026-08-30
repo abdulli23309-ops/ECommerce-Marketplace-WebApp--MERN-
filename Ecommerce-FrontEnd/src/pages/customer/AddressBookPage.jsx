@@ -6,6 +6,8 @@ import {
   deleteAddress,
   setDefaultAddress,
 } from "../../services/addressService";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { toastSuccess, toastError } from "../../components/common/Toast";
 
 const MapPin = ({ size = 64, color = "var(--text-muted)" }) => (
   <svg style={{ width: size, height: size, color, display: "block", margin: "0 auto 16px auto" }} fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
@@ -66,6 +68,8 @@ const AddressBookPage = () => {
   const [addresses, setAddresses] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     fullName: "",
@@ -142,10 +146,25 @@ const AddressBookPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this address?")) return;
-    await deleteAddress(id);
-    load();
+    setDeleteTarget(id);
   };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteAddress(deleteTarget);
+      toastSuccess("Address deleted");
+      load();
+    } catch (err) {
+      toastError("Failed to delete address");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  const cancelDelete = () => setDeleteTarget(null);
 
   const handleSetDefault = async (id) => {
     await setDefaultAddress(id);
@@ -163,17 +182,18 @@ const AddressBookPage = () => {
   }
 
   return (
-    <div style={pageStyle}>
-      <div style={containerStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={titleStyle}>Your Addresses</h2>
-          {!showForm && (
-            <button style={btnPrimaryStyle} onClick={() => { resetForm(); setShowForm(true); }}>
-              <Plus size={16} color="#fff" />
-              Add Address
-            </button>
-          )}
-        </div>
+    <>
+      <div style={pageStyle}>
+        <div style={containerStyle}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2 style={titleStyle}>Your Addresses</h2>
+            {!showForm && (
+              <button style={btnPrimaryStyle} onClick={() => { resetForm(); setShowForm(true); }}>
+                <Plus size={16} color="#fff" />
+                Add Address
+              </button>
+            )}
+          </div>
 
         {showForm && (
           <form onSubmit={handleSubmit} style={cardStyle}>
@@ -361,6 +381,17 @@ const AddressBookPage = () => {
         )}
       </div>
     </div>
+    <ConfirmDialog
+      open={!!deleteTarget}
+      onClose={cancelDelete}
+      onConfirm={confirmDelete}
+      title="Delete address?"
+      message="This action cannot be undone."
+      confirmLabel="Delete Address"
+      variant="danger"
+      loading={deleting}
+    />
+  </>
   );
 };
 

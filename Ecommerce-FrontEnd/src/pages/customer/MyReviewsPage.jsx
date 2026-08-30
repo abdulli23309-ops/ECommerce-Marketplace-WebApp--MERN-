@@ -113,6 +113,21 @@ const MyReviewsPage = () => {
                     <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
                       • {new Date(review.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </span>
+                    {review.isAnonymous && (
+                      <span
+                        style={{
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          padding: "2px 8px",
+                          borderRadius: "99px",
+                          background: "var(--bg-secondary)",
+                          color: "var(--text-secondary)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        🎭 Anonymous
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
