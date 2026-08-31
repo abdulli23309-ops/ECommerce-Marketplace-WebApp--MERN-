@@ -44,11 +44,11 @@ Use backend pagination metadata (`page`/`pageSize`/`total`/`totalPages`) when pr
 Do not silently change existing request/response shapes. If a contract change is unavoidable, update both sides and record it in `memory.md`.
 
 ## Rule 13 — Security
-Do not weaken: bcrypt cost 12; JWT expiry / rotating hashed refresh tokens; `requireRole`/`requirePermission`; Helmet/CORS allow-list; Multer upload limits; email OTP (hashed, authed-user recipient, 3-min expiry, 3-min cooldown, max 5 attempts); Google OAuth (emailVerified, role safety).
+Do not weaken: bcrypt cost 12; JWT expiry / rotating hashed refresh tokens; `requireRole`/`requirePermission`; Helmet/CORS allow-list; Multer upload limits; email OTP (hashed, authed-user recipient, 3-min expiry, 3-min cooldown, max 5 attempts); Google OAuth (emailVerified, role safety). Rate limiting is enforced on auth/OTP endpoints (see §20 of `architecture.md`).
 
 ## Rule 14 — Testing (current framework)
 - **Framework:** Vitest + Supertest + mongodb-memory-server in `multi-vendor-mern/` (`npm test` → `vitest run`).
-- **Final verified baseline: 33 test files / 248 tests / 0 failures** (the full suite passes together). Do not regress this.
+- **Final verified baseline: 55 test files / 399 tests / 0 failures** (the full suite passes together; +2 tests vs. the earlier `33/248` Phase-2 commit baseline are post-Phase-2 regression additions). Do not regress this.
 - Do not claim a result other than what was executed in the current environment; if a run cannot complete (environmental limitation), document it accurately instead of asserting pass.
 - Every meaningful backend change should be verified end-to-end through the full layer stack.
 - Every meaningful frontend change should be verified with `npm run build` and a manual walkthrough.

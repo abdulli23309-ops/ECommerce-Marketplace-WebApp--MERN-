@@ -1,6 +1,8 @@
 # VendorVerse Development Phases
 
-> History reconstructed from the root Git history (17 commits, `1e33a18` → `5847f7f`), direct source inspection, and the approved Phase 2 scope. Where a prior checkpoint conflicted with the current source, the current source won (see `rules.md` Rule 1). This document represents the **final verified Phase 2 state**. No dates or commit hashes beyond those verifiable in the repo are asserted.
+> History reconstructed from the root Git history (17 commits, `1e33a18` → `5847f7f`), direct source inspection, and the approved Phase 2 scope. Where a prior checkpoint conflicted with the current source, the current source won (see `rules.md` Rule 1). This document represents the **final verified Phase 2 state** plus documented post-Phase-2 hardening/verification. No dates are asserted beyond those verifiable in the repo.
+>
+> **Current HEAD:** `588fdb5` (tag `v2.1-ui-audit-locked`, branch `main`). Phase 2 commit baseline `5847f7f` plus post-Phase-2 hardening/security-config and Order/payment-status verification changes are applied in the working tree (not yet committed); see `memory.md` §5. Verified backend test suite at this HEAD: **55 files / 399 tests / 0 failures**; frontend production build: **PASS**.
 
 ## Legend
 | Symbol | Meaning |
@@ -69,8 +71,8 @@ Resolved: admin product-moderation global stats endpoint + inspection; `SellerPr
 - Dashboard-context switching (Seller→Customer, Admin→Seller, Admin→Customer; backend role unchanged; seller cannot add own product to cart; seller can buy other sellers' products).
 
 ## Final Phase 2 Regression (✅ PASS)
-- **Backend automated tests:** 33 test files / 33 passed; 248 tests / 248 passed; 0 failures (full suite together).
-- **Frontend build:** PASS (194 modules transformed, built successfully; non-blocking Vite chunk-size advisory only).
+- **Backend automated tests:** **55 test files / 399 tests / 0 failures** (Vitest + Supertest + mongodb-memory-server; full suite together). The +2 tests and +1 file above the Phase-2 commit baseline (`33/248`) are post-Phase-2 regression additions: `tests/securityRateLimit.test.js` (rate-limiting) and `tests/orderCancelPaymentStatus.test.js` (Order/payment-status verification).
+- **Frontend build:** PASS — Vite production build succeeds with 0 errors (non-blocking chunk-size advisory only).
 - **Manual regression:** PASS across Auth, Authorization, Customer/Seller/Admin workflows, Cart, Checkout, Multi-seller splitting, COD, EasyPaisa, JazzCash, Coupons, Orders, Shipments, Reviews, Rating moderation, Returns, Refunds, Notifications, Permissions, Theme/UI.
 - Defects found during regression were fixed and re-verified, including: COD payment messaging/status; successful wallet order processing; currency formatting; missing product images; product rating recalculation timing; seller-warning data visibility; product-moderation low-rating state; customer order-tracking redesign; product inspection modal overlay; email OTP redirect; customer return-detail rendering/build.
 
@@ -88,7 +90,7 @@ Resolved: admin product-moderation global stats endpoint + inspection; `SellerPr
 
 ## Checkpoint Summary
 - **Phase 2 status:** Priorities 1–5 complete.
-- **Automated tests:** 33 test files / 248 tests / 0 failures.
-- **Frontend build:** PASS (194 modules; chunk-size advisory non-blocking).
+- **Automated tests:** 55 test files / 399 tests / 0 failures.
+- **Frontend build:** PASS.
 - **Manual regression:** PASS.
 - **Next work (logical):** seller suspension & appeal system; product variants; advanced recommendations; PayPal; delivery-charge admin UI; production email delivery; bundle-size optimization; Stripe webhook end-to-end verification.

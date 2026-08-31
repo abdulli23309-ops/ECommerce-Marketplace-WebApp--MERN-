@@ -2,7 +2,7 @@
 
 > Source of truth: derived from direct inspection of the current VendorVerse codebase (frontend: `Ecommerce-FrontEnd/`, backend: `multi-vendor-mern/`) and the final Phase 2 regression. Where any prior report or older checkpoint conflicted with the current source, source was treated as authoritative.
 >
-> **Project state (verified at HEAD `5847f7f`):** Phase 2 (Priorities 1–5) is **complete** and committed. Final automated test run: **33 test files / 248 tests / 0 failures**. Frontend production build: **PASS** (194 modules transformed; non-blocking Vite chunk-size advisory only). Phase 2 manual regression: **PASS**. Deferred items remain explicitly flagged below.
+> **Project state (verified at HEAD `588fdb5`, tag `v2.1-ui-audit-locked`):** Phase 2 (Priorities 1–5) is **complete** and committed. Backend test suite: **55 files / 399 tests / 0 failures** (the +2 tests vs. the Phase-2 commit baseline are post-Phase-2 regression additions: `tests/securityRateLimit.test.js` and `tests/orderCancelPaymentStatus.test.js`). Frontend production build: **PASS** (Vite, 0 errors; non-blocking chunk-size advisory). Phase 2 manual regression: **PASS**. Deferred items remain explicitly flagged below.
 
 ## 1. Product Overview
 
@@ -203,7 +203,7 @@ These are documented as-is against the current source. They are flagged for veri
 
 ## 10. Final Verified Build & Test State
 
-- **Backend automated tests**: **33 test files / 33 passed**, **248 tests / 248 passed**, **0 failures** (Vitest + Supertest + mongodb-memory-server). The full suite passed together.
+- **Backend automated tests**: **55 test files / 399 tests / 0 failures** (Vitest + Supertest + mongodb-memory-server). The full suite passed together; the +2 tests vs. the Phase-2 commit baseline are post-Phase-2 regression additions (`tests/securityRateLimit.test.js` and `tests/orderCancelPaymentStatus.test.js`).
 - **Frontend production build**: **PASS** — 194 modules transformed, built successfully. A **non-blocking Vite chunk-size advisory** (>500 kB bundle) is present; it does not fail the build.
 - **Phase 2 manual regression**: **PASS** — documented coverage across Authentication, Authorization, Customer/Seller/Admin workflows, Cart, Checkout, Multi-seller order splitting, COD, EasyPaisa, JazzCash, Coupons, Orders, Shipments, Reviews, Rating moderation, Returns, Refunds, Notifications, Permissions, Theme/UI.
 - Defects found during regression were fixed and re-verified, including: COD payment messaging/status; successful wallet order processing; currency formatting; missing product images; product rating recalculation timing; seller-warning data visibility; product-moderation low-rating state; customer order-tracking redesign; product inspection modal overlay; email OTP redirect; customer return-detail rendering/build.

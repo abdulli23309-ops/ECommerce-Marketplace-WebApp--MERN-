@@ -2,6 +2,7 @@ import express from 'express';
 import authRoutes from './routes/Auth.routes.js';
 import authorizationTestRoutes from './routes/AuthorizationTest.routes.js';
 import { setupAppMiddleware, errorHandler } from './middleware/init.js';
+import { appConf } from './config/init.js';
 import productRoutes from './routes/Product.routes.js';
 import storeRoutes from './routes/Store.routes.js';
 import categoryRoutes from './routes/Category.routes.js';
@@ -49,7 +50,13 @@ app.get('/api/health', (req, res) => {
 // ---------- Routes ----------
 app.use('/api/v1/stores', storeRoutes);
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/test', authorizationTestRoutes);
+
+// Test-only authorization endpoints: register ONLY outside production so the
+// test surface is never exposed on a live deployment. Existing automated tests
+// run under NODE_ENV=test, so the suite is unaffected.
+if (appConf.nodeEnv !== 'production') {
+  app.use('/api/v1/test', authorizationTestRoutes);
+}
 
 // Public product listing – no authentication required
 app.use('/api/v1/products', publicProductRoutes);

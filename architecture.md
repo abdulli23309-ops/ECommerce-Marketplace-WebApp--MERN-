@@ -2,7 +2,7 @@
 
 > Derived from direct inspection of the current source tree. File paths are relative to the two project roots: `Ecommerce-FrontEnd/` (frontend) and `multi-vendor-mern/` (backend).
 >
-> **Project state (verified at HEAD `5847f7f`):** Phase 2 (Priorities 1–5) is complete and committed. Backend test suite: **33 files / 248 tests / 0 failures**. Frontend build: **PASS** (194 modules, non-blocking chunk-size advisory). Phase 2 manual regression: **PASS**.
+> **Project state (verified at HEAD `588fdb5`, tag `v2.1-ui-audit-locked`):** Phase 2 (Priorities 1–5) is complete and committed. Backend test suite: **55 files / 399 tests / 0 failures** (the +2 tests vs. the Phase-2 commit baseline are post-Phase-2 regression/secaudit additions, see `memory.md`). Frontend build: **PASS** (Vite, 0 errors; non-blocking chunk-size advisory). Phase 2 manual regression: **PASS**.
 
 ## 1. System Overview
 
@@ -156,7 +156,7 @@ router-stripe trick: Stripe webhook mounted BEFORE global body parsers (express.
 - Vitest + Supertest + mongodb-memory-server in `multi-vendor-mern/` (`npm test` → `vitest run`).
 - **33 test files** organized as root-level domain tests + `tests/priority4/` (notifications, coupons, seller analytics, admin audit log, order-cancellation notification) + `tests/priority5/` (delivery charges, easypaisa/jazzcash, email OTP, Google auth, rating moderation, seller-own-product cart).
 - Helpers: `tests/helpers/testDb.js` (in-memory DB), `tests/helpers/auth.js` (token generation).
-- **Final verified result: 33 files / 33 passed, 248 tests / 248 passed, 0 failures.**
+- **Final verified result: 55 files / 55 passed, 399 tests / 399 passed, 0 failures** (Vitest + Supertest + mongodb-memory-server).
 
 ## 16. Data Model Summary (notable)
 
@@ -178,14 +178,14 @@ router-stripe trick: Stripe webhook mounted BEFORE global body parsers (express.
 | `Shipment` | `sellerOrder → SellerOrder` (1:1) | embedded trackingHistory[] |
 | `Review` | `customer/product/sellerOrder` | unique `(customer, product, sellerOrder)` |
 | `Return` | `customer/product/sellerOrder/seller` | multi-stage status; unique returnNumber |
-| `Refund` | `returnRequest → ReturnRequest` (**ref-name mismatch, see limits**), `payment → Payment` | unique returnRequest |
+| `Refund` | `returnRequest → ReturnRequest` (verified correct: registered model is `ReturnRequest`), `payment → Payment` | unique returnRequest |
 | `Notification` | `user → User` | — |
 | `Coupon` / `CouponUsage` | `coupon`, `user` | `discountType` incl. `free_delivery`, usage limits |
 | `AdminAuditLog` | `admin → User` | — |
 | `DeliveryCharge` | — | — |
 | `EmailOtp` | `user → User` | hashed OTP, expiry/attempts |
 
-** Note: `SellerProfile.model.js` currently declares two `status` fields (duplicate definition). Both are present in source; flagged, not silently changed.
+** `SellerProfile.status` is a single field — enum `Pending/Approved/Rejected/Suspended`, default `Pending` (verified in `SellerProfile.model.js`): no duplicate definition.
 
 ## 17. Key API Shape
 
@@ -213,3 +213,17 @@ router-stripe trick: Stripe webhook mounted BEFORE global body parsers (express.
 - **Product variants / advanced recommendations** — deferred.
 - **Email delivery** — SMTP-gated; dev fallback logs OTP.
 - **Stripe webhook** — signature verified locally; no verified end-to-end forward in this environment.
+
+## 20. Security Middleware (current hardening)
+
+| Layer | Component | Current Implementation |
+|---|---|---|
+| AuthN | JWT | `app/helpers/Jwt.helper.js`. **Fail-fast:** `accessSecret()`/`refreshSecret()` throw if `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET` are absent — production cannot silently use an insecure fallback. `app/config/app.keys.js` holds only expiry durations, never a secret default. |
+| AuthN | Refresh tokens | Rotating, SHA-256-hashed, with TTL. |
+| AuthN | Google OAuth | `app/services/GoogleAuth.service.js`. `ALLOW_MOCK_GOOGLE` is **ignored when `NODE_ENV=production`**, so mock identities cannot be silently enabled in production. |
+| AuthZ | Roles/permissions | `Auth.middleware.js` — `requireRole` + `requirePermission` with `*` wildcard; Admin bypass is explicit. `User.model.js` roles: `Customer`, `Seller`, `Admin`. (`SuperAdmin` appears only as a defensive alias in middleware/frontend role checks; it is **not** a mintable role.) |
+| HTTP | Hardening | `App.middleware.js` — Helmet, CORS allow-list, JSON body-size limit. |
+| Uploads | Limits | Multer limits in `FileUpload.helper.js` (avatar: 5 MB; product images: 10 MB). |
+| Rate limiting | Auth/OTP | **Per-instance in-memory sliding-window limiter** (`app/middleware/RateLimit.middleware.js`) on `POST /auth/login`, `POST /auth/register`, `POST /auth/google`, and OTP `/send` + `/verify`. Single-process guard; Redis/distributed limiting is a documented follow-up. |
+| Test surface | `/api/v1/test/*` | `AuthorizationTest` routes mounted **only when `NODE_ENV !== 'production'`**; unavailable in production, available to the test suite (`NODE_ENV=test`). |
+| Secrets | Source control | No JWT secret, Stripe key, webhook secret, or DB credential is hard-coded or Git-tracked. `.env` is gitignored; only `.env.example` placeholders are tracked. |

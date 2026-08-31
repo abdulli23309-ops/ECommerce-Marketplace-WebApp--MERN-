@@ -80,8 +80,19 @@ const sellerProfileSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
+
+sellerProfileSchema.virtual('store', {
+  ref: 'Store',
+  localField: '_id',
+  foreignField: 'sellerProfile',
+  justOne: true,
+});
 
 const SellerProfile = mongoose.model('SellerProfile', sellerProfileSchema);
 

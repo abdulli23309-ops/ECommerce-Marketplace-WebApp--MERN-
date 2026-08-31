@@ -2,7 +2,7 @@
 
 > Derived from `Ecommerce-FrontEnd/src/index.css` (single global stylesheet with theme tokens, organized by section), `src/styles/returns-luxury.css` (returns/tracking timeline), and the layout/component/pages source. No CSS framework is used — hand-written, BEM-ish, page-scoped classes over a shared theme-token layer.
 >
-> **Project state (verified at HEAD `5847f7f`):** Phase 2 complete; frontend build PASS (194 modules; non-blocking chunk-size advisory); manual regression PASS.
+> **Project state (verified at HEAD `588fdb5`, tag `v2.1-ui-audit-locked`):** Phase 2 complete; frontend build PASS (Vite, 0 errors; non-blocking chunk-size advisory); manual regression PASS. Backend test suite: 55 files / 399 tests / 0 failures.
 
 ## 1. Design Philosophy
 

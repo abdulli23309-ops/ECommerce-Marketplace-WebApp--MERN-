@@ -466,14 +466,19 @@ export const cancelOrder = async (orderId, userId) => {
     const sellerOrders = await orderRepo.findAllSellerOrdersByParentOrder(orderId);
     const payment = await paymentRepo.findByParentOrder(orderId);
 
-    if (payment && payment.method === 'CashOnDelivery') {
-      for (const so of sellerOrders) {
-        for (const item of so.items || []) {
-          await Product.updateOne(
-            { _id: item.product },
-            { $inc: { stock: item.quantity } }
-          );
+    if (payment) {
+      if (payment.method === 'CashOnDelivery') {
+        for (const so of sellerOrders) {
+          for (const item of so.items || []) {
+            await Product.updateOne(
+              { _id: item.product },
+              { $inc: { stock: item.quantity } }
+            );
+          }
         }
+      } else if (payment.status === 'Pending') {
+        payment.status = 'Failed';
+        await payment.save();
       }
     }
 

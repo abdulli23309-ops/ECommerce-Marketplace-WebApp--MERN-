@@ -206,20 +206,71 @@ export const decideAppeal = async (appealId, decision, decisionReason, actorId) 
     await session.commitTransaction();
   } catch (err) {
     await session.abortTransaction();
-    // Transaction conflicts (e.g. WriteConflict 112 / LockTimeout 261) can arise
-    // under concurrent decisions. Treat them as "already decided" so the loser
-    // of the race gets a clean 409 instead of an opaque 500.
-    // M-010: ONLY explicit conflict/race codes map to 409 — generic MongoError /
-    // MongoServerError failures (validation 121, network, auth, BSON, etc.) must
-    // propagate to the global error handler instead of masquerading as conflicts.
-    if (
-      err?.code === 112 ||
-      err?.code === 251 ||
-      err?.code === 261
-    ) {
-      throw new ApiError(409, 'This appeal has already been decided');
+    if (err.message?.includes('replica set') || err.message?.includes('Transaction numbers')) {
+      // Fallback for standalone MongoDB deployments
+      const locked = await SellerAppeal.findByIdAndUpdate(
+        appealId,
+        { $setOnInsert: {} },
+        { new: true }
+      );
+      if (locked.status !== 'Pending') {
+        throw new ApiError(409, 'This appeal has already been decided');
+      }
+
+      await appealRepo.findByIdAndUpdate(
+        appealId,
+        {
+          status: decision,
+          decidedAt: new Date(),
+          decidedBy: actorId,
+          decisionReason: decisionReason || '',
+          $push: {
+            history: {
+              event: decision === 'Approved' ? 'APPROVED' : 'REJECTED',
+              by: actorId,
+              note: decisionReason || '',
+              at: new Date(),
+            },
+          },
+        }
+      );
+
+      if (decision === 'Approved') {
+        const activeSuspension = await suspensionRepo.findActiveBySellerProfile(
+          appeal.sellerProfile
+        );
+        if (activeSuspension) {
+          await suspensionRepo.findByIdAndUpdate(
+            activeSuspension._id,
+            {
+              status: 'Lifted',
+              liftedAt: new Date(),
+              liftedBy: actorId,
+              $push: {
+                timeline: { event: 'LIFTED', by: actorId, at: new Date() },
+              },
+            }
+          );
+        }
+
+        await sellerProfileRepo.updateModerationState(
+          appeal.sellerProfile,
+          { status: 'Approved', warningCount: 0 }
+        );
+      }
+    } else {
+      // Transaction conflicts (e.g. WriteConflict 112 / LockTimeout 261) can arise
+      // under concurrent decisions. Treat them as "already decided" so the loser
+      // of the race gets a clean 409 instead of an opaque 500.
+      if (
+        err?.code === 112 ||
+        err?.code === 251 ||
+        err?.code === 261
+      ) {
+        throw new ApiError(409, 'This appeal has already been decided');
+      }
+      throw err;
     }
-    throw err;
   } finally {
     await session.endSession();
   }

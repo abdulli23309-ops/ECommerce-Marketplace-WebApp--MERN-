@@ -81,23 +81,52 @@ export const suspendSeller = async (sellerProfileId, reasonOrPayload, actorId) =
     result = { suspension: Array.isArray(suspension) ? suspension[0] : suspension, profile: updatedProfile };
   } catch (err) {
     await session.abortTransaction();
-    // Duplicate-key on the partial unique index => an Active suspension already exists.
-    if (err?.code === 11000) {
-      throw new ApiError(409, 'Seller is already suspended');
+    if (err.message?.includes('replica set') || err.message?.includes('Transaction numbers')) {
+      // Fallback for standalone MongoDB deployments
+      const updatedProfile = await sellerProfileRepo.setStatus(
+        sellerProfileId,
+        'Suspended'
+      );
+
+      const suspension = await suspensionRepo.create(
+        {
+          sellerProfile: sellerProfileId,
+          status: 'Active',
+          reason: reason || '',
+          internalNote: internalNote || '',
+          suspendedBy: actorId,
+          suspendedAt: new Date(),
+          timeline: [
+            {
+              event: 'SUSPENDED',
+              by: actorId,
+              reason: reason || '',
+              at: new Date(),
+            },
+          ],
+        }
+      );
+
+      const store = await storeRepo.findBySeller(sellerProfileId);
+      if (store) {
+        await productRepo.bulkSetStatusByStore(store._id, 'Suspended');
+      }
+
+      result = { suspension: Array.isArray(suspension) ? suspension[0] : suspension, profile: updatedProfile };
+    } else {
+      // Duplicate-key on the partial unique index => an Active suspension already exists.
+      if (err?.code === 11000) {
+        throw new ApiError(409, 'Seller is already suspended');
+      }
+      if (
+        err?.code === 112 ||
+        err?.code === 251 ||
+        err?.code === 261
+      ) {
+        throw new ApiError(409, 'Seller is already suspended');
+      }
+      throw err;
     }
-    // Transaction conflicts (WriteConflict 112 / LockTimeout 261) under concurrent
-    // suspensions: the loser should get a 409 rather than an opaque 500.
-    // M-010: ONLY explicit conflict/race codes map to 409 — generic MongoError /
-    // MongoServerError failures (validation 121, network, auth, BSON, etc.) must
-    // propagate to the global error handler instead of masquerading as conflicts.
-    if (
-      err?.code === 112 ||
-      err?.code === 251 ||
-      err?.code === 261
-    ) {
-      throw new ApiError(409, 'Seller is already suspended');
-    }
-    throw err;
   } finally {
     await session.endSession();
   }
@@ -175,7 +204,26 @@ export const reinstateSeller = async (sellerProfileId, actorId) => {
     await session.commitTransaction();
   } catch (err) {
     await session.abortTransaction();
-    throw err;
+    if (err.message?.includes('replica set') || err.message?.includes('Transaction numbers')) {
+      // Fallback for standalone MongoDB deployments
+      await sellerProfileRepo.updateModerationState(
+        sellerProfileId,
+        { status: 'Approved', warningCount: 0, warningHistory: profile.warningHistory }
+      );
+      await suspensionRepo.findByIdAndUpdate(
+        activeSuspension._id,
+        {
+          status: 'Lifted',
+          liftedAt: new Date(),
+          liftedBy: actorId,
+          $push: {
+            timeline: { event: 'LIFTED', by: actorId, at: new Date() },
+          },
+        }
+      );
+    } else {
+      throw err;
+    }
   } finally {
     await session.endSession();
   }
