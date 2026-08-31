@@ -15,10 +15,26 @@ const AdminDashboardPage = () => {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "var(--text-secondary)" }}>
-        <div style={{ width: "28px", height: "28px", border: "3px solid var(--border)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: "12px" }}></div>
-        <p>Loading platform metrics...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ padding: "24px", maxWidth: "1320px", margin: "0 auto" }}>
+        <div style={{ marginBottom: "24px" }}>
+          <span className="vv-skeleton" style={{ height: "2.25rem", width: "240px", display: "block", borderRadius: "6px" }} />
+          <span className="vv-skeleton" style={{ height: "1.25rem", width: "400px", marginTop: "0.5rem", display: "block", borderRadius: "4px" }} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
+          {Array.from({ length: 8 }).map((_, idx) => (
+            <div key={idx} className="metric-card premium-card" style={{ padding: "20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span className="vv-skeleton" style={{ height: "1rem", width: "50%", borderRadius: "4px" }} />
+                <span className="vv-skeleton" style={{ height: "24px", width: "24px", borderRadius: "50%" }} />
+              </div>
+              <span className="vv-skeleton" style={{ height: "2rem", width: "40%", marginTop: "1rem", display: "block", borderRadius: "4px" }} />
+              <div style={{ marginTop: "1.5rem", borderTop: "1px solid var(--border)", paddingTop: "12px", display: "flex", justifyContent: "space-between" }}>
+                <span className="vv-skeleton" style={{ height: "14px", width: "60px", borderRadius: "4px" }} />
+                <span className="vv-skeleton" style={{ height: "14px", width: "40px", borderRadius: "4px" }} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -38,6 +54,7 @@ const AdminDashboardPage = () => {
       to: "/admin/users",
       badge: "Accounts",
       badgeStyle: { background: "var(--info-bg)", color: "var(--info-text)" },
+      sparklinePath: "M0,25 Q20,15 40,20 T80,10 T100,5",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -53,6 +70,7 @@ const AdminDashboardPage = () => {
       to: "/admin/sellers",
       badge: "Active",
       badgeStyle: { background: "var(--success-bg)", color: "var(--success-text)" },
+      sparklinePath: "M0,20 Q20,25 40,15 T80,12 T100,8",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -66,6 +84,7 @@ const AdminDashboardPage = () => {
       to: "/admin/products",
       badge: "Catalog",
       badgeStyle: { background: "var(--info-bg)", color: "var(--info-text)" },
+      sparklinePath: "M0,22 Q20,18 40,24 T80,15 T100,10",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" />
@@ -81,6 +100,7 @@ const AdminDashboardPage = () => {
       to: "/admin/orders",
       badge: "Total",
       badgeStyle: { background: "var(--info-bg)", color: "var(--info-text)" },
+      sparklinePath: "M0,25 Q20,20 40,18 T80,8 T100,4",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="9" cy="21" r="1" />
@@ -95,6 +115,7 @@ const AdminDashboardPage = () => {
       to: "/admin/orders",
       badge: "Gross",
       badgeStyle: { background: "var(--success-bg)", color: "var(--success-text)" },
+      sparklinePath: "M0,28 Q20,22 40,15 T80,10 T100,2",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="1" x2="12" y2="23" />
@@ -111,6 +132,7 @@ const AdminDashboardPage = () => {
         ? { background: "var(--warning-bg)", color: "var(--warning-text)" }
         : { background: "var(--bg-secondary)", color: "var(--text-secondary)" },
       highlight: stats.pendingSellerApprovals > 0,
+      sparklinePath: "M0,5 Q20,12 40,8 T80,22 T100,15",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10" />
@@ -128,6 +150,7 @@ const AdminDashboardPage = () => {
         ? { background: "var(--warning-bg)", color: "var(--warning-text)" }
         : { background: "var(--bg-secondary)", color: "var(--text-secondary)" },
       highlight: stats.pendingProductApprovals > 0,
+      sparklinePath: "M0,10 Q20,15 40,12 T80,25 T100,18",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10" />
@@ -144,6 +167,7 @@ const AdminDashboardPage = () => {
         ? { background: "var(--danger-bg)", color: "var(--danger-text)" }
         : { background: "var(--bg-secondary)", color: "var(--text-secondary)" },
       highlight: stats.pendingReturns > 0,
+      sparklinePath: "M0,8 Q20,5 40,10 T80,15 T100,12",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -180,7 +204,8 @@ const AdminDashboardPage = () => {
           <Link
             key={card.label}
             to={card.to}
-            className={`metric-card ${card.highlight ? "metric-card-highlight" : ""}`}
+            className={`metric-card premium-card ambient-glow-shadow ${card.highlight ? "metric-card-highlight" : ""}`}
+            style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column" }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
               <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.02em" }}>
@@ -191,11 +216,22 @@ const AdminDashboardPage = () => {
               </div>
             </div>
 
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "14px" }}>
+            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "4px" }}>
               {card.value}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "10px" }}>
+            {/* Sparkline Graph */}
+            <svg className="sparkline-svg" viewBox="0 0 100 30" width="100%" height="30" style={{ marginTop: '8px', marginBottom: '12px', display: 'block', overflow: 'visible' }}>
+              <path
+                d={card.sparklinePath}
+                fill="none"
+                stroke={card.highlight ? "var(--warning)" : "var(--primary)"}
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "10px", marginTop: "auto" }}>
               <span style={{
                 fontSize: "0.75rem",
                 fontWeight: 600,
@@ -206,7 +242,7 @@ const AdminDashboardPage = () => {
               }}>
                 {card.badge}
               </span>
-              <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--info)" }}>View details →</span>
+              <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--primary)" }}>View details →</span>
             </div>
           </Link>
         ))}

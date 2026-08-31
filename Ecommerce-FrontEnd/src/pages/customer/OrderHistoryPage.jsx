@@ -51,12 +51,57 @@ const AlertIcon = () => (
   </svg>
 );
 
+const ChevronDownIcon = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+const ChevronUpIcon = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <polyline points="18 15 12 9 6 15" />
+  </svg>
+);
+
 const OrderHistoryPage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All Orders");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [expandedOrders, setExpandedOrders] = useState(new Set());
+
+  const toggleOrderExpanded = (orderId) => {
+    setExpandedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
+  };
 
   const load = async () => {
     setLoading(true);
@@ -234,6 +279,7 @@ const OrderHistoryPage = () => {
             ...new Set(packages.map((so) => so.store?.name).filter(Boolean)),
           ];
           const extraStores = Math.max(0, storeNames.length - 1);
+          const isExpanded = expandedOrders.has(order._id);
 
           return (
             <article
@@ -326,7 +372,7 @@ const OrderHistoryPage = () => {
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
-                    marginBottom: "6px",
+                    marginBottom: "10px",
                     fontSize: "0.82rem",
                     fontWeight: 600,
                     color: "var(--text-secondary)",
@@ -340,9 +386,11 @@ const OrderHistoryPage = () => {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {storeNames[0] || "Unknown store"}
+                    {isExpanded
+                      ? storeNames.join(" · ")
+                      : storeNames[0] || "Unknown store"}
                   </span>
-                  {extraStores > 0 && (
+                  {!isExpanded && extraStores > 0 && (
                     <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>
                       +{extraStores} more{" "}
                       {extraStores === 1 ? "store" : "stores"}
@@ -350,33 +398,97 @@ const OrderHistoryPage = () => {
                   )}
                 </div>
 
-                {previewItem && (
-                  <div className="vv-line">
-                    <ProductThumb
-                      src={getImageUrl(
-                        previewItem.productImage ||
-                          previewItem.product?.images?.[0]
-                      )}
-                      alt={previewItem.productNameSnapshot}
-                      size={48}
-                    />
-                    <div className="vv-line__main">
-                      <div className="vv-line__name">
-                        {previewItem.productNameSnapshot}
-                      </div>
-                      <div className="vv-line__sub">
-                        Qty {previewItem.quantity}
-                        {extraItems > 0 && (
-                          <> · +{extraItems} more {extraItems === 1 ? "item" : "items"}</>
+                {/* Product items list: shows 1st item when collapsed, or all items when expanded */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {(isExpanded ? items : [previewItem]).filter(Boolean).map((item, idx) => (
+                    <div
+                      className="vv-line"
+                      key={item.product?._id || item.product || `${order._id}-${idx}`}
+                      style={{
+                        paddingBottom: isExpanded && idx < items.length - 1 ? "10px" : "0",
+                        borderBottom: isExpanded && idx < items.length - 1 ? "1px dashed var(--border)" : "none",
+                      }}
+                    >
+                      <ProductThumb
+                        src={getImageUrl(
+                          item.productImage ||
+                            item.product?.images?.[0]
                         )}
+                        alt={item.productNameSnapshot}
+                        size={48}
+                      />
+                      <div className="vv-line__main">
+                        <div className="vv-line__name">
+                          {item.productNameSnapshot}
+                        </div>
+                        <div className="vv-line__sub">
+                          <span>Qty {item.quantity}</span>
+                          {!isExpanded && extraItems > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                toggleOrderExpanded(order._id);
+                              }}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                marginLeft: "8px",
+                                padding: "2px 8px",
+                                background: "var(--surface-hover)",
+                                border: "1px solid var(--border)",
+                                borderRadius: "6px",
+                                color: "var(--primary)",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "all 0.15s ease",
+                              }}
+                              title="Click to view all items in this order"
+                            >
+                              +{extraItems} more {extraItems === 1 ? "item" : "items"}
+                              <ChevronDownIcon />
+                            </button>
+                          )}
+                        </div>
                       </div>
+                      <span className="vv-line__total">
+                        PKR{" "}
+                        {formatPKR(
+                          item.unitPriceSnapshot * item.quantity
+                        )}
+                      </span>
                     </div>
-                    <span className="vv-line__total">
-                      PKR{" "}
-                      {formatPKR(
-                        previewItem.unitPriceSnapshot * previewItem.quantity
-                      )}
-                    </span>
+                  ))}
+                </div>
+
+                {/* Collapse button when expanded */}
+                {isExpanded && extraItems > 0 && (
+                  <div style={{ marginTop: "12px", paddingTop: "8px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleOrderExpanded(order._id);
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "4px 10px",
+                        background: "var(--surface-hover)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "6px",
+                        color: "var(--text-secondary)",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Show less (collapse)
+                      <ChevronUpIcon />
+                    </button>
                   </div>
                 )}
               </div>

@@ -1,6 +1,6 @@
-import { Outlet, Link, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { loadCart } from "../store/cartSlice";
 import { setActiveDashboard } from "../store/dashboardContextSlice";
 import BrandLogo from "../components/common/BrandLogo";
@@ -12,12 +12,15 @@ import { clearPermissions } from "../store/permissionsSlice";
 const CustomerLayout = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const location = useLocation();
 
   const { user } = useSelector((state) => state.auth);
   const cartItemCount = useSelector((state) => state.cart?.totalCount || 0);
   const { actualRole, activeDashboard } = useSelector(
     (state) => state.dashboardContext
   );
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -66,9 +69,27 @@ const CustomerLayout = () => {
 
   return (
     <div className="customer-layout">
-      <header className="navbar">
-        {/* Left: Brand */}
-        <div className="navbar-brand-wrapper">
+      <header className="navbar glassmorphic">
+        {/* Left: Brand & Mobile Hamburger */}
+        <div className="navbar-brand-wrapper" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <button
+            className="mobile-hamburger"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open navigation menu"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '6px',
+              color: 'var(--text-primary)',
+              display: 'none',
+            }}
+          >
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          
           <Link to="/" aria-label="VendorVerse home" className="navbar-brand">
             <BrandLogo variant="mark" className="navbar-mark" maxWidth="40px" />
             <BrandLogo
@@ -81,15 +102,27 @@ const CustomerLayout = () => {
 
         {/* Center: Main navigation */}
         <nav className="navbar-center">
-          <ul className="navbar-links">
-            <li><Link to="/">Home</Link></li>
-            <li><Link to="/about">About</Link></li>
-            <li><Link to="/products">Shop</Link></li>
+          <ul className="navbar-links" style={{ display: "flex", gap: "1.5rem", listStyle: "none" }}>
+            <li>
+              <NavLink to="/" className={({ isActive }) => `nav-link-indicator-wrapper ${isActive ? 'is-active' : ''}`} style={{ textDecoration: "none", color: "var(--text-primary)", fontSize: "0.95rem" }}>
+                Home
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/about" className={({ isActive }) => `nav-link-indicator-wrapper ${isActive ? 'is-active' : ''}`} style={{ textDecoration: "none", color: "var(--text-primary)", fontSize: "0.95rem" }}>
+                About
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/products" className={({ isActive }) => `nav-link-indicator-wrapper ${isActive ? 'is-active' : ''}`} style={{ textDecoration: "none", color: "var(--text-primary)", fontSize: "0.95rem" }}>
+                Shop
+              </NavLink>
+            </li>
 
             {/* Become a Seller ONLY for guests or pure customers */}
             {(isPureCustomer || !user) && (
               <li>
-                <Link to="/seller/register" className="dashboard-link">
+                <Link to="/seller/register" className="dashboard-link" style={{ textDecoration: "none", fontSize: "0.95rem" }}>
                   Become a Seller
                 </Link>
               </li>
@@ -125,6 +158,7 @@ const CustomerLayout = () => {
             onClick={() => navigate("/cart")}
             role="button"
             tabIndex={0}
+            style={{ position: "relative" }}
           >
             <svg
               width="22"
@@ -141,7 +175,9 @@ const CustomerLayout = () => {
               />
             </svg>
             {cartItemCount > 0 && (
-              <span className="navbar-cart-count">{cartItemCount}</span>
+              <span key={cartItemCount} className="navbar-cart-count" style={{ animation: "cartPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}>
+                {cartItemCount}
+              </span>
             )}
           </div>
 
@@ -163,8 +199,72 @@ const CustomerLayout = () => {
         </div>
       </header>
 
-      <main style={{ flex: 1 }}>
-        <Outlet />
+      {/* Mobile Navigation Drawer */}
+      <div
+        className="mobile-menu-drawer"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: "280px",
+          background: "var(--surface)",
+          borderRight: "1px solid var(--border)",
+          boxShadow: "var(--shadow-lg)",
+          zIndex: 1100,
+          padding: "2rem 1.5rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "1.5rem",
+          transform: mobileMenuOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <BrandLogo variant="wordmark" maxWidth="120px" />
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close menu"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "1.75rem",
+              color: "var(--text-secondary)",
+              lineHeight: 1,
+            }}
+          >
+            &times;
+          </button>
+        </div>
+        <nav style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginTop: "1rem" }}>
+          <Link to="/" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: "none", color: "var(--text-primary)", fontWeight: 600, fontSize: "1.05rem" }}>Home</Link>
+          <Link to="/about" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: "none", color: "var(--text-primary)", fontWeight: 600, fontSize: "1.05rem" }}>About</Link>
+          <Link to="/products" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: "none", color: "var(--text-primary)", fontWeight: 600, fontSize: "1.05rem" }}>Shop</Link>
+          {(isPureCustomer || !user) && (
+            <Link to="/seller/register" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: "none", color: "var(--primary)", fontWeight: 600, fontSize: "1.05rem" }}>Become a Seller</Link>
+          )}
+        </nav>
+      </div>
+
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(4px)",
+            zIndex: 1099,
+          }}
+        />
+      )}
+
+      <main style={{ flex: 1, overflow: "hidden" }}>
+        <div key={location.pathname} className="page-fade-slide">
+          <Outlet />
+        </div>
       </main>
 
       <Footer />
@@ -172,4 +272,4 @@ const CustomerLayout = () => {
   );
 };
 
-export default CustomerLayout;
+export default CustomerLayout;

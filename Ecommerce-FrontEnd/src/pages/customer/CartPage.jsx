@@ -9,6 +9,7 @@ import {
 } from "../../store/cartSlice";
 import FreeDeliveryBadge from "../../components/common/FreeDeliveryBadge";
 import { TableSkeleton } from "../../components/common/Skeleton";
+import EmptyState from "../../components/common/EmptyState";
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -55,10 +56,13 @@ const CartPage = () => {
   if (items.length === 0) {
     return (
       <div className="cart-page">
-        <div className="cart-empty">
-          <h2>Your cart is empty</h2>
-          <p>Add some products to get started.</p>
-        </div>
+        <EmptyState
+          variant="cart"
+          title="Your cart is empty"
+          body="Looks like you haven't added anything to your cart yet."
+          actionText="Shop New Arrivals"
+          onAction={() => navigate("/")}
+        />
       </div>
     );
   }

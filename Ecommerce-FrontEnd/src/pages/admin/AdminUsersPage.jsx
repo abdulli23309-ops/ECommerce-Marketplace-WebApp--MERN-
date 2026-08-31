@@ -5,6 +5,7 @@ import axiosInstance from "../../services/axiosInstance";
 import { getImageUrl } from "../../utils/imageHelper";
 import ErrorState from "../../components/common/ErrorState";
 import { toastError } from "../../components/common/Toast";
+import DataTable from "../../components/common/DataTable";
 
 const statusBadgeStyle = (active) => ({
   display: "inline-block",
@@ -161,61 +162,53 @@ const AdminUsersPage = () => {
           </select>
         </div>
 
-        <div style={{ background: "var(--surface)", borderRadius: "12px", boxShadow: "0 1px 3px var(--shadow)", border: "1px solid var(--border)", overflow: "hidden" }}>
-          {loading ? (
-            <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>Loading...</div>
-          ) : loadError ? (
-            <ErrorState statusCode={loadError} onRetry={() => fetchUsers()} />
-          ) : users.length === 0 ? (
-            <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>No users found.</div>
-          ) : (
-            <div className="table-responsive">
-              <table className="users-table" style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Name</th>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Email</th>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Role</th>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Status</th>
-                  <th style={{ padding: "0.75rem 1.25rem", textAlign: "center", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase" }}>Actions</th>
+        {loadError ? (
+          <ErrorState statusCode={loadError} onRetry={() => fetchUsers()} />
+        ) : (
+          <DataTable
+            headers={[
+              { label: "Name", style: { textAlign: "left" } },
+              { label: "Email", style: { textAlign: "left" } },
+              { label: "Role", style: { textAlign: "left" } },
+              { label: "Status", style: { textAlign: "left" } },
+              { label: "Actions", style: { textAlign: "center" } }
+            ]}
+            items={users}
+            loading={loading}
+            emptyTitle="No users found"
+            emptyBody="Adjust your filters or try checking back later."
+            renderRow={(user) => {
+              const self = isSelf(user._id);
+              return (
+                <tr
+                  key={user._id}
+                  style={{ borderBottom: "1px solid var(--border)", cursor: "pointer", transition: "background 0.15s" }}
+                  onClick={() => openModal(user)}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--surface)")}
+                >
+                  <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 500, color: "var(--text-primary)" }}>{user.name}</td>
+                  <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>{user.email}</td>
+                  <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>{user.role}</td>
+                  <td style={{ padding: "0.75rem 1.25rem" }}>
+                    <span style={statusBadgeStyle(user.isActive)}>{user.isActive ? "Active" : "Inactive"}</span>
+                  </td>
+                  <td style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>
+                    {!self && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleToggleActive(user._id, user.isActive); }}
+                        style={{ ...iconBtnStyle, color: user.isActive ? "var(--danger)" : "var(--success)" }}
+                        title={user.isActive ? "Deactivate" : "Activate"}
+                      >
+                        <ToggleIcon active={user.isActive} />
+                      </button>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => {
-                  const self = isSelf(user._id);
-                  return (
-                    <tr
-                      key={user._id}
-                      style={{ borderBottom: "1px solid var(--border)", cursor: "pointer", transition: "background 0.15s" }}
-                      onClick={() => openModal(user)}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-hover)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--surface)")}
-                    >
-                      <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", fontWeight: 500, color: "var(--text-primary)" }}>{user.name}</td>
-                      <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>{user.email}</td>
-                      <td style={{ padding: "0.75rem 1.25rem", fontSize: "0.9rem", color: "var(--text-secondary)" }}>{user.role}</td>
-                      <td style={{ padding: "0.75rem 1.25rem" }}>
-                        <span style={statusBadgeStyle(user.isActive)}>{user.isActive ? "Active" : "Inactive"}</span>
-                      </td>
-                      <td style={{ padding: "0.75rem 1.25rem", textAlign: "center" }}>
-                        {!self && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleToggleActive(user._id, user.isActive); }}
-                            style={{ ...iconBtnStyle, color: user.isActive ? "var(--danger)" : "var(--success)" }}
-                            title={user.isActive ? "Deactivate" : "Activate"}
-                          >
-                            <ToggleIcon active={user.isActive} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-          )}
-        </div>
+              );
+            }}
+          />
+        )}
 
         {totalPages > 1 && (
           <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "1.5rem" }}>

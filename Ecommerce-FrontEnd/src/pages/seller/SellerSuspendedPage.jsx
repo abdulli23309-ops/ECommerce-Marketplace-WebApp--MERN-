@@ -96,6 +96,12 @@ const SellerSuspendedPage = () => {
     });
   };
 
+  useEffect(() => {
+    if (!loading && suspension && !suspension.suspended) {
+      navigate("/seller/dashboard");
+    }
+  }, [loading, suspension, navigate]);
+
   if (loading) {
     return (
       <div style={{ maxWidth: "700px", margin: "2rem auto", padding: "2rem" }}>
@@ -116,8 +122,6 @@ const SellerSuspendedPage = () => {
   }
 
   if (!suspension?.suspended) {
-    // Not suspended — redirect to dashboard
-    navigate("/seller/dashboard");
     return null;
   }
 
@@ -186,15 +190,15 @@ const SellerSuspendedPage = () => {
         <div style={{ display: "grid", gap: "0.75rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.75rem", borderBottom: "1px solid var(--border)" }}>
             <span style={{ color: "var(--text-secondary)" }}>Reason</span>
-            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{suspension.reason || "No reason provided"}</span>
+            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{suspension.suspension?.reason || "No reason provided"}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.75rem", borderBottom: "1px solid var(--border)" }}>
             <span style={{ color: "var(--text-secondary)" }}>Suspended On</span>
-            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{formatDate(suspension.suspendedAt)}</span>
+            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{formatDate(suspension.suspension?.suspendedAt)}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.75rem", borderBottom: "1px solid var(--border)" }}>
             <span style={{ color: "var(--text-secondary)" }}>Suspended By</span>
-            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{suspension.suspendedBy?.name || "Administrator"}</span>
+            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{suspension.suspension?.suspendedBy?.name || "Administrator"}</span>
           </div>
         </div>
       </div>
@@ -235,7 +239,7 @@ const SellerSuspendedPage = () => {
                   borderRadius: "8px",
                   border: "none",
                   background: "var(--primary)",
-                  color: "#fff",
+                  color: "var(--primary-contrast)",
                   fontSize: "0.9rem",
                   fontWeight: 600,
                   cursor: "pointer",

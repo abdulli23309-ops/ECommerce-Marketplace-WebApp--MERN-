@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { fetchCart } from "../../services/cartService";
 import { fetchAddresses } from "../../services/addressService";
-import { createPaymentIntent, fetchOrderPreview } from "../../services/orderService";
+import { createPaymentIntent, fetchOrderPreview, cancelOrder } from "../../services/orderService";
 import { validateCoupon } from "../../services/couponService";
 import { getImageUrl } from "../../utils/imageHelper";
 import { formatPKR } from "../../utils/currency";
@@ -104,6 +104,7 @@ const CheckoutPage = () => {
   const [error, setError] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [mobileAccount, setMobileAccount] = useState("");
+  const [step, setStep] = useState(1);
 
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -221,7 +222,12 @@ const CheckoutPage = () => {
 
   const isMobileValid = /^03\d{9}$/.test(mobileAccount);
   const requiresMobile = paymentMethod === "easypaisa" || paymentMethod === "jazzcash";
-  const canPlaceOrder = placing || !selectedAddressId || (paymentMethod === "card" && !stripe) || (requiresMobile && !isMobileValid);
+  const isPlaceOrderDisabled =
+    placing ||
+    !selectedAddressId ||
+    (paymentMethod === "card" && !stripe) ||
+    (requiresMobile && !isMobileValid) ||
+    hasUnavailableItems;
 
   const handlePlaceOrder = async () => {
     if (!selectedAddressId) return setError("Please select a delivery address.");
@@ -249,6 +255,13 @@ const CheckoutPage = () => {
         if (stripeError) {
           setError(stripeError.message);
           setPlacing(false);
+          if (order?._id) {
+            try {
+              await cancelOrder(order._id);
+            } catch {
+              // best effort cancellation
+            }
+          }
           return;
         }
 
@@ -308,89 +321,192 @@ const CheckoutPage = () => {
   return (
     <div style={pageBg}>
       <div style={container}>
+        {/* Step Progress Bar */}
+        <div className="checkout-step-progress-wrapper" style={{ width: '100%', marginBottom: '2.5rem', background: 'var(--surface)', padding: '1.25rem 2rem', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="checkout-step-progress" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+            {/* step 1 */}
+            <div className="step-node" onClick={() => setStep(1)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2, flex: 1 }}>
+              <div className="step-circle" style={{ width: '36px', height: '36px', borderRadius: '50%', background: step >= 1 ? 'var(--primary)' : 'var(--bg-secondary)', color: step >= 1 ? 'var(--primary-contrast)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', border: step >= 1 ? '2px solid var(--primary)' : '2px solid var(--border)', transition: 'all var(--tr-normal)' }}>1</div>
+              <span style={{ fontSize: '0.85rem', fontWeight: step === 1 ? '700' : '500', color: step >= 1 ? 'var(--text-primary)' : 'var(--text-secondary)', marginTop: '6px', transition: 'all var(--tr-normal)' }}>Address</span>
+            </div>
+            <div className="step-line" style={{ flex: 2, height: '2px', background: step >= 2 ? 'var(--primary)' : 'var(--border)', transition: 'all var(--tr-normal)' }} />
+            {/* step 2 */}
+            <div className="step-node" onClick={() => { if (selectedAddressId) setStep(2); }} style={{ cursor: selectedAddressId ? 'pointer' : 'not-allowed', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2, flex: 1 }}>
+              <div className="step-circle" style={{ width: '36px', height: '36px', borderRadius: '50%', background: step >= 2 ? 'var(--primary)' : 'var(--bg-secondary)', color: step >= 2 ? 'var(--primary-contrast)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', border: step >= 2 ? '2px solid var(--primary)' : '2px solid var(--border)', transition: 'all var(--tr-normal)' }}>2</div>
+              <span style={{ fontSize: '0.85rem', fontWeight: step === 2 ? '700' : '500', color: step >= 2 ? 'var(--text-primary)' : 'var(--text-secondary)', marginTop: '6px', transition: 'all var(--tr-normal)' }}>Payment</span>
+            </div>
+            <div className="step-line" style={{ flex: 2, height: '2px', background: step >= 3 ? 'var(--primary)' : 'var(--border)', transition: 'all var(--tr-normal)' }} />
+            {/* step 3 */}
+            <div className="step-node" onClick={() => { if (selectedAddressId && (!requiresMobile || isMobileValid)) setStep(3); }} style={{ cursor: (selectedAddressId && (!requiresMobile || isMobileValid)) ? 'pointer' : 'not-allowed', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2, flex: 1 }}>
+              <div className="step-circle" style={{ width: '36px', height: '36px', borderRadius: '50%', background: step >= 3 ? 'var(--primary)' : 'var(--bg-secondary)', color: step >= 3 ? 'var(--primary-contrast)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', border: step >= 3 ? '2px solid var(--primary)' : '2px solid var(--border)', transition: 'all var(--tr-normal)' }}>3</div>
+              <span style={{ fontSize: '0.85rem', fontWeight: step === 3 ? '700' : '500', color: step >= 3 ? 'var(--text-primary)' : 'var(--text-secondary)', marginTop: '6px', transition: 'all var(--tr-normal)' }}>Confirm</span>
+            </div>
+          </div>
+        </div>
+
         <div style={twoCol}>
           <div style={leftCol}>
-            <div style={card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={sectionTitle}><MapPin /> Delivery Address</h2>
-                <button style={btnGhost} onClick={() => navigate("/addresses")}><Plus /> Add New</button>
-              </div>
-
-              {addresses.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '24px', border: '2px dashed var(--border)', borderRadius: '8px' }}>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '12px' }}>No saved addresses yet.</p>
-                  <button style={btnPrimary} onClick={() => navigate("/addresses")}><Plus /> Add an Address</button>
+            {step === 1 && (
+              <div style={card} className="page-fade-slide">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h2 style={sectionTitle}><MapPin /> Delivery Address</h2>
+                  <button style={btnGhost} onClick={() => navigate("/addresses")}><Plus /> Add New</button>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {addresses.map((addr) => (
-                    <label key={addr.id} className={`checkout-select-card ${selectedAddressId === addr.id ? "selected" : ""}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '16px', borderRadius: '8px', border: selectedAddressId === addr.id ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: selectedAddressId === addr.id ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
-                      <input type="radio" name="address" style={inputRadio} checked={selectedAddressId === addr.id} onChange={() => setSelectedAddressId(addr.id)} />
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{addr.fullName}</p>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          {addr.addressLine1}{addr.addressLine2 ? `, ${addr.addressLine2}` : ""}, {addr.city}
-                          {addr.state ? `, ${addr.state}` : ""} {addr.postalCode || ""}
+
+                {addresses.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px', border: '2px dashed var(--border)', borderRadius: '8px' }}>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '12px' }}>No saved addresses yet.</p>
+                    <button style={btnPrimary} onClick={() => navigate("/addresses")}><Plus /> Add an Address</button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {addresses.map((addr) => (
+                      <label key={addr.id} className={`checkout-select-card ${selectedAddressId === addr.id ? "selected" : ""}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '16px', borderRadius: '8px', border: selectedAddressId === addr.id ? '1px solid var(--primary)' : '1px solid var(--border)', backgroundColor: selectedAddressId === addr.id ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                        <input type="radio" name="address" style={inputRadio} checked={selectedAddressId === addr.id} onChange={() => setSelectedAddressId(addr.id)} />
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{addr.fullName}</p>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {addr.addressLine1}{addr.addressLine2 ? `, ${addr.addressLine2}` : ""}, {addr.city}
+                            {addr.state ? `, ${addr.state}` : ""} {addr.postalCode || ""}
+                          </p>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Phone: {addr.phoneNumber}</p>
+                        </div>
+                        {addr.isDefault && <span style={{ fontSize: '0.75rem', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '999px', border: '1px solid var(--border)' }}>Default</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {selectedAddressId && (
+                  <button
+                    className="vv-btn vv-btn--primary"
+                    style={{ marginTop: '24px', width: '100%', padding: '12px' }}
+                    onClick={() => setStep(2)}
+                  >
+                    Continue to Payment
+                  </button>
+                )}
+              </div>
+            )}
+
+            {step === 2 && (
+              <div style={card} className="page-fade-slide">
+                <h2 style={sectionTitle}>Payment Method</h2>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                  <button onClick={() => setPaymentMethod("card")} className={`checkout-select-card ${paymentMethod === "card" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '20px', borderRadius: '12px', border: paymentMethod === "card" ? '1px solid var(--primary)' : '1px solid var(--border)', backgroundColor: paymentMethod === "card" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <CreditCard />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Credit / Debit Card</span>
+                  </button>
+
+                  <button onClick={() => setPaymentMethod("cod")} className={`checkout-select-card ${paymentMethod === "cod" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '20px', borderRadius: '12px', border: paymentMethod === "cod" ? '1px solid var(--primary)' : '1px solid var(--border)', backgroundColor: paymentMethod === "cod" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <Truck />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Cash on Delivery</span>
+                  </button>
+
+                  <button onClick={() => setPaymentMethod("easypaisa")} className={`checkout-select-card ${paymentMethod === "easypaisa" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '20px', borderRadius: '12px', border: paymentMethod === "easypaisa" ? '1px solid var(--primary)' : '1px solid var(--border)', backgroundColor: paymentMethod === "easypaisa" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <MobileIcon />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>EasyPaisa (Test)</span>
+                  </button>
+
+                  <button onClick={() => setPaymentMethod("jazzcash")} className={`checkout-select-card ${paymentMethod === "jazzcash" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '20px', borderRadius: '12px', border: paymentMethod === "jazzcash" ? '1px solid var(--primary)' : '1px solid var(--border)', backgroundColor: paymentMethod === "jazzcash" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <WalletIcon />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>JazzCash (Test)</span>
+                  </button>
+                </div>
+
+                {(paymentMethod === "easypaisa" || paymentMethod === "jazzcash") && (
+                  <div className="premium-input-wrapper" style={{ marginTop: '24px', position: 'relative' }}>
+                    <input
+                      type="tel"
+                      id="mobileAccount"
+                      value={mobileAccount}
+                      onChange={(e) => setMobileAccount(e.target.value)}
+                      placeholder=" "
+                      className="premium-input"
+                      maxLength="11"
+                      style={{
+                        borderColor: mobileAccount ? (isMobileValid ? 'var(--success)' : 'var(--danger)') : 'var(--border)'
+                      }}
+                    />
+                    <label htmlFor="mobileAccount" className="premium-label">Mobile Account Number (03XXXXXXXXX)</label>
+                    {mobileAccount && !isMobileValid && (
+                      <p style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: '4px' }}>
+                        Must be 11 digits starting with 03
+                      </p>
+                    )}
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                      Test success: {paymentMethod === "easypaisa" ? "03451234567" : "03001234567"}
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      Test failure: 03009999999
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                  <button
+                    className="vv-btn vv-btn--secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => setStep(1)}
+                  >
+                    Back
+                  </button>
+                  <button
+                    className="vv-btn vv-btn--primary"
+                    style={{ flex: 2 }}
+                    disabled={requiresMobile && !isMobileValid}
+                    onClick={() => setStep(3)}
+                  >
+                    Continue to Review
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div style={card} className="page-fade-slide">
+                <h2 style={sectionTitle}>Review & Confirm Order</h2>
+
+                <div style={{ marginBottom: '20px', padding: '16px', border: '1px solid var(--border)', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>Shipping Destination</h4>
+                  {(() => {
+                    const selectedAddr = addresses.find(a => a.id === selectedAddressId);
+                    if (selectedAddr) {
+                      return (
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                          <strong>{selectedAddr.fullName}</strong><br />
+                          {selectedAddr.addressLine1}{selectedAddr.addressLine2 ? `, ${selectedAddr.addressLine2}` : ""}, {selectedAddr.city}<br />
+                          Phone: {selectedAddr.phoneNumber}
                         </p>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Phone: {addr.phoneNumber}</p>
-                      </div>
-                      {addr.isDefault && <span style={{ fontSize: '0.75rem', backgroundColor: 'var(--surface-hover)', color: 'var(--text-secondary)', padding: '2px 8px', borderRadius: '999px' }}>Default</span>}
-                    </label>
-                  ))}
+                      );
+                    }
+                    return <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>No address selected</p>;
+                  })()}
                 </div>
-              )}
-            </div>
 
-            <div style={card}>
-              <h2 style={sectionTitle}>Payment Method</h2>
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                <button onClick={() => setPaymentMethod("card")} className={`checkout-select-card ${paymentMethod === "card" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px', borderRadius: '12px', border: paymentMethod === "card" ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: paymentMethod === "card" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
-                  <CreditCard />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Credit / Debit Card</span>
-                </button>
+                <div style={{ marginBottom: '20px', padding: '16px', border: '1px solid var(--border)', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>Payment System</h4>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+                    {paymentMethod === "card" ? "Credit / Debit Card (Stripe)" : paymentMethod === "cod" ? "Cash on Delivery" : `${paymentMethod} (${mobileAccount})`}
+                  </p>
+                </div>
 
-                <button onClick={() => setPaymentMethod("cod")} className={`checkout-select-card ${paymentMethod === "cod" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px', borderRadius: '12px', border: paymentMethod === "cod" ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: paymentMethod === "cod" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
-                  <Truck />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Cash on Delivery</span>
-                </button>
+                {paymentMethod === "card" && (
+                  <div style={{ marginBottom: '24px', padding: '16px', border: '1px solid var(--border)', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)' }}>
+                    <CardElement options={cardElementOptions} />
+                  </div>
+                )}
 
-                <button onClick={() => setPaymentMethod("easypaisa")} className={`checkout-select-card ${paymentMethod === "easypaisa" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px', borderRadius: '12px', border: paymentMethod === "easypaisa" ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: paymentMethod === "easypaisa" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
-                  <MobileIcon />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>EasyPaisa (Test)</span>
-                </button>
-
-                <button onClick={() => setPaymentMethod("jazzcash")} className={`checkout-select-card ${paymentMethod === "jazzcash" ? "selected" : ""}`} style={{ flex: '1 1 45%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px', borderRadius: '12px', border: paymentMethod === "jazzcash" ? '1px solid transparent' : '1px solid var(--border)', backgroundColor: paymentMethod === "jazzcash" ? 'var(--surface-hover)' : 'var(--surface)', cursor: 'pointer', transition: 'all 0.15s' }}>
-                  <WalletIcon />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>JazzCash (Test)</span>
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    className="vv-btn vv-btn--secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => setStep(2)}
+                  >
+                    Back to Payment
+                  </button>
+                </div>
               </div>
-
-              {paymentMethod === "card" && (
-                <div style={{ marginTop: '24px', padding: '16px', border: '1px solid var(--border)', borderRadius: '8px', backgroundColor: 'var(--input-bg)' }}>
-                  <CardElement options={cardElementOptions} />
-                </div>
-              )}
-
-              {(paymentMethod === "easypaisa" || paymentMethod === "jazzcash") && (
-                <div style={{ marginTop: '24px' }}>
-                  <label className="form-label">Mobile Account Number</label>
-                  <input
-                    type="tel"
-                    value={mobileAccount}
-                    onChange={(e) => setMobileAccount(e.target.value)}
-                    placeholder={paymentMethod === "easypaisa" ? "e.g. 03451234567" : "e.g. 03001234567"}
-                    className="form-input"
-                    maxLength="11"
-                  />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                    Test success: {paymentMethod === "easypaisa" ? "03451234567" : "03001234567"}
-                  </p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Test failure: 03009999999
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           <div style={rightCol}>
@@ -414,7 +530,18 @@ const CheckoutPage = () => {
 
               <div style={{ marginTop: '20px' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Coupon code" disabled={!!appliedCoupon} style={{ flex: 1, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.875rem', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)' }} />
+                  <div className="premium-input-wrapper" style={{ flex: 1, position: 'relative' }}>
+                    <input
+                      type="text"
+                      id="couponCode"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      placeholder=" "
+                      disabled={!!appliedCoupon}
+                      className="premium-input"
+                    />
+                    <label htmlFor="couponCode" className="premium-label">Coupon code</label>
+                  </div>
                   {!appliedCoupon ? <button onClick={applyCoupon} disabled={couponLoading || !couponCode.trim()} style={{ padding: '10px 16px', backgroundColor: couponLoading ? 'var(--disabled-bg)' : 'var(--primary)', color: 'var(--primary-contrast)', border: 'none', borderRadius: '8px', cursor: couponLoading ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>{couponLoading ? "..." : "Apply"}</button> : <button onClick={removeCoupon} style={{ padding: '10px 16px', backgroundColor: 'var(--danger)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>Remove</button>}
                 </div>
                 {couponError && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--danger)' }}>{couponError}</p>}
@@ -458,8 +585,50 @@ const CheckoutPage = () => {
 
               {error && <p style={{ marginTop: '16px', fontSize: '0.875rem', color: 'var(--danger-text)', backgroundColor: 'var(--danger-bg)', padding: '12px', borderRadius: '8px' }}>{error}</p>}
 
-              <button onClick={handlePlaceOrder} disabled={canPlaceOrder || hasUnavailableItems} style={{ marginTop: '24px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: (canPlaceOrder && !hasUnavailableItems) ? 'var(--primary)' : 'var(--disabled-bg)', color: 'var(--primary-contrast)', padding: '12px', borderRadius: '12px', fontWeight: 600, border: 'none', cursor: (canPlaceOrder && !hasUnavailableItems) ? 'pointer' : 'not-allowed', opacity: (canPlaceOrder && !hasUnavailableItems) ? 1 : 0.5, transition: 'all 0.2s' }}>
-                {placing ? <span>Processing...</span> : <><Lock /> Place Order</>}
+              <button
+                onClick={() => {
+                  if (step === 1) {
+                    if (selectedAddressId) setStep(2);
+                  } else if (step === 2) {
+                    if (!requiresMobile || isMobileValid) setStep(3);
+                  } else {
+                    handlePlaceOrder();
+                  }
+                }}
+                disabled={
+                  step === 1
+                    ? !selectedAddressId || hasUnavailableItems
+                    : step === 2
+                      ? (requiresMobile && !isMobileValid) || hasUnavailableItems
+                      : isPlaceOrderDisabled
+                }
+                style={{
+                  marginTop: '24px',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  backgroundColor: (step === 1 ? !selectedAddressId : step === 2 ? (requiresMobile && !isMobileValid) : isPlaceOrderDisabled) ? 'var(--disabled-bg)' : 'var(--primary)',
+                  color: (step === 1 ? !selectedAddressId : step === 2 ? (requiresMobile && !isMobileValid) : isPlaceOrderDisabled) ? 'var(--disabled-text)' : 'var(--primary-contrast)',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: (step === 1 ? !selectedAddressId : step === 2 ? (requiresMobile && !isMobileValid) : isPlaceOrderDisabled) ? 'not-allowed' : 'pointer',
+                  opacity: (step === 1 ? !selectedAddressId : step === 2 ? (requiresMobile && !isMobileValid) : isPlaceOrderDisabled) ? 0.6 : 1,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {placing ? (
+                  <span>Processing...</span>
+                ) : step === 1 ? (
+                  "Continue to Payment"
+                ) : step === 2 ? (
+                  "Continue to Review"
+                ) : (
+                  <><Lock /> Place Order</>
+                )}
               </button>
             </div>
           </div>

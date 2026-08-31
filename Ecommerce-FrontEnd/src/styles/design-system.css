@@ -93,17 +93,17 @@
 .vv-skeleton {
   background: linear-gradient(
     90deg,
-    var(--surface-hover) 25%,
-    var(--border) 37%,
-    var(--surface-hover) 63%
+    var(--bg-secondary) 25%,
+    var(--border) 50%,
+    var(--bg-secondary) 75%
   );
-  background-size: 400% 100%;
-  animation: vv-shimmer 1.4s ease infinite;
+  background-size: 200% 100%;
+  animation: vv-shimmer 1.5s infinite linear;
   border-radius: var(--radius-sm);
 }
 @keyframes vv-shimmer {
-  0% { background-position: 100% 50%; }
-  100% { background-position: 0 50%; }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Respect reduced-motion */
@@ -120,6 +120,7 @@
   min-height: 180px;
 }
 .vv-skeleton--row { height: 3rem; }
+.vv-skeleton--circle { border-radius: 50%; }
 
 /* Product-card grid skeleton */
 .vv-grid-skeleton {
@@ -231,7 +232,7 @@
 .vv-modal__overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1100;
   background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;

@@ -535,39 +535,58 @@ svg {
    5. HOME PAGE & PRODUCTS
    ========================================================================== */
 .hero-banner {
-  background-color: #000000;
-  color: #ffffff;
-  padding: 6rem 1rem;
+  background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 40%),
+              radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.15), transparent 40%),
+              var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 7rem 1rem;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .hero-banner {
+  background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 45%),
+              radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.08), transparent 45%),
+              #080808;
 }
 
 .hero-title {
   font-size: 3rem;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 1rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-subtitle {
-  font-size: 1.125rem;
-  color: #a1a1aa;
+  font-size: 1.15rem;
+  color: var(--text-secondary);
   margin-bottom: 2.5rem;
 }
 
 .hero-search {
-  max-width: 500px;
+  max-width: 600px;
   margin: 0 auto;
   display: flex;
-  background: var(--input-bg);
-  border-radius: 0.25rem;
-  overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md);
+  padding: 6px;
 }
 
 .hero-search input {
   flex: 1;
   border: none;
-  padding: 1rem 1.25rem;
-  font-size: 0.875rem;
+  background: transparent;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
   outline: none;
   color: var(--text-primary);
 }
@@ -576,16 +595,17 @@ svg {
   background-color: var(--primary);
   color: var(--primary-contrast);
   border: none;
-  padding: 0 1.5rem;
+  padding: 0.75rem 2rem;
   font-weight: 600;
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: transform var(--tr-fast), background var(--tr-fast);
 }
 
 .hero-search button:hover {
   background-color: var(--primary-hover);
+  transform: translateY(-1px);
 }
-
 .featured-section {
   padding: 4rem 2rem;
   max-width: 1280px;
@@ -2774,7 +2794,7 @@ select.form-input {
 
 .checkout-select-card.selected {
   border-color: transparent;
-  box-shadow: 0 0 0 1px transparent, 0 12px 30px rgba(139, 92, 246, 0.18);
+  box-shadow: 0 0 0 1px transparent, 0 12px 30px var(--info-bg);
 }
 
 .checkout-select-card.selected::before {
@@ -3440,7 +3460,7 @@ svg {
 
 .checkout-select-card.selected {
   border-color: transparent;
-  box-shadow: 0 0 0 1px transparent, 0 12px 30px rgba(139, 92, 246, 0.18);
+  box-shadow: 0 0 0 1px transparent, 0 12px 30px var(--info-bg);
 }
 
 .checkout-select-card.selected::before {
@@ -4209,3 +4229,271 @@ textarea {
 [data-theme="dark"] .product-modal strong {
   color: #ffffff !important;
 }
+
+/* ==========================================================================
+   REDESIGN SYSTEM EXTENSIONS (Aesthetics, Transitions & Micro-interactions)
+   ========================================================================== */
+
+/* Page transition slide and fade */
+.page-fade-slide {
+  animation: pageFadeSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes pageFadeSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Horizontal tab and sub-route switches slide-in */
+.sub-route-slide {
+  animation: subRouteSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes subRouteSlide {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Premium glassmorphic surface */
+.glass-surface {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .glass-surface {
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Glassmorphic Cards with subtle ambient hover glows */
+.premium-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 20px var(--shadow);
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.24s;
+}
+
+.premium-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--primary) 8%, var(--shadow));
+}
+
+/* Glassmorphic Navbar styles */
+.navbar.glassmorphic {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="dark"] .navbar.glassmorphic {
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Input Form Redesign with floating animations */
+.premium-input-wrapper {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.premium-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.premium-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+/* Dynamic Active Navigation Link Indicator Line */
+.nav-link-indicator-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+
+.nav-link-indicator-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--primary);
+  transition: width 0.24s cubic-bezier(0.16, 1, 0.3, 1), left 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(-50%);
+}
+
+.nav-link-indicator-wrapper.is-active::after {
+  width: 100%;
+}
+
+/* Ambient shadows for floating glass cards */
+.ambient-glow-shadow {
+  box-shadow: 0 20px 50px color-mix(in srgb, var(--primary) 10%, rgba(0,0,0,0.12));
+}
+
+/* Sparkline animations and visuals */
+.sparkline-svg {
+  filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--primary) 20%, transparent));
+}
+
+/* Badge & Cart counter keyframes */
+@keyframes pulse-badge {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  70% { transform: scale(1.06); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+@keyframes cartPop {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Card entrance stagger animation */
+.card-entrance {
+  opacity: 0;
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Product card image wrapper and quick-view styles */
+.product-image-wrapper {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-secondary);
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quick-view-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+}
+
+.product-card:hover .quick-view-overlay {
+  opacity: 1;
+}
+
+.quick-view-btn {
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(8px);
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), background var(--tr-fast);
+}
+
+.product-card:hover .quick-view-btn {
+  transform: translateY(0);
+}
+
+.quick-view-btn:hover {
+  background: var(--surface-hover);
+  transform: scale(1.03);
+}
+
+/* Modal backdrop fade-in blur transition */
+.modal-backdrop-blur {
+  animation: backdropFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* Modal/Drawer slide-in animation */
+.drawer-slide-in {
+  animation: drawerSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes drawerSlideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Reduced motion query standard reset */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+}
+

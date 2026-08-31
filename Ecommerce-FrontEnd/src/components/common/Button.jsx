@@ -48,6 +48,7 @@ const Button = ({
         href={to}
         className={cls}
         style={style}
+        onClick={onClick}
         aria-disabled={mergedDisabled}
         {...rest}
       >
@@ -62,6 +63,7 @@ const Button = ({
       className={cls}
       disabled={mergedDisabled}
       style={style}
+      onClick={onClick}
       {...rest}
     >
       {inner}

@@ -88,7 +88,7 @@ const SellerAppealsPage = () => {
             marginTop: "1rem",
             padding: "0.75rem 1.5rem",
             background: "var(--primary)",
-            color: "#fff",
+            color: "var(--primary-contrast)",
             borderRadius: "8px",
             textDecoration: "none",
             fontWeight: 600,
@@ -131,7 +131,7 @@ const SellerAppealsPage = () => {
               SUSPENDED
             </div>
             <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
-              Reason: {suspension.reason || "No reason provided"}
+              Reason: {suspension.suspension?.reason || "No reason provided"}
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -143,7 +143,7 @@ const SellerAppealsPage = () => {
                   borderRadius: "8px",
                   border: "none",
                   background: "var(--primary)",
-                  color: "#fff",
+                  color: "var(--primary-contrast)",
                   fontSize: "0.9rem",
                   fontWeight: 600,
                   textDecoration: "none",
@@ -199,7 +199,7 @@ const SellerAppealsPage = () => {
                   marginTop: "1rem",
                   padding: "0.75rem 1.5rem",
                   background: "var(--primary)",
-                  color: "#fff",
+                  color: "var(--primary-contrast)",
                   borderRadius: "8px",
                   textDecoration: "none",
                   fontWeight: 600,

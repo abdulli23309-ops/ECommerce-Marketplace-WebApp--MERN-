@@ -128,7 +128,7 @@ const SellerAppealNewPage = () => {
             marginTop: "1.5rem",
             padding: "0.75rem 1.5rem",
             background: "var(--primary)",
-            color: "#fff",
+            color: "var(--primary-contrast)",
             borderRadius: "8px",
             textDecoration: "none",
             fontWeight: 600,
@@ -212,7 +212,7 @@ const SellerAppealNewPage = () => {
               display: "inline-block",
               padding: "0.75rem 1.5rem",
               background: "var(--primary)",
-              color: "#fff",
+              color: "var(--primary-contrast)",
               borderRadius: "8px",
               textDecoration: "none",
               fontWeight: 600,
@@ -297,7 +297,7 @@ const SellerAppealNewPage = () => {
               display: "inline-block",
               padding: "0.75rem 1.5rem",
               background: "var(--primary)",
-              color: "#fff",
+              color: "var(--primary-contrast)",
               borderRadius: "8px",
               textDecoration: "none",
               fontWeight: 600,
@@ -355,15 +355,15 @@ const SellerAppealNewPage = () => {
         <div style={{ display: "grid", gap: "0.75rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--text-secondary)" }}>Reason</span>
-            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{suspension.reason || "No reason provided"}</span>
+            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{suspension.suspension?.reason || "No reason provided"}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--text-secondary)" }}>Suspended On</span>
-            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{formatDate(suspension.suspendedAt)}</span>
+            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{formatDate(suspension.suspension?.suspendedAt)}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--text-secondary)" }}>Suspended By</span>
-            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{suspension.suspendedBy?.name || "Administrator"}</span>
+            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{suspension.suspension?.suspendedBy?.name || "Administrator"}</span>
           </div>
         </div>
       </div>
@@ -452,7 +452,7 @@ const SellerAppealNewPage = () => {
                 borderRadius: "8px",
                 border: "none",
                 background: "var(--primary)",
-                color: "#fff",
+                color: "var(--primary-contrast)",
                 fontSize: "0.9rem",
                 fontWeight: 600,
                 cursor: submitting ? "not-allowed" : "pointer",

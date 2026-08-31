@@ -73,11 +73,12 @@ export const getPaymentStatusLabel = (method, status) => {
     if (status === "Refunded") return "Refunded";
     return "Payment on Delivery";
   }
+  if (status === "Pending") return "Failed";
   return status || "—";
 };
 
 export const getPaymentTone = (method, status) => {
-  if (status === "Failed") return "danger";
+  if (status === "Failed" || (method !== COD && status === "Pending")) return "danger";
   if (status === "Completed" || status === "Refunded") return "success";
   if (method === COD) return "neutral"; // expected state, not a warning
   return "warning";

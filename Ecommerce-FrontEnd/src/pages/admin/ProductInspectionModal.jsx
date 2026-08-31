@@ -101,16 +101,17 @@ const ProductInspectionModal = ({ product, onClose, onStatusChange }) => {
     <>
       <div
         onClick={onClose}
+        className="modal-backdrop-blur"
         style={{
           position: 'fixed',
           inset: 0,
           backgroundColor: 'rgba(0,0,0,0.6)',
-          backdropFilter: 'blur(6px)',
           zIndex: 999,
         }}
       />
 
    <div
+  className="drawer-slide-in"
   style={{
     position: 'fixed',
     top: 0,

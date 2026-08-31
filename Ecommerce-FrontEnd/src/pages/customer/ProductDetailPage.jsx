@@ -158,6 +158,19 @@ const ProductDetailPage = () => {
     }
   };
 
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      const mainButton = document.querySelector(".btn-add-to-cart");
+      if (mainButton) {
+        const rect = mainButton.getBoundingClientRect();
+        setShowStickyBar(rect.bottom < 0);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const handleAddToWishlist = async () => {
     if (!user) {
       navigate("/login");
@@ -269,27 +282,31 @@ const ProductDetailPage = () => {
                 gap: "1rem",
                 marginTop: "1rem",
                 overflowX: "auto",
+                padding: "4px 0",
               }}
             >
-              {product.images.map((img, index) => (
-                <img
-                  key={index}
-                  src={getImageUrl(img)}
-                  alt={`${product.name} thumbnail ${index + 1}`}
-                  onClick={() => setSelectedImage(getImageUrl(img))}
-                  style={{
-                    width: "80px",
-                    height: "80px",
-                    objectFit: "cover",
-                    cursor: "pointer",
-                    border:
-                      mainImage === getImageUrl(img)
-                        ? "2px solid var(--primary)"
-                        : "1px solid var(--border)",
-                    opacity: mainImage === getImageUrl(img) ? 1 : 0.6,
-                  }}
-                />
-              ))}
+              {product.images.map((img, index) => {
+                const isActive = mainImage === getImageUrl(img);
+                return (
+                  <img
+                    key={index}
+                    src={getImageUrl(img)}
+                    alt={`${product.name} thumbnail ${index + 1}`}
+                    onClick={() => setSelectedImage(getImageUrl(img))}
+                    style={{
+                      width: "80px",
+                      height: "80px",
+                      objectFit: "cover",
+                      cursor: "pointer",
+                      borderRadius: "8px",
+                      border: isActive ? "2px solid var(--primary)" : "1px solid var(--border)",
+                      opacity: isActive ? 1 : 0.65,
+                      boxShadow: isActive ? "0 0 12px color-mix(in srgb, var(--primary) 35%, transparent)" : "none",
+                      transition: "all var(--tr-fast)",
+                    }}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -440,17 +457,22 @@ const ProductDetailPage = () => {
             >
               <div
                 className="quantity-control"
-                style={{ display: "flex", border: "1px solid var(--border)" }}
+                style={{ display: "flex", border: "1px solid var(--border)", borderRadius: "8px", overflow: "hidden", background: "var(--surface)" }}
               >
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   style={{
-                    padding: "0.75rem 1rem",
+                    padding: "0.75rem 1.25rem",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
                     fontSize: "1.2rem",
+                    fontWeight: "bold",
+                    color: "var(--text-primary)",
+                    transition: "background var(--tr-fast)",
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-hover)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                 >
                   −
                 </button>
@@ -461,6 +483,8 @@ const ProductDetailPage = () => {
                     borderRight: "1px solid var(--border)",
                     display: "flex",
                     alignItems: "center",
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
                   }}
                 >
                   {quantity}
@@ -471,36 +495,34 @@ const ProductDetailPage = () => {
                   }
                   disabled={quantity >= product.stock}
                   style={{
-                    padding: "0.75rem 1rem",
+                    padding: "0.75rem 1.25rem",
                     background: "none",
                     border: "none",
                     cursor:
                       quantity >= product.stock ? "not-allowed" : "pointer",
                     fontSize: "1.2rem",
+                    fontWeight: "bold",
+                    color: "var(--text-primary)",
                     opacity: quantity >= product.stock ? 0.5 : 1,
+                    transition: "background var(--tr-fast)",
                   }}
+                  onMouseEnter={(e) => { if (quantity < product.stock) e.currentTarget.style.background = "var(--surface-hover)"; }}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                 >
                   +
                 </button>
               </div>
 
               <button
-                className="btn-add-to-cart"
+                className="btn-add-to-cart vv-btn vv-btn--primary"
                 onClick={handleAddToCart}
                 disabled={addingToCart || isOwnProduct}
                 style={{
                   flex: 1,
                   padding: "0.85rem",
-                  background: isOwnProduct
-                    ? "var(--text-muted)"
-                    : "var(--primary)",
-                  color: "var(--primary-contrast)",
-                  border: "none",
-                  cursor:
-                    addingToCart || isOwnProduct ? "not-allowed" : "pointer",
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
+                  borderRadius: "8px",
+                  fontWeight: "700",
+                  letterSpacing: "0.5px",
                 }}
               >
                 {isOwnProduct
@@ -512,12 +534,11 @@ const ProductDetailPage = () => {
 
               <button
                 onClick={handleAddToWishlist}
+                className="vv-btn vv-btn--secondary"
                 style={{
                   marginLeft: "0.5rem",
-                  background: "none",
-                  border: "1px solid var(--border)",
-                  borderRadius: "6px",
-                  padding: "0.75rem 1rem",
+                  borderRadius: "8px",
+                  padding: "0.75rem 1.25rem",
                   cursor: "pointer",
                   color: "var(--text-secondary)",
                   display: "flex",
@@ -714,6 +735,45 @@ const ProductDetailPage = () => {
                 </Link>
               );
             })}
+          </div>
+        </div>
+      )}
+      {showStickyBar && product.stock > 0 && (
+        <div className="sticky-action-bar page-fade-slide" style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'color-mix(in srgb, var(--surface) 92%, transparent)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderTop: '1px solid var(--border)',
+          boxShadow: '0 -8px 30px rgba(0,0,0,0.06)',
+          padding: '0.85rem 2rem',
+          zIndex: 100,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '2rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {product.images && product.images.length > 0 && (
+              <img src={getImageUrl(product.images[0])} alt={product.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', border: "1px solid var(--border)" }} />
+            )}
+            <div>
+              <p style={{ fontWeight: 600, color: 'var(--text-primary)', margin: 0, fontSize: '0.9rem' }}>{product.name}</p>
+              <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.8rem', fontFamily: 'monospace', fontWeight: 600 }}>PKR {product.price?.toLocaleString()}</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <button
+              onClick={handleAddToCart}
+              disabled={addingToCart || isOwnProduct}
+              className="vv-btn vv-btn--primary"
+              style={{ padding: '0.6rem 1.75rem', borderRadius: '8px', fontSize: '0.85rem' }}
+            >
+              {isOwnProduct ? "Own Product" : addingToCart ? "Adding..." : "Add to Cart"}
+            </button>
           </div>
         </div>
       )}

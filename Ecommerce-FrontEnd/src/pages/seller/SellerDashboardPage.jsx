@@ -161,6 +161,7 @@ const SellerDashboardPage = () => {
       color: "var(--info)",
       bg: "var(--info-bg)",
       to: "/seller/products",
+      sparklinePath: "M0,25 Q20,15 40,20 T80,10 T100,5",
     },
     {
       label: "Approved Products",
@@ -169,6 +170,7 @@ const SellerDashboardPage = () => {
       color: "var(--success)",
       bg: "var(--success-bg)",
       to: "/seller/products",
+      sparklinePath: "M0,20 Q20,25 40,15 T80,12 T100,8",
     },
     {
       label: "Pending Approval",
@@ -177,6 +179,7 @@ const SellerDashboardPage = () => {
       color: "var(--warning)",
       bg: "var(--warning-bg)",
       to: "/seller/products",
+      sparklinePath: "M0,5 Q20,12 40,8 T80,22 T100,15",
     },
     {
       label: "Low Stock",
@@ -186,6 +189,7 @@ const SellerDashboardPage = () => {
       bg: "var(--danger-bg)",
       to: "/seller/products",
       warning: Number(stats.lowStockCount) >= 1,
+      sparklinePath: "M0,8 Q20,5 40,10 T80,15 T100,12",
     },
   ];
 
@@ -197,6 +201,7 @@ const SellerDashboardPage = () => {
       color: "var(--info)",
       bg: "var(--info-bg)",
       to: "/seller/orders",
+      sparklinePath: "M0,15 Q25,8 50,18 T100,12",
     },
     {
       label: "Monthly Orders",
@@ -205,6 +210,7 @@ const SellerDashboardPage = () => {
       color: "var(--info)",
       bg: "var(--info-bg)",
       to: "/seller/orders",
+      sparklinePath: "M0,20 Q25,12 50,22 T100,15",
     },
     {
       label: "Total Revenue",
@@ -214,6 +220,7 @@ const SellerDashboardPage = () => {
       bg: "var(--success-bg)",
       highlight: true,
       to: "/seller/orders",
+      sparklinePath: "M0,28 Q25,20 50,10 T100,2",
     },
     {
       label: "Fulfilled Orders",
@@ -222,6 +229,7 @@ const SellerDashboardPage = () => {
       color: "var(--success)",
       bg: "var(--success-bg)",
       to: "/seller/orders",
+      sparklinePath: "M0,22 Q25,15 50,12 T100,8",
     },
     {
       label: "Avg Order Value",
@@ -230,6 +238,7 @@ const SellerDashboardPage = () => {
       color: "var(--info)",
       bg: "var(--info-bg)",
       to: "/seller/orders",
+      sparklinePath: "M0,12 Q25,18 50,15 T100,12",
     },
     {
       label: "Pending Shipments",
@@ -238,6 +247,7 @@ const SellerDashboardPage = () => {
       color: "var(--warning)",
       bg: "var(--warning-bg)",
       to: "/seller/shipments",
+      sparklinePath: "M0,5 Q25,12 50,8 T100,15",
     },
     {
       label: "Cancelled Orders",
@@ -246,6 +256,7 @@ const SellerDashboardPage = () => {
       color: "var(--danger)",
       bg: "var(--danger-bg)",
       to: "/seller/orders",
+      sparklinePath: "M0,5 Q25,8 50,5 T100,4",
     },
     {
       label: "Return Rate",
@@ -254,6 +265,7 @@ const SellerDashboardPage = () => {
       color: "var(--danger)",
       bg: "var(--danger-bg)",
       to: "/seller/returns",
+      sparklinePath: "M0,15 Q25,12 50,18 T100,12",
     },
     {
       label: "Pending Reviews",
@@ -262,6 +274,7 @@ const SellerDashboardPage = () => {
       color: "var(--warning)",
       bg: "var(--warning-bg)",
       to: "/seller/reviews",
+      sparklinePath: "M0,8 Q25,12 50,10 T100,8",
     },
     {
       label: "Average Rating",
@@ -274,6 +287,7 @@ const SellerDashboardPage = () => {
       warning:
         stats.averageRating > 0 &&
         Number(stats.averageRating) < SELLER_LOW_RATING_THRESHOLD,
+      sparklinePath: "M0,25 Q25,22 50,24 T100,23",
     },
   ];
 
@@ -323,21 +337,15 @@ const SellerDashboardPage = () => {
           {stats.warningCount > 0 && ` Warnings: ${stats.warningCount}/3`}
         </div>
       )}
-
-      <section style={{ marginBottom: "2.5rem" }}>
+          <section style={{ marginBottom: "2.5rem" }}>
         <h3 style={sectionHeaderStyle}>Product Overview</h3>
         <div style={gridStyle}>
           {productCards.map((card) => (
             <div
               key={card.label}
-              style={cardStyle}
-              className={card.warning ? "stat-card-warning-red" : ""}
+              className={`metric-card premium-card ambient-glow-shadow ${card.warning ? "stat-card-warning-red" : ""}`}
               onClick={() => handleCardClick(card.to)}
-              onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.transform = "none";
-              }}
+              style={{ display: "flex", flexDirection: "column", cursor: "pointer", textDecoration: "none", color: "inherit" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -354,6 +362,17 @@ const SellerDashboardPage = () => {
               <span style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
                 {card.value}
               </span>
+
+              {/* Sparkline Graph */}
+              <svg className="sparkline-svg" viewBox="0 0 100 30" width="100%" height="30" style={{ marginTop: '8px', display: 'block', overflow: 'visible' }}>
+                <path
+                  d={card.sparklinePath}
+                  fill="none"
+                  stroke={card.warning ? "var(--danger)" : "var(--primary)"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
             </div>
           ))}
         </div>
@@ -365,14 +384,9 @@ const SellerDashboardPage = () => {
           {salesCards.map((card) => (
             <div
               key={card.label}
-              style={cardStyle}
-              className={card.warning ? "stat-card-warning-red" : ""}
+              className={`metric-card premium-card ambient-glow-shadow ${card.warning ? "stat-card-warning-red" : ""}`}
               onClick={() => handleCardClick(card.to)}
-              onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.transform = "none";
-              }}
+              style={{ display: "flex", flexDirection: "column", cursor: "pointer", textDecoration: "none", color: "inherit" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -389,8 +403,20 @@ const SellerDashboardPage = () => {
               <span style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
                 {card.value}
               </span>
+
+              {/* Sparkline Graph */}
+              <svg className="sparkline-svg" viewBox="0 0 100 30" width="100%" height="30" style={{ marginTop: '8px', display: 'block', overflow: 'visible' }}>
+                <path
+                  d={card.sparklinePath}
+                  fill="none"
+                  stroke={card.warning ? "var(--danger)" : "var(--primary)"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+
               {card.sub && (
-                <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: "4px" }}>
                   {card.sub}
                 </span>
               )}

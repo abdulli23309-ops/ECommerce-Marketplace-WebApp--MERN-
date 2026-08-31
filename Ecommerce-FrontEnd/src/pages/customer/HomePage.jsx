@@ -195,10 +195,18 @@ const HomePage = () => {
 
       {/* Featured Products */}
       <section className="featured-section">
-        <h3 className="section-title">New Arrivals</h3>
+        <h3 className="section-title" style={{ fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: "2rem" }}>New Arrivals</h3>
 
         {loading ? (
-          <GridSkeleton count={8} />
+          <div className="vv-grid-skeleton">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="vv-grid-skeleton__item premium-card" style={{ padding: "1rem" }}>
+                <span className="vv-skeleton" style={{ height: "260px", display: "block", borderRadius: "8px" }} />
+                <span className="vv-skeleton" style={{ height: "1.25rem", width: "80%", marginTop: "0.75rem", display: "block" }} />
+                <span className="vv-skeleton" style={{ height: "1rem", width: "40%", marginTop: "0.5rem", display: "block" }} />
+              </div>
+            ))}
+          </div>
         ) : products.length === 0 ? (
           <EmptyState
             title="No products available right now"
@@ -206,21 +214,20 @@ const HomePage = () => {
           />
         ) : (
           <div className="product-grid">
-            {products.map((product) => (
+            {products.map((product, idx) => (
               <Link
                 to={productPath(product)}
                 key={product._id || product.id}
-                className="product-card"
+                className="product-card card-entrance premium-card"
+                style={{ animationDelay: `${idx * 0.06}s`, position: "relative" }}
               >
-                <div
-                  style={{
-                    backgroundColor: "var(--bg-secondary)",
-                    height: "260px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+                {product.freeDelivery === true && (
+                  <div style={{ position: "absolute", top: "12px", left: "12px", zIndex: 3, filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1))" }}>
+                    <FreeDeliveryBadge />
+                  </div>
+                )}
+
+                <div className="product-image-wrapper">
                   {product.images && product.images.length > 0 ? (
                     <img
                       src={getImageUrl(product.images[0])}
@@ -232,15 +239,14 @@ const HomePage = () => {
                       No Image
                     </span>
                   )}
+                  <div className="quick-view-overlay">
+                    <span className="quick-view-btn">Quick View</span>
+                  </div>
                 </div>
 
                 <div className="product-details">
                   <p className="product-name">{product.name}</p>
-                  <p className="product-price">PKR {formatPKR(product.price)}</p>
-
-                  {product.freeDelivery === true && (
-                    <FreeDeliveryBadge style={{ marginTop: "0.5rem" }} />
-                  )}
+                  <p className="product-price" style={{ fontFamily: "monospace", fontWeight: 600 }}>PKR {formatPKR(product.price)}</p>
                 </div>
               </Link>
             ))}
@@ -251,24 +257,17 @@ const HomePage = () => {
       {/* Recently Viewed */}
       {recentlyViewed.length > 0 && (
         <section className="featured-section">
-          <h3 className="section-title">Recently Viewed</h3>
+          <h3 className="section-title" style={{ fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: "2rem" }}>Recently Viewed</h3>
 
           <div className="product-grid">
-            {recentlyViewed.map((product) => (
+            {recentlyViewed.map((product, idx) => (
               <Link
                 to={`/products/${product.id || product._id}`}
                 key={product.id || product._id}
-                className="product-card"
+                className="product-card card-entrance premium-card"
+                style={{ animationDelay: `${idx * 0.06}s`, position: "relative" }}
               >
-                <div
-                  style={{
-                    backgroundColor: "var(--bg-secondary)",
-                    height: "260px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+                <div className="product-image-wrapper">
                   {product.image ? (
                     <img
                       src={getImageUrl(product.image)}
@@ -280,11 +279,14 @@ const HomePage = () => {
                       No Image
                     </span>
                   )}
+                  <div className="quick-view-overlay">
+                    <span className="quick-view-btn">Quick View</span>
+                  </div>
                 </div>
 
                 <div className="product-details">
                   <p className="product-name">{product.name}</p>
-                  <p className="product-price">PKR {formatPKR(product.price)}</p>
+                  <p className="product-price" style={{ fontFamily: "monospace", fontWeight: 600 }}>PKR {formatPKR(product.price)}</p>
                 </div>
               </Link>
             ))}

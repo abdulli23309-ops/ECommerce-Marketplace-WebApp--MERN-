@@ -14,6 +14,7 @@ import './styles/design-system.css'
 import './styles/orders.css'
 import './styles/customer-redesign.css'
 import './styles/returns-luxury.css'
+import './styles/sidebar-redesign.css'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
