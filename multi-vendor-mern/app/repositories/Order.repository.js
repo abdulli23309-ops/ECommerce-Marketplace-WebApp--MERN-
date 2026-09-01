@@ -80,7 +80,16 @@ export const findSellerOrderById = (id) =>
   SellerOrder.findById(id).populate('store');
 
 export const updateSellerOrderStatus = (id, status) =>
-  SellerOrder.findByIdAndUpdate(id, { status }, { new: true });
+  SellerOrder.findByIdAndUpdate(
+    id,
+    {
+      status,
+      // Stamp the delivery timestamp the moment the package is marked Delivered.
+      // Used to enforce the customer return window (see Return.service.js).
+      ...(status === 'Delivered' && { deliveredAt: new Date() }),
+    },
+    { new: true }
+  );
 
 export const findAllSellerOrdersByParentOrder = (parentOrderId) =>
   SellerOrder.find({ parentOrder: parentOrderId });

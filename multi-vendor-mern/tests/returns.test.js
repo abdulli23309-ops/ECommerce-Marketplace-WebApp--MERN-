@@ -71,6 +71,7 @@ const seedReturnData = async () => {
     store: store._id,
     subTotal: 500,
     status: 'Delivered',
+    deliveredAt: new Date(),
     items: [
       {
         product: product._id,
@@ -81,7 +82,7 @@ const seedReturnData = async () => {
     ],
   });
 
-  return { customer, seller, store, product, sellerOrder };
+  return { customer, seller, store, product, sellerOrder, parentOrder };
 };
 
 describe('Return API', () => {
@@ -307,22 +308,8 @@ describe('Return API', () => {
     expect(returnResA.body.data.quantity).toBe(2);
     expect(returnResA.body.data.refundAmount).toBe(400);
 
-    // Returning 1 unit of Product B in the same seller order (independent return)
-    const returnResB = await request(app)
-      .post('/api/v1/returns')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        sellerOrderId: sellerOrder._id.toString(),
-        productId: productB._id.toString(),
-        quantity: 1,
-        reason: 'Wrong item received',
-      })
-      .expect(201);
-
-    expect(returnResB.body.data.quantity).toBe(1);
-    expect(returnResB.body.data.refundAmount).toBe(350);
-
-    // Reject invalid quantity exceeding purchased quantity
+    // Reject invalid quantity exceeding purchased quantity (before the
+    // duplicate guard consumes the package)
     const invalidQtyRes = await request(app)
       .post('/api/v1/returns')
       .set('Authorization', `Bearer ${token}`)
@@ -335,5 +322,89 @@ describe('Return API', () => {
       .expect(400);
 
     expect(invalidQtyRes.body.message).toContain('Return quantity must be between 1 and 2');
+
+    // A second return for the same seller order (different product) is
+    // rejected — one return per package, ever.
+    const returnResB = await request(app)
+      .post('/api/v1/returns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        sellerOrderId: sellerOrder._id.toString(),
+        productId: productB._id.toString(),
+        quantity: 1,
+        reason: 'Wrong item received',
+      })
+      .expect(409);
+
+    expect(returnResB.body.message).toContain('already exists');
+  });
+
+  it('rejects return request after the 4-day return window has closed', async () => {
+    const { customer, product, sellerOrder } = await seedReturnData();
+
+    // Simulate a delivery that happened 5 days ago
+    await SellerOrder.findByIdAndUpdate(sellerOrder._id, {
+      deliveredAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    });
+
+    const token = generateTestToken({
+      sub: customer._id.toString(),
+      roles: ['Customer'],
+    });
+
+    const res = await request(app)
+      .post('/api/v1/returns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        sellerOrderId: sellerOrder._id.toString(),
+        productId: product._id.toString(),
+        reason: 'Item is defective/broken',
+        images: [],
+      })
+      .expect(400);
+
+    expect(res.body.message).toContain('return window has closed');
+  });
+
+  it('allows return request within the 4-day return window and exposes returnInfo on order detail', async () => {
+    const { customer, product, sellerOrder, parentOrder } = await seedReturnData();
+
+    // Delivered 2 days ago — inside the window
+    await SellerOrder.findByIdAndUpdate(sellerOrder._id, {
+      deliveredAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    });
+
+    const token = generateTestToken({
+      sub: customer._id.toString(),
+      roles: ['Customer'],
+    });
+
+    const createRes = await request(app)
+      .post('/api/v1/returns')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        sellerOrderId: sellerOrder._id.toString(),
+        productId: product._id.toString(),
+        reason: 'Item is defective/broken',
+        images: [],
+      })
+      .expect(201);
+
+    expect(createRes.body.data.status).toBe('PENDING_ADMIN_REVIEW');
+
+    // Order detail contract: existing return is reported so the UI hides
+    // "Request Return" and shows "View Return" instead.
+    const orderRes = await request(app)
+      .get(`/api/v1/orders/${parentOrder._id.toString()}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    const enriched = orderRes.body.data.sellerOrders.find(
+      (so) => so._id === sellerOrder._id.toString()
+    );
+    expect(enriched.returnInfo.exists).toBe(true);
+    expect(enriched.returnInfo.status).toBe('PENDING_ADMIN_REVIEW');
+    expect(enriched.returnInfo.canRequestReturn).toBe(false);
+    expect(enriched.returnInfo.returnWindowDays).toBe(4);
   });
 });

@@ -1,4 +1,5 @@
 import express from 'express';
+import './models/init.js';
 import authRoutes from './routes/Auth.routes.js';
 import authorizationTestRoutes from './routes/AuthorizationTest.routes.js';
 import { setupAppMiddleware, errorHandler } from './middleware/init.js';

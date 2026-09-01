@@ -223,52 +223,24 @@ const SellerLayout = () => {
             </svg>
           </button>
 
-          <button
-            type="button"
-            className="sidebar-collapse-toggle"
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={toggleCollapse}
-          >
-            {isCollapsed ? "›" : "‹"}
-          </button>
-
           {/* 1. HEADER */}
           <div className="sidebar-header" style={{ height: `${headerHeight}px` }}>
-            <Link
-              to="/"
-              aria-label="VendorVerse home"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                minWidth: 0,
-                maxWidth: "100%",
-                textDecoration: "none",
-                color: "inherit",
-              }}
-            >
-              <BrandLogo
-                className="dashboard-brand-mark"
-                variant="mark"
-                style={{ maxWidth: "100%", height: "auto", flexShrink: 0 }}
-              />
-              <BrandLogo
-                className="dashboard-brand-wordmark"
-                variant="wordmark"
-                style={{
-                  maxWidth: "100%",
-                  height: "auto",
-                  flexShrink: 1,
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
-                }}
-              />
+            <Link aria-label="VendorVerse home" className="brand-container" to="/">
+              <BrandLogo className="dashboard-brand-mark" variant="mark" style={{ width: "34px", height: "34px", minWidth: "34px", flexShrink: 0 }} />
+              <div className="brand-text-wrapper">
+                <BrandLogo className="dashboard-brand-wordmark" variant="wordmark" style={{ height: "20px", maxWidth: "120px", width: "auto" }} />
+                <span className="sidebar-role-text">Seller</span>
+              </div>
             </Link>
 
-            <span className="sidebar-role-text">
-              Seller
-            </span>
+            <button
+              type="button"
+              className="sidebar-collapse-toggle collapse-toggle-btn"
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              onClick={toggleCollapse}
+            >
+              {isCollapsed ? "›" : "‹"}
+            </button>
           </div>
 
           {/* 2. SCROLLABLE MIDDLE */}

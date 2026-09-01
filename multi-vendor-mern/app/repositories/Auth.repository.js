@@ -1,5 +1,6 @@
 import User from '../models/User.model.js';
 import Role from '../models/Role.model.js';
+import PermissionGroup from '../models/PermissionGroup.model.js';
 import Permission from '../models/Permission.model.js';
 import RefreshToken from '../models/RefreshToken.model.js';
 

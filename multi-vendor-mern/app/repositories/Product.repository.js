@@ -74,6 +74,13 @@ export const bulkSetStatusByStore = async (storeId, status, session) =>
     session ? { session } : {}
   );
 
+export const bulkRestoreSuspendedByStore = async (storeId, session) =>
+  Product.updateMany(
+    { store: storeId, isDeleted: false, status: 'Suspended' },
+    { $set: { status: 'Approved' } },
+    session ? { session } : {}
+  );
+
 export const findPublic = async (query = {}) => {
   const allowedStoreIds = await storeRepo.getPubliclyActiveStoreIds();
   return Product.find({

@@ -201,6 +201,12 @@ export const reinstateSeller = async (sellerProfileId, actorId) => {
       { session }
     );
 
+    // Frozen business rule D5 (#5/#6): products suspended because of the
+    // seller suspension REMAIN Suspended after reinstatement. They only
+    // return to public via Suspended -> PendingApproval -> Admin Approve,
+    // through the seller's explicit republish action. No automatic
+    // product restoration happens here.
+
     await session.commitTransaction();
   } catch (err) {
     await session.abortTransaction();
@@ -221,12 +227,38 @@ export const reinstateSeller = async (sellerProfileId, actorId) => {
           },
         }
       );
+      // No automatic product restoration (see D5 note above).
     } else {
       throw err;
     }
   } finally {
     await session.endSession();
   }
+
+  // If a Pending appeal still exists for this seller, close it as Superseded —
+  // the seller is already reinstated, so there is nothing left for the appeal
+  // to decide. Prevents orphaned Pending appeals after a direct admin
+  // reinstatement. Safe no-op when no pending appeal exists. (Appeal
+  // approve/reject flows are unaffected: they never call this function, and
+  // this only touches appeals still in Pending state.)
+  const pendingAppeals = await appealRepo.findPendingBySellerProfile(sellerProfileId);
+  for (const pendingAppeal of pendingAppeals) {
+    await appealRepo.findByIdAndUpdate(pendingAppeal._id, {
+      status: 'Superseded',
+      decidedAt: new Date(),
+      decidedBy: actorId,
+      decisionReason: 'Seller reinstated directly by admin; pending appeal closed.',
+      $push: {
+        history: {
+          event: 'SUPERSEDED',
+          by: actorId,
+          note: 'Seller reinstated directly by admin; pending appeal closed.',
+          at: new Date(),
+        },
+      },
+    });
+  }
+
 
   await logAction(actorId, 'seller.reinstate', 'SellerProfile', sellerProfileId, {});
 

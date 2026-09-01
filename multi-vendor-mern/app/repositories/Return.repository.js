@@ -85,16 +85,18 @@ export const updateStatusAndNotes = (id, status, processedBy, notes, noteType) =
   return ReturnRequest.findByIdAndUpdate(id, update, { new: true });
 };
 
-export const findDuplicateReturn = ({
-  customerId,
-  productId,
-  sellerOrderId,
-}) =>
+export const findDuplicateReturn = ({ customerId, sellerOrderId }) =>
   ReturnRequest.findOne({
     customer: customerId,
-    product: productId,
     sellerOrder: sellerOrderId,
   });
+
+// All returns belonging to a set of seller orders (any customer) — used to
+// enrich customer order detail with per-package return status.
+export const findBySellerOrderIds = (sellerOrderIds) =>
+  ReturnRequest.find({ sellerOrder: { $in: sellerOrderIds } })
+    .select('sellerOrder returnNumber status createdAt')
+    .lean();
 
 export const updateById = (id, update) =>
   ReturnRequest.findByIdAndUpdate(id, update, { new: true });

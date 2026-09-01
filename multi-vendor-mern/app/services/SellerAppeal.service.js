@@ -5,6 +5,8 @@ import Store from '../models/Store.model.js';
 import * as sellerProfileRepo from '../repositories/SellerProfile.repository.js';
 import * as suspensionRepo from '../repositories/SellerSuspension.repository.js';
 import * as appealRepo from '../repositories/SellerAppeal.repository.js';
+import * as storeRepo from '../repositories/Store.repository.js';
+import * as productRepo from '../repositories/Product.repository.js';
 import { logAction } from './AdminAuditLog.service.js';
 import { createNotification, notifyAdmins } from './Notification.service.js';
 import { ApiError } from '../utils/ApiError.util.js';
@@ -201,6 +203,11 @@ export const decideAppeal = async (appealId, decision, decisionReason, actorId) 
         { status: 'Approved', warningCount: 0 },
         { session }
       );
+
+      const store = await storeRepo.findBySeller(appeal.sellerProfile);
+      if (store) {
+        await productRepo.bulkRestoreSuspendedByStore(store._id, session);
+      }
     }
 
     await session.commitTransaction();
@@ -257,6 +264,11 @@ export const decideAppeal = async (appealId, decision, decisionReason, actorId) 
           appeal.sellerProfile,
           { status: 'Approved', warningCount: 0 }
         );
+
+        const store = await storeRepo.findBySeller(appeal.sellerProfile);
+        if (store) {
+          await productRepo.bulkRestoreSuspendedByStore(store._id);
+        }
       }
     } else {
       // Transaction conflicts (e.g. WriteConflict 112 / LockTimeout 261) can arise

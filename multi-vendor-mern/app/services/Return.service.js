@@ -45,6 +45,20 @@ const verifyReturnOwnership = async (returnId, userId) => {
 
 // ---------- Customer-facing operations ----------
 
+/**
+ * Return window business rule: a customer may request a return only within
+ * N days of the package being marked Delivered. Single source of truth —
+ * reused by createReturn (enforcement) and order detail (UI eligibility).
+ */
+export const RETURN_WINDOW_DAYS = 4;
+
+export const isWithinReturnWindow = (sellerOrder) => {
+  const deliveredAt = sellerOrder.deliveredAt || sellerOrder.updatedAt;
+  if (!deliveredAt) return false;
+  const elapsedMs = Date.now() - new Date(deliveredAt).getTime();
+  return elapsedMs <= RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+};
+
 export const createReturn = async (customerId, data) => {
   const { productId, sellerOrderId, reason, description, images, quantity } = data;
 
@@ -64,6 +78,14 @@ export const createReturn = async (customerId, data) => {
     throw new ApiError(400, 'Return is only available for delivered items');
   }
 
+  // Return window enforcement: only within 4 days of delivery.
+  if (!isWithinReturnWindow(sellerOrder)) {
+    throw new ApiError(
+      400,
+      `The return window has closed. Returns are only accepted within ${RETURN_WINDOW_DAYS} days of delivery`
+    );
+  }
+
   // Verify product exists in the order
   const orderItem = sellerOrder.items.find(
     (item) => item.product && item.product.toString() === productId
@@ -77,14 +99,15 @@ export const createReturn = async (customerId, data) => {
     throw new ApiError(400, `Return quantity must be between 1 and ${orderItem.quantity}`);
   }
 
-  // Check for duplicate return requests
+  // Check for duplicate return requests — one return per customer per seller
+  // order (package). A second return for the same package is never allowed,
+  // regardless of which product inside it is chosen.
   const duplicate = await returnRepo.findDuplicateReturn({
     customerId,
-    productId,
     sellerOrderId,
   });
   if (duplicate) {
-    throw new ApiError(409, 'A return request already exists for this item');
+    throw new ApiError(409, 'A return request already exists for this package');
   }
 
   const refundAmount = (orderItem.unitPriceSnapshot || 0) * requestedQty;

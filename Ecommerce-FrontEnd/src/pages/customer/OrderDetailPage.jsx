@@ -434,12 +434,29 @@ const PackageCard = ({
                 Write a Review
               </Link>
             )}
-            <Link
-              to={`/returns/new/${sellerOrder._id}`}
-              className="vv-btn vv-btn--ghost"
-            >
-              Request Return
-            </Link>
+            {sellerOrder.returnInfo?.exists && sellerOrder.returnInfo?.returnId ? (
+              <Link to="/returns" className="vv-btn vv-btn--ghost">
+                View Return
+              </Link>
+            ) : sellerOrder.returnInfo && !sellerOrder.returnInfo.canRequestReturn ? (
+              <span
+                style={{
+                  alignSelf: "center",
+                  fontSize: "0.8rem",
+                  color: "var(--text-muted)",
+                  fontWeight: 500,
+                }}
+              >
+                Return window closed
+              </span>
+            ) : (
+              <Link
+                to={`/returns/new/${sellerOrder._id}`}
+                className="vv-btn vv-btn--ghost"
+              >
+                Request Return
+              </Link>
+            )}
           </div>
         </div>
       )}

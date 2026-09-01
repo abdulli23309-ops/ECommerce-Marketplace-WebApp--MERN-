@@ -37,6 +37,58 @@ const OrderConfirmationPage = () => {
     load();
   }, [orderId]);
 
+  // Silent polling so prepaid payments (Stripe / wallet) update without a manual
+  // refresh. The Stripe webhook may confirm the payment a moment after the user
+  // is redirected here; poll every 2s until the status reaches a terminal state.
+  // No refresh indicator is shown to the user. COD (CashOnDelivery) is never
+  // polled because it legitimately stays Pending until the courier collects cash.
+  useEffect(() => {
+    if (!orderId || !payment) return;
+
+    const { method, status } = payment;
+
+    // Only poll prepaid methods whose status can become Completed shortly.
+    const isPrepaid =
+      method === "Stripe" || method === "EasyPaisa" || method === "JazzCash";
+    const isTerminal = status === "Completed" || status === "Failed";
+
+    if (!isPrepaid || isTerminal) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 30; // 30 × 2000ms = 60s silent safety cap
+
+    const attempt = async () => {
+      if (cancelled) return;
+      attempts += 1;
+      try {
+        const paymentRes = await axiosInstance.get(`/payments/order/${orderId}`);
+        const nextPayment = paymentRes.data?.data || paymentRes.data || null;
+        if (cancelled) return;
+        setPayment(nextPayment);
+        const nextStatus = nextPayment?.status;
+        if (
+          nextStatus === "Completed" ||
+          nextStatus === "Failed" ||
+          attempts >= MAX_ATTEMPTS
+        ) {
+          return; // terminal status reached → stop polling
+        }
+      } catch {
+        if (cancelled || attempts >= MAX_ATTEMPTS) return; // stop on repeated failures
+      }
+      timer = setTimeout(attempt, 2000);
+    };
+
+    let timer = setTimeout(attempt, 2000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // React on method/status changes so the effect self-terminates once terminal.
+  }, [orderId, payment?.method, payment?.status]);
+
   if (loading) {
     return (
       <div style={{ maxWidth: "720px", margin: "0 auto", padding: "2rem" }}>

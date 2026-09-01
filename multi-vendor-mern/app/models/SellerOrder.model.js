@@ -62,6 +62,10 @@ const sellerOrderSchema = new mongoose.Schema(
       ],
     },
     items: [orderItemSchema],
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

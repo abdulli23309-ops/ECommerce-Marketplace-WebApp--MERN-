@@ -4402,6 +4402,87 @@ textarea {
   }
 }
 
+/* Review Success Confirmation entrance animation */
+@keyframes review-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-fade-in {
+    animation: none;
+  }
+}
+
+/* ---- Review Success graphic (light + dark mode) ---- */
+/* The circular badge that houses the checkmark. Uses var(--primary) in light
+   mode (amber/soft-ui) and a surface color in dark mode so the icon never
+   becomes white-on-white. */
+.review-success-graphic {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 1.5rem auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.success-glow-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, transparent 70%);
+  z-index: 0;
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 0.4; }
+}
+
+/* Light mode: primary-colored badge with gold checkmark */
+.review-success-graphic .success-checkmark {
+  position: relative;
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  stroke: #fbbf24;
+  filter: drop-shadow(0 4px 12px rgba(245, 158, 11, 0.4));
+}
+
+/* Dark mode override: richer gold stroke + stronger glow */
+[data-theme="dark"] .review-success-graphic .success-checkmark {
+  stroke: #f59e0b;
+  filter: drop-shadow(0 4px 16px rgba(245, 158, 11, 0.6));
+}
+
+/* Dark mode: badge uses surface color with a subtle glowing border */
+[data-theme="dark"] .review-success-graphic {
+  background: var(--surface);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  .review-success-graphic .success-checkmark {
+    stroke: #f59e0b;
+    filter: drop-shadow(0 4px 16px rgba(245, 158, 11, 0.6));
+  }
+
+  .review-success-graphic {
+    background: var(--surface);
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+}
+
 /* Product card image wrapper and quick-view styles */
 .product-image-wrapper {
   position: relative;

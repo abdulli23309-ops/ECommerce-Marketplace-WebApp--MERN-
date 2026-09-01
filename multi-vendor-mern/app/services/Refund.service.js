@@ -31,11 +31,29 @@ export const createRefund = async (returnRequestId, adminId) => {
   const payment = await paymentRepo.findByParentOrder(sellerOrder.parentOrder);
   if (!payment) throw new ApiError(404, 'Payment not found');
 
+  // Determine correct refund amount:
+  // 1. returnRequest.refundAmount if set and > 0
+  // 2. Or returned product unit price snapshot * returnRequest.quantity
+  // 3. Or sellerOrder.subTotal as fallback
+  let refundAmount = returnRequest.refundAmount;
+  if (refundAmount == null || refundAmount <= 0) {
+    const returnedItem = sellerOrder.items?.find(
+      (item) => item.product && item.product.toString() === (returnRequest.product?._id || returnRequest.product)?.toString()
+    );
+    if (returnedItem && returnedItem.unitPriceSnapshot != null) {
+      refundAmount = (returnedItem.unitPriceSnapshot || 0) * (returnRequest.quantity || 1);
+    } else if (sellerOrder.subTotal != null) {
+      refundAmount = sellerOrder.subTotal;
+    } else {
+      refundAmount = 0;
+    }
+  }
+
   // Create refund record
   const refund = await refundRepo.create({
     returnRequest: returnRequestId,
     payment: payment._id,
-    amount: payment.amount,
+    amount: refundAmount,
     status: 'Completed',
     processedBy: adminId,
     processedAt: new Date(),
@@ -47,11 +65,20 @@ export const createRefund = async (returnRequestId, adminId) => {
   await payment.save();
 
   // Restore stock for the returned items
-  for (const item of sellerOrder.items || []) {
+  const returnedProductId = returnRequest.product?._id || returnRequest.product;
+  const returnedQuantity = returnRequest.quantity || 1;
+  if (returnedProductId) {
     await Product.updateOne(
-      { _id: item.product },
-      { $inc: { stock: item.quantity } }
+      { _id: returnedProductId },
+      { $inc: { stock: returnedQuantity } }
     );
+  } else {
+    for (const item of sellerOrder.items || []) {
+      await Product.updateOne(
+        { _id: item.product },
+        { $inc: { stock: item.quantity } }
+      );
+    }
   }
 
   // Update return request status to refund completed
@@ -69,7 +96,7 @@ export const createRefund = async (returnRequestId, adminId) => {
       'Refund Processed',
       `Your refund for order ${sellerOrder.parentOrder} has been processed.`,
       `/orders/${sellerOrder.parentOrder}`,
-      { returnRequestId: returnRequest._id, refundId: refund._id }
+      { returnRequestId: returnRequest._id, refundId: refund._id, amount: refundAmount }
     );
   }
 

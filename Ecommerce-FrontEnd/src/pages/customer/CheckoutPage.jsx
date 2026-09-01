@@ -414,20 +414,30 @@ const CheckoutPage = () => {
                 </div>
 
                 {(paymentMethod === "easypaisa" || paymentMethod === "jazzcash") && (
-                  <div className="premium-input-wrapper" style={{ marginTop: '24px', position: 'relative' }}>
+                  <div style={{ marginTop: '24px' }}>
+                    <label htmlFor="mobileAccount" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                      Mobile Account Number (03XXXXXXXXX)
+                    </label>
                     <input
                       type="tel"
                       id="mobileAccount"
                       value={mobileAccount}
                       onChange={(e) => setMobileAccount(e.target.value)}
-                      placeholder=" "
-                      className="premium-input"
+                      placeholder="03XXXXXXXXX"
                       maxLength="11"
                       style={{
-                        borderColor: mobileAccount ? (isMobileValid ? 'var(--success)' : 'var(--danger)') : 'var(--border)'
+                        width: '100%',
+                        height: '44px',
+                        padding: '0 14px',
+                        backgroundColor: 'var(--input-bg, var(--bg-secondary))',
+                        borderRadius: '8px',
+                        border: `1px solid ${mobileAccount ? (isMobileValid ? 'var(--success)' : 'var(--danger)') : 'var(--border)'}`,
+                        color: 'var(--text-primary)',
+                        fontSize: '0.95rem',
+                        boxSizing: 'border-box',
+                        outline: 'none',
                       }}
                     />
-                    <label htmlFor="mobileAccount" className="premium-label">Mobile Account Number (03XXXXXXXXX)</label>
                     {mobileAccount && !isMobileValid && (
                       <p style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: '4px' }}>
                         Must be 11 digits starting with 03
@@ -529,20 +539,94 @@ const CheckoutPage = () => {
               </div>
 
               <div style={{ marginTop: '20px' }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <div className="premium-input-wrapper" style={{ flex: 1, position: 'relative' }}>
-                    <input
-                      type="text"
-                      id="couponCode"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      placeholder=" "
-                      disabled={!!appliedCoupon}
-                      className="premium-input"
-                    />
-                    <label htmlFor="couponCode" className="premium-label">Coupon code</label>
-                  </div>
-                  {!appliedCoupon ? <button onClick={applyCoupon} disabled={couponLoading || !couponCode.trim()} style={{ padding: '10px 16px', backgroundColor: couponLoading ? 'var(--disabled-bg)' : 'var(--primary)', color: 'var(--primary-contrast)', border: 'none', borderRadius: '8px', cursor: couponLoading ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>{couponLoading ? "..." : "Apply"}</button> : <button onClick={removeCoupon} style={{ padding: '10px 16px', backgroundColor: 'var(--danger)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>Remove</button>}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    id="couponCode"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="Coupon code"
+                    disabled={!!appliedCoupon}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      height: '42px',
+                      padding: '0 14px',
+                      backgroundColor: 'var(--input-bg, var(--bg-secondary))',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.2s, box-shadow 0.2s',
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--primary)';
+                      e.target.style.boxShadow = '0 0 0 1px var(--primary)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'var(--border)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !appliedCoupon && couponCode.trim()) {
+                        e.preventDefault();
+                        applyCoupon();
+                      }
+                    }}
+                  />
+                  {!appliedCoupon ? (
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={couponLoading || !couponCode.trim()}
+                      style={{
+                        height: '42px',
+                        padding: '0 18px',
+                        backgroundColor: couponLoading || !couponCode.trim() ? 'var(--disabled-bg, #374151)' : 'var(--primary)',
+                        color: couponLoading || !couponCode.trim() ? 'var(--disabled-text, #9ca3af)' : 'var(--primary-contrast)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: couponLoading || !couponCode.trim() ? 'not-allowed' : 'pointer',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        whiteSpace: 'nowrap',
+                        boxSizing: 'border-box',
+                        transition: 'all 0.2s',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {couponLoading ? "..." : "Apply"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={removeCoupon}
+                      style={{
+                        height: '42px',
+                        padding: '0 16px',
+                        backgroundColor: 'var(--danger)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        whiteSpace: 'nowrap',
+                        boxSizing: 'border-box',
+                        flexShrink: 0,
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
                 {couponError && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--danger)' }}>{couponError}</p>}
                 {appliedCoupon && <p style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--success-text)' }}>Coupon <strong>{appliedCoupon.code}</strong> applied: {appliedCoupon.discountType === "free_delivery" ? "Free Delivery" : `-PKR ${formatPKR(discountAmount)}`}</p>}

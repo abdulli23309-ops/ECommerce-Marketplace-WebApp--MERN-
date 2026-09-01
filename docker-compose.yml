@@ -1,0 +1,102 @@
+# ==========================================
+# VendorVerse — Docker Compose
+# Services: backend (Node/Express), frontend (nginx),
+#           mongo, mongo-express (DB UI)
+# ==========================================
+
+services:
+  # ---- MongoDB ----
+  mongo:
+    image: mongo:7
+    container_name: vendorverse-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - vendorverse-net
+
+  # ---- MongoDB Express (DB UI) ----
+  mongo-express:
+    image: mongo-express:1
+    container_name: vendorverse-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USERNAME:-root}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-root}:${MONGO_ROOT_PASSWORD:-changeme}@mongo:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USER:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-admin}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - vendorverse-net
+
+  # ---- Backend (Node.js + Express) ----
+  backend:
+    build:
+      context: ./multi-vendor-mern
+      dockerfile: Dockerfile
+    container_name: vendorverse-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${BACKEND_PORT:-5000}
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:-root}:${MONGO_ROOT_PASSWORD:-changeme}@mongo:27017/multivendor_mern?authSource=admin
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change_me_access_in_production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_refresh_in_production}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_CURRENCY: ${STRIPE_CURRENCY:-pkr}
+      ALLOW_MOCK_GOOGLE: ${ALLOW_MOCK_GOOGLE:-false}
+      REDIS_HOST: ${REDIS_HOST:-127.0.0.1}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - ./multi-vendor-mern/app/uploads:/app/app/uploads
+    networks:
+      - vendorverse-net
+
+  # ---- Frontend (React/Vite served via nginx) ----
+  frontend:
+    build:
+      context: ./Ecommerce-FrontEnd
+      dockerfile: Dockerfile
+    container_name: vendorverse-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - vendorverse-net
+
+# ---- Named volumes ----
+volumes:
+  mongo-data:
+    driver: local
+
+# ---- Networks ----
+networks:
+  vendorverse-net:
+    driver: bridge

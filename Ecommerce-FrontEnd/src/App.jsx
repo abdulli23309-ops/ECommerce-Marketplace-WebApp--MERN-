@@ -36,6 +36,7 @@ const OrderHistoryPage = lazy(() => import("./pages/customer/OrderHistoryPage"))
 const AddressBookPage = lazy(() => import("./pages/customer/AddressBookPage"));
 const OrderDetailPage = lazy(() => import("./pages/customer/OrderDetailPage"));
 const ReviewPage = lazy(() => import("./pages/customer/ReviewPage"));
+const ReviewSuccessPage = lazy(() => import("./pages/customer/ReviewSuccessPage"));
 const RequestReturnPage = lazy(() => import("./pages/customer/RequestReturnPage"));
 const CustomerReturnsPage = lazy(() => import("./pages/customer/CustomerReturnsPage"));
 const MyReviewsPage = lazy(() => import("./pages/customer/MyReviewsPage"));
@@ -174,7 +175,8 @@ const App = () => {
           <Route path="/returns" element={<CustomerReturnsPage />} />
           <Route path="/reviews/my" element={<MyReviewsPage />} />
           <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
-          <Route path="/reviews/:reviewId" element={<ReviewDetailPage />} />
+                    <Route path="/reviews/:reviewId" element={<ReviewDetailPage />} />
+          <Route path="/review/success" element={<ReviewSuccessPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
         </Route>
       </Route>

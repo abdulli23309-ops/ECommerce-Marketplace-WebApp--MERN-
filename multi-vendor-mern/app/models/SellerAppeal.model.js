@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const appealHistoryEntry = {
   event: {
     type: String,
-    enum: ['SUBMITTED', 'APPROVED', 'REJECTED'],
+    enum: ['SUBMITTED', 'APPROVED', 'REJECTED', 'SUPERSEDED'],
     required: true,
   },
   at: {
@@ -35,7 +35,7 @@ const sellerAppealSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending', 'Approved', 'Rejected'],
+      enum: ['Pending', 'Approved', 'Rejected', 'Superseded'],
       default: 'Pending',
       index: true,
     },

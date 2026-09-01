@@ -160,12 +160,16 @@ const ReviewPage = () => {
       return;
     }
 
-    setSubmitting(true);
-    setError(null);
-    try {
+              setSubmitting(true);
+      setError(null);
+      try {
       const imageUrls = await uploadImages();
-
-      await axiosInstance.post("/reviews", {
+      const productSnapshot = {
+        _id: selectedProductId,
+        name: selectedItem?.productNameSnapshot || "this item",
+        image: selectedItem?.productImage || selectedItem?.product?.images?.[0],
+      };
+      const { data } = await axiosInstance.post("/reviews", {
         sellerOrderId,
         productId: selectedProductId,
         rating,
@@ -173,7 +177,18 @@ const ReviewPage = () => {
         images: imageUrls,
         isAnonymous,
       });
-      navigate("/orders");
+
+            const createdReview = data?.data || data || {};
+
+      navigate("/review/success", {
+        state: {
+          review: createdReview,
+          product: createdReview?.product || productSnapshot,
+          rating,
+          comment,
+          isAnonymous,
+        },
+      });
     } catch (err) {
       const message =
         err.response?.data?.message ||

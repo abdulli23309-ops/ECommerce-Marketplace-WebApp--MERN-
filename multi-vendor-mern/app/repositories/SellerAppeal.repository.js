@@ -28,6 +28,9 @@ const findBySuspension = (suspensionId, status) => {
 const findPendingBySuspension = (suspensionId) =>
   SellerAppeal.findOne({ suspension: suspensionId, status: 'Pending' });
 
+const findPendingBySellerProfile = (sellerProfileId) =>
+  SellerAppeal.find({ sellerProfile: sellerProfileId, status: 'Pending' });
+
 const findByIdAndUpdate = (id, patch, opts = {}) =>
   SellerAppeal.findByIdAndUpdate(id, patch, { new: true, ...opts });
 
@@ -37,5 +40,6 @@ export {
   findBySellerProfile,
   findBySuspension,
   findPendingBySuspension,
+  findPendingBySellerProfile,
   findByIdAndUpdate,
 };

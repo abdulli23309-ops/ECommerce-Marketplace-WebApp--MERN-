@@ -261,7 +261,15 @@ const CustomerLayout = () => {
         />
       )}
 
-      <main style={{ flex: 1, overflow: "hidden" }}>
+                              <main
+        style={{
+          flex: 1,
+          overflow: "visible",
+          minHeight: "calc(100vh - 112px)",
+          paddingBottom: "5rem",
+          boxSizing: "border-box",
+        }}
+      >
         <div key={location.pathname} className="page-fade-slide">
           <Outlet />
         </div>

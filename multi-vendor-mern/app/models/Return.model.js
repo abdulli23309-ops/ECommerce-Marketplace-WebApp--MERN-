@@ -67,7 +67,7 @@ const returnSchema = new mongoose.Schema(
 );
 
 returnSchema.index(
-  { customer: 1, product: 1, sellerOrder: 1 },
+  { customer: 1, sellerOrder: 1 },
   { unique: true }
 );
 
